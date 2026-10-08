@@ -10,16 +10,19 @@ class SignalEndpoint extends Endpoint {
     final ws = await WorkspaceEndpoint().ensure(session);
     final needEvidence = <int>[];
 
-    // 1. Update camera status
+    // 1. Update camera status (throttled to at most once per 10s to prevent DB lock contention)
     final camera = await Camera.db.findById(session, batch.cameraId);
     if (camera != null) {
-      await Camera.db.updateRow(
-        session,
-        camera.copyWith(
-          lastSignalAt: DateTime.now(),
-          status: 'online',
-        ),
-      );
+      final last = camera.lastSignalAt;
+      if (last == null || DateTime.now().difference(last).inSeconds >= 10) {
+        await Camera.db.updateRow(
+          session,
+          camera.copyWith(
+            lastSignalAt: DateTime.now(),
+            status: 'online',
+          ),
+        );
+      }
     }
 
     // 2. Load active rules for this workspace and camera
@@ -54,22 +57,38 @@ class SignalEndpoint extends Endpoint {
         case 'person_in_zone':
           final targetZoneId = rule.trigger.zoneId;
           for (final p in persons) {
-            if (p.zoneIds.contains(targetZoneId)) {
+            final matchesZone = (targetZoneId == null || targetZoneId == 0)
+                ? p.zoneIds.isNotEmpty
+                : (p.zoneIds.contains(targetZoneId) || p.zoneIds.isNotEmpty);
+            if (matchesZone) {
               conditionMet = true;
               triggerPerson = p;
-              triggerDetail = 'Person (ID ${p.trackId}) entered restricted Zone #$targetZoneId';
+              final zoneLabel = (targetZoneId != null && targetZoneId > 0)
+                  ? 'Zone #$targetZoneId'
+                  : 'Restricted Zone';
+              triggerDetail = 'Person (ID ${p.trackId}) entered restricted $zoneLabel';
               break;
             }
           }
           break;
 
         case 'fall_suspected':
+          final requiredFallMs = rule.trigger.minDurationSec * 1000;
           for (final p in persons) {
             if (p.fallScore >= 0.6) {
-              conditionMet = true;
-              triggerPerson = p;
-              triggerDetail = 'Sudden fall detected (score: ${p.fallScore.toStringAsFixed(2)}, torso: ${p.torsoAngleDeg?.toStringAsFixed(0)}°)';
-              break;
+              if (requiredFallMs > 0) {
+                if (p.motionlessMs >= requiredFallMs) {
+                  conditionMet = true;
+                  triggerPerson = p;
+                  triggerDetail = 'Subject fell and remained down for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s (score: ${p.fallScore.toStringAsFixed(2)})';
+                  break;
+                }
+              } else {
+                conditionMet = true;
+                triggerPerson = p;
+                triggerDetail = 'Sudden fall detected (score: ${p.fallScore.toStringAsFixed(2)}, torso: ${p.torsoAngleDeg?.toStringAsFixed(0)}°)';
+                break;
+              }
             }
           }
           break;
@@ -96,7 +115,7 @@ class SignalEndpoint extends Endpoint {
       }
 
       if (conditionMet) {
-        // Deduplicate: check if an incident for this rule & camera is already open
+        // Deduplicate: check if an incident for this rule & camera is actively open or in cooldown
         final existing = await Incident.db.findFirstRow(
           session,
           where: (t) =>
@@ -104,9 +123,24 @@ class SignalEndpoint extends Endpoint {
               t.ruleId.equals(rule.id!) &
               t.cameraId.equals(batch.cameraId) &
               (t.status.equals('open') | t.status.equals('acknowledged')),
+          orderBy: (t) => t.openedAt.desc(),
         );
 
-        if (existing == null) {
+        bool isSuppressed = false;
+        if (existing != null) {
+          if (existing.status == 'open') {
+            isSuppressed = true;
+          } else if (existing.status == 'acknowledged') {
+            final cooldownSeconds = rule.cooldownSec > 0 ? rule.cooldownSec : 60;
+            final lastActionTime = existing.ackedAt ?? existing.openedAt;
+            final elapsed = DateTime.now().difference(lastActionTime).inSeconds;
+            if (elapsed < cooldownSeconds) {
+              isSuppressed = true;
+            }
+          }
+        }
+
+        if (!isSuppressed) {
           // Open new incident
           final newIncident = Incident(
             workspaceId: ws.id!,
