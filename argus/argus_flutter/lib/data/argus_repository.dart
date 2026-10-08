@@ -35,6 +35,8 @@ abstract class ArgusRepository {
   Future<Incident> acknowledge(int id, {String? note});
   Future<Incident> resolve(int id, {String? note});
   Future<Incident> markFalsePositive(int id, {String? note});
+  Future<bool> deleteIncident(int id);
+  Future<bool> deleteAllIncidents();
 
   // Contacts & escalation, lab, audit
   Future<List<Contact>> listContacts();

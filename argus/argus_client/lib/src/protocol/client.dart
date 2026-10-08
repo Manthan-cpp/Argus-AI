@@ -459,6 +459,18 @@ class EndpointIncident extends _isc.EndpointRef {
       'note': note,
     },
   );
+
+  _ida.Future<bool> delete(int id) => caller.callServerEndpoint<bool>(
+    'incident',
+    'delete',
+    {'id': id},
+  );
+
+  _ida.Future<bool> deleteAll() => caller.callServerEndpoint<bool>(
+    'incident',
+    'deleteAll',
+    {},
+  );
 }
 
 /// {@category Endpoint}

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:argus_client/argus_client.dart';
 import 'package:argus_engine/argus_engine.dart' as engine;
 import '../argus_repository.dart';
@@ -36,7 +37,7 @@ class MockArgusRepository implements ArgusRepository {
   final engine.GrammarParser _grammarParser = const engine.GrammarParser();
 
   MockArgusRepository() {
-    _initSeedData();
+    // Starts completely clean. Cameras, rules, and incidents are created by the user.
   }
 
   void _initSeedData() {
@@ -516,6 +517,7 @@ class MockArgusRepository implements ArgusRepository {
   @override
   Future<void> deleteCamera(int id) async {
     _cameras.removeWhere((c) => c.id == id);
+    _zones.removeWhere((z) => z.cameraId == id);
   }
 
   @override
@@ -671,6 +673,124 @@ class MockArgusRepository implements ArgusRepository {
   // --- LIVE SIGNALS & STREAMING ---
   @override
   Future<SignalAck> sendSignals(SignalBatch batch) async {
+    if (batch.signals.isNotEmpty) {
+      final latest = batch.signals.last;
+      final persons = latest.persons;
+      final activeRules = _rules.where((r) => r.enabled && (r.cameraIds.isEmpty || r.cameraIds.contains(batch.cameraId))).toList();
+
+      for (final rule in activeRules) {
+        bool met = false;
+        String detail = '';
+        if (rule.trigger.signal == 'person_in_zone') {
+          final targetZoneId = rule.trigger.zoneId;
+          for (final p in persons) {
+            final matches = (targetZoneId == null || targetZoneId == 0)
+                ? p.zoneIds.isNotEmpty
+                : (p.zoneIds.contains(targetZoneId) || p.zoneIds.isNotEmpty);
+            if (matches) {
+              met = true;
+              final zoneDesc = (targetZoneId != null && targetZoneId > 0) ? 'Zone #$targetZoneId' : 'Restricted Zone';
+              detail = 'Person (ID ${p.trackId}) in $zoneDesc';
+              break;
+            }
+          }
+        } else if (rule.trigger.signal == 'fall_suspected') {
+          final reqFallMs = rule.trigger.minDurationSec * 1000;
+          for (final p in persons) {
+            if (p.fallScore >= 0.6) {
+              if (reqFallMs > 0) {
+                if (p.motionlessMs >= reqFallMs) {
+                  met = true;
+                  detail = 'Subject fell and remained down for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s (score: ${p.fallScore})';
+                  break;
+                }
+              } else {
+                met = true;
+                detail = 'Sudden fall detected (score: ${p.fallScore})';
+                break;
+              }
+            }
+          }
+        } else if (rule.trigger.signal == 'motionless') {
+          final reqMs = rule.trigger.minDurationSec * 1000;
+          for (final p in persons) {
+            if (p.motionlessMs >= reqMs) {
+              met = true;
+              detail = 'Motionless subject detected for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s';
+              break;
+            }
+          }
+        }
+
+        if (met) {
+          Incident? existing;
+          try {
+            existing = _incidents.firstWhere(
+              (i) => i.ruleId == rule.id && i.cameraId == batch.cameraId && (i.status == 'open' || i.status == 'acknowledged'),
+            );
+          } catch (_) {
+            existing = null;
+          }
+
+          bool isSuppressed = false;
+          if (existing != null) {
+            if (existing.status == 'open') {
+              isSuppressed = true;
+            } else if (existing.status == 'acknowledged') {
+              final cooldownSeconds = rule.cooldownSec > 0 ? rule.cooldownSec : 60;
+              final lastActionTime = existing.ackedAt ?? existing.openedAt;
+              final elapsed = DateTime.now().difference(lastActionTime).inSeconds;
+              if (elapsed < cooldownSeconds) {
+                isSuppressed = true;
+              }
+            }
+          }
+
+          if (!isSuppressed) {
+            final newId = _incidents.length + 101;
+            final inc = Incident(
+              id: newId,
+              workspaceId: 1,
+              cameraId: batch.cameraId,
+              ruleId: rule.id!,
+              ruleSnapshotJson: json.encode(rule.toJson()),
+              severity: rule.severity,
+              status: 'open',
+              openedAt: DateTime.now(),
+              verification: VerificationInfo(status: 'not_requested', reason: 'Vision telemetry condition met'),
+              summary: '${rule.name}: $detail',
+              signalContextJson: '{}',
+            );
+            _incidents.insert(0, inc);
+            final event = IncidentEvent(
+              incidentId: newId,
+              at: DateTime.now(),
+              kind: 'opened',
+              detail: detail,
+            );
+            _incidentEvents[newId] = [event];
+            _incidentStreamCtrl.add(IncidentUpdate(incident: inc, event: event));
+
+            // Escalation ladder simulation
+            final escalationSec = rule.escalation.isNotEmpty ? rule.escalation.first.afterSec : 30;
+            Timer(Duration(seconds: escalationSec), () {
+              final currIdx = _incidents.indexWhere((x) => x.id == newId);
+              if (currIdx >= 0 && _incidents[currIdx].status == 'open') {
+                final escEvent = IncidentEvent(
+                  incidentId: newId,
+                  at: DateTime.now(),
+                  kind: 'escalated',
+                  detail: 'Escalated due to unacknowledged timeout (${escalationSec}s)',
+                );
+                _incidentEvents[newId]?.insert(0, escEvent);
+                _incidentStreamCtrl.add(IncidentUpdate(incident: _incidents[currIdx], event: escEvent));
+              }
+            });
+          }
+        }
+      }
+    }
+
     return SignalAck(
       accepted: true,
       needEvidenceFor: [],
@@ -821,6 +941,20 @@ class MockArgusRepository implements ArgusRepository {
 
     _incidentStreamCtrl.add(IncidentUpdate(incident: updated, event: event));
     return updated;
+  }
+
+  @override
+  Future<bool> deleteIncident(int id) async {
+    _incidents.removeWhere((i) => i.id == id);
+    _incidentEvents.remove(id);
+    return true;
+  }
+
+  @override
+  Future<bool> deleteAllIncidents() async {
+    _incidents.clear();
+    _incidentEvents.clear();
+    return true;
   }
 
   // --- CONTACTS & LAB ---

@@ -140,6 +140,16 @@ class RemoteArgusRepository implements ArgusRepository {
   }
 
   @override
+  Future<bool> deleteIncident(int id) async {
+    return await client.incident.delete(id);
+  }
+
+  @override
+  Future<bool> deleteAllIncidents() async {
+    return await client.incident.deleteAll();
+  }
+
+  @override
   Future<List<Contact>> listContacts() async {
     return await client.contact.list();
   }
