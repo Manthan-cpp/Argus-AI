@@ -19,8 +19,11 @@ abstract class Contact
     required this.workspaceId,
     required this.name,
     required this.role,
-    this.telegramChatId,
     required this.notifyInApp,
+    this.telegramChatId,
+    this.telegramLinkCode,
+    this.isLinked,
+    this.createdAt,
   });
 
   factory Contact({
@@ -28,8 +31,11 @@ abstract class Contact
     required int workspaceId,
     required String name,
     required String role,
-    String? telegramChatId,
     required bool notifyInApp,
+    String? telegramChatId,
+    String? telegramLinkCode,
+    bool? isLinked,
+    DateTime? createdAt,
   }) = _ContactImpl;
 
   factory Contact.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -38,13 +44,23 @@ abstract class Contact
       workspaceId: jsonSerialization['workspaceId'] as int,
       name: jsonSerialization['name'] as String,
       role: jsonSerialization['role'] as String,
-      telegramChatId: jsonSerialization['telegramChatId'] as String?,
       notifyInApp: _isc.BoolJsonExtension.fromJson(
         jsonSerialization['notifyInApp'],
       ),
+      telegramChatId: jsonSerialization['telegramChatId'] as String?,
+      telegramLinkCode: jsonSerialization['telegramLinkCode'] as String?,
+      isLinked: jsonSerialization['isLinked'] == null
+          ? null
+          : _isc.BoolJsonExtension.fromJson(jsonSerialization['isLinked']),
+      createdAt: jsonSerialization['createdAt'] == null
+          ? null
+          : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['createdAt']),
     );
   }
 
+  /// The database id, set if the object has been inserted into the
+  /// database or if it has been fetched from the database. Otherwise,
+  /// the id will be null.
   int? id;
 
   int workspaceId;
@@ -53,9 +69,15 @@ abstract class Contact
 
   String role;
 
+  bool notifyInApp;
+
   String? telegramChatId;
 
-  bool notifyInApp;
+  String? telegramLinkCode;
+
+  bool? isLinked;
+
+  DateTime? createdAt;
 
   /// Returns a shallow copy of this [Contact]
   /// with some or all fields replaced by the given arguments.
@@ -65,8 +87,11 @@ abstract class Contact
     int? workspaceId,
     String? name,
     String? role,
-    String? telegramChatId,
     bool? notifyInApp,
+    String? telegramChatId,
+    String? telegramLinkCode,
+    bool? isLinked,
+    DateTime? createdAt,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -76,8 +101,11 @@ abstract class Contact
       'workspaceId': workspaceId,
       'name': name,
       'role': role,
-      if (telegramChatId != null) 'telegramChatId': telegramChatId,
       'notifyInApp': notifyInApp,
+      if (telegramChatId != null) 'telegramChatId': telegramChatId,
+      if (telegramLinkCode != null) 'telegramLinkCode': telegramLinkCode,
+      if (isLinked != null) 'isLinked': isLinked,
+      if (createdAt != null) 'createdAt': createdAt?.toJson(),
     };
   }
 
@@ -89,8 +117,11 @@ abstract class Contact
       'workspaceId': workspaceId,
       'name': name,
       'role': role,
-      if (telegramChatId != null) 'telegramChatId': telegramChatId,
       'notifyInApp': notifyInApp,
+      if (telegramChatId != null) 'telegramChatId': telegramChatId,
+      if (telegramLinkCode != null) 'telegramLinkCode': telegramLinkCode,
+      if (isLinked != null) 'isLinked': isLinked,
+      if (createdAt != null) 'createdAt': createdAt?.toJson(),
     };
   }
 
@@ -108,15 +139,21 @@ class _ContactImpl extends Contact {
     required int workspaceId,
     required String name,
     required String role,
-    String? telegramChatId,
     required bool notifyInApp,
+    String? telegramChatId,
+    String? telegramLinkCode,
+    bool? isLinked,
+    DateTime? createdAt,
   }) : super._(
          id: id,
          workspaceId: workspaceId,
          name: name,
          role: role,
-         telegramChatId: telegramChatId,
          notifyInApp: notifyInApp,
+         telegramChatId: telegramChatId,
+         telegramLinkCode: telegramLinkCode,
+         isLinked: isLinked,
+         createdAt: createdAt,
        );
 
   /// Returns a shallow copy of this [Contact]
@@ -128,18 +165,26 @@ class _ContactImpl extends Contact {
     int? workspaceId,
     String? name,
     String? role,
-    Object? telegramChatId = _Undefined,
     bool? notifyInApp,
+    Object? telegramChatId = _Undefined,
+    Object? telegramLinkCode = _Undefined,
+    Object? isLinked = _Undefined,
+    Object? createdAt = _Undefined,
   }) {
     return Contact(
       id: id is int? ? id : this.id,
       workspaceId: workspaceId ?? this.workspaceId,
       name: name ?? this.name,
       role: role ?? this.role,
+      notifyInApp: notifyInApp ?? this.notifyInApp,
       telegramChatId: telegramChatId is String?
           ? telegramChatId
           : this.telegramChatId,
-      notifyInApp: notifyInApp ?? this.notifyInApp,
+      telegramLinkCode: telegramLinkCode is String?
+          ? telegramLinkCode
+          : this.telegramLinkCode,
+      isLinked: isLinked is bool? ? isLinked : this.isLinked,
+      createdAt: createdAt is DateTime? ? createdAt : this.createdAt,
     );
   }
 }

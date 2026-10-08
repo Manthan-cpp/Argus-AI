@@ -7,6 +7,8 @@ import 'package:argus_flutter/core/widgets/status_badge.dart';
 import 'package:argus_flutter/core/widgets/workflow_graph_view.dart';
 import 'package:argus_client/argus_client.dart';
 
+import 'package:argus_flutter/data/repository_provider.dart';
+
 void main() {
   testWidgets('App renders Home screen with Hero headline and Open Demo CTA', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 800);
@@ -14,8 +16,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(
-      const ProviderScope(
-        child: ArgusApp(),
+      ProviderScope(
+        overrides: [
+          useMockOverrideProvider.overrideWith((ref) => true),
+        ],
+        child: const ArgusApp(),
       ),
     );
 

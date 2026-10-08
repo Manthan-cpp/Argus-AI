@@ -1,0 +1,89 @@
+{
+  "clipId": "S3_zone_intrusion",
+  "name": "Scenario 3: Red Zone Intrusion & Dwell",
+  "fps": 8,
+  "durationMs": 10000,
+  "batches": [
+    {
+      "cameraId": 1,
+      "sentAtMs": 500,
+      "seq": 1,
+      "signals": [
+        {
+          "tsMs": 500,
+          "kind": "heartbeat",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 3,
+              "bboxN": { "x": 0.10, "y": 0.30, "w": 0.15, "h": 0.50 },
+              "footN": { "x": 0.17, "y": 0.80 },
+              "zoneIds": [],
+              "aspect": 0.30,
+              "torsoAngleDeg": 5.0,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.30,
+              "fallScore": 0.02,
+              "motionlessMs": 0,
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cameraId": 1,
+      "sentAtMs": 2000,
+      "seq": 2,
+      "signals": [
+        {
+          "tsMs": 2000,
+          "kind": "change",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 3,
+              "bboxN": { "x": 0.30, "y": 0.32, "w": 0.16, "h": 0.51 },
+              "footN": { "x": 0.38, "y": 0.83 },
+              "zoneIds": [3],
+              "aspect": 0.31,
+              "torsoAngleDeg": 7.0,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.25,
+              "fallScore": 0.03,
+              "motionlessMs": 0,
+              "confidence": 0.96
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cameraId": 1,
+      "sentAtMs": 7500,
+      "seq": 3,
+      "signals": [
+        {
+          "tsMs": 7500,
+          "kind": "change",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 3,
+              "bboxN": { "x": 0.32, "y": 0.33, "w": 0.16, "h": 0.50 },
+              "footN": { "x": 0.40, "y": 0.83 },
+              "zoneIds": [3],
+              "aspect": 0.32,
+              "torsoAngleDeg": 6.5,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.10,
+              "fallScore": 0.02,
+              "motionlessMs": 5500,
+              "confidence": 0.97
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

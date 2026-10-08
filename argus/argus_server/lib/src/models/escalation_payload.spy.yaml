@@ -1,0 +1,3 @@
+class: EscalationPayload
+fields:
+  incidentId: int

@@ -9,6 +9,8 @@ environment:
 resolution: workspace
 
 dependencies:
+  argus_engine:
+    path: ../argus_engine
   serverpod: 4.0.4
   serverpod_auth_idp_server: 4.0.4
   serverpod_cloud_storage: 4.0.4

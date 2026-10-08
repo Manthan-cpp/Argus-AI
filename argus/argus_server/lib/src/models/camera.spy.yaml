@@ -1,6 +1,6 @@
 class: Camera
+table: argus_camera
 fields:
-  id: int?
   workspaceId: int
   name: String
   sourceKind: String

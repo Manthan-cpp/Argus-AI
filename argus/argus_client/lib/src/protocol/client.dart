@@ -11,7 +11,24 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
+import 'package:argus_client/src/protocol/audit_entry.dart' as _ikvg5xfi;
+import 'package:argus_client/src/protocol/camera.dart' as _i20qtz6o;
+import 'package:argus_client/src/protocol/contact.dart' as _is7rcw5z;
+import 'package:argus_client/src/protocol/demo_seed_result.dart' as _imfiludm;
+import 'package:argus_client/src/protocol/dry_run_result.dart' as _i6u54chj;
+import 'package:argus_client/src/protocol/evidence_upload.dart' as _i09kivnj;
 import 'package:argus_client/src/protocol/greetings/greeting.dart' as _ij1oemww;
+import 'package:argus_client/src/protocol/health_info.dart' as _iguyn466;
+import 'package:argus_client/src/protocol/incident.dart' as _i1aq5e6k;
+import 'package:argus_client/src/protocol/incident_detail.dart' as _iibtzi3y;
+import 'package:argus_client/src/protocol/incident_update.dart' as _iy5lsfoy;
+import 'package:argus_client/src/protocol/parse_result.dart' as _itpxon2j;
+import 'package:argus_client/src/protocol/rule_spec.dart' as _iu4sgp9a;
+import 'package:argus_client/src/protocol/signal_ack.dart' as _idevjgfk;
+import 'package:argus_client/src/protocol/signal_batch.dart' as _if0pbfo6;
+import 'package:argus_client/src/protocol/workspace.dart' as _ijok4rmj;
+import 'package:argus_client/src/protocol/workspace_settings.dart' as _igkec3gh;
+import 'package:argus_client/src/protocol/zone.dart' as _igytwnus;
 import 'package:http/http.dart' as _i85jenna;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
@@ -245,6 +262,329 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// {@category Endpoint}
+class EndpointAudit extends _isc.EndpointRef {
+  EndpointAudit(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'audit';
+
+  _ida.Future<List<_ikvg5xfi.AuditEntry>> list({required int limit}) =>
+      caller.callServerEndpoint<List<_ikvg5xfi.AuditEntry>>(
+        'audit',
+        'list',
+        {'limit': limit},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointCamera extends _isc.EndpointRef {
+  EndpointCamera(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'camera';
+
+  _ida.Future<List<_i20qtz6o.Camera>> list() =>
+      caller.callServerEndpoint<List<_i20qtz6o.Camera>>(
+        'camera',
+        'list',
+        {},
+      );
+
+  _ida.Future<_i20qtz6o.Camera> save(_i20qtz6o.Camera camera) =>
+      caller.callServerEndpoint<_i20qtz6o.Camera>(
+        'camera',
+        'save',
+        {'camera': camera},
+      );
+
+  _ida.Future<void> delete(int id) => caller.callServerEndpoint<void>(
+    'camera',
+    'delete',
+    {'id': id},
+  );
+}
+
+/// {@category Endpoint}
+class EndpointContact extends _isc.EndpointRef {
+  EndpointContact(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'contact';
+
+  _ida.Future<List<_is7rcw5z.Contact>> list() =>
+      caller.callServerEndpoint<List<_is7rcw5z.Contact>>(
+        'contact',
+        'list',
+        {},
+      );
+
+  _ida.Future<_is7rcw5z.Contact> save(_is7rcw5z.Contact contact) =>
+      caller.callServerEndpoint<_is7rcw5z.Contact>(
+        'contact',
+        'save',
+        {'contact': contact},
+      );
+
+  _ida.Future<void> delete(int id) => caller.callServerEndpoint<void>(
+    'contact',
+    'delete',
+    {'id': id},
+  );
+
+  _ida.Future<String> createTelegramLinkCode() =>
+      caller.callServerEndpoint<String>(
+        'contact',
+        'createTelegramLinkCode',
+        {},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointDemo extends _isc.EndpointRef {
+  EndpointDemo(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'demo';
+
+  _ida.Future<_imfiludm.DemoSeedResult> seed() =>
+      caller.callServerEndpoint<_imfiludm.DemoSeedResult>(
+        'demo',
+        'seed',
+        {},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointEvidence extends _isc.EndpointRef {
+  EndpointEvidence(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'evidence';
+
+  _ida.Future<void> upload(_i09kivnj.EvidenceUpload upload) =>
+      caller.callServerEndpoint<void>(
+        'evidence',
+        'upload',
+        {'upload': upload},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointHealth extends _isc.EndpointRef {
+  EndpointHealth(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'health';
+
+  _ida.Future<_iguyn466.HealthInfo> ping() =>
+      caller.callServerEndpoint<_iguyn466.HealthInfo>(
+        'health',
+        'ping',
+        {},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointIncident extends _isc.EndpointRef {
+  EndpointIncident(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'incident';
+
+  _ida.Stream<_iy5lsfoy.IncidentUpdate> watch({int? sinceIncidentId}) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_iy5lsfoy.IncidentUpdate>,
+        _iy5lsfoy.IncidentUpdate
+      >(
+        'incident',
+        'watch',
+        {'sinceIncidentId': sinceIncidentId},
+        {},
+      );
+
+  _ida.Future<List<_i1aq5e6k.Incident>> list({
+    String? status,
+    String? severity,
+    int? cameraId,
+  }) => caller.callServerEndpoint<List<_i1aq5e6k.Incident>>(
+    'incident',
+    'list',
+    {
+      'status': status,
+      'severity': severity,
+      'cameraId': cameraId,
+    },
+  );
+
+  _ida.Future<_iibtzi3y.IncidentDetail> get(int id) =>
+      caller.callServerEndpoint<_iibtzi3y.IncidentDetail>(
+        'incident',
+        'get',
+        {'id': id},
+      );
+
+  _ida.Future<_i1aq5e6k.Incident> acknowledge(
+    int id, {
+    String? note,
+  }) => caller.callServerEndpoint<_i1aq5e6k.Incident>(
+    'incident',
+    'acknowledge',
+    {
+      'id': id,
+      'note': note,
+    },
+  );
+
+  _ida.Future<_i1aq5e6k.Incident> resolve(
+    int id, {
+    String? note,
+  }) => caller.callServerEndpoint<_i1aq5e6k.Incident>(
+    'incident',
+    'resolve',
+    {
+      'id': id,
+      'note': note,
+    },
+  );
+
+  _ida.Future<_i1aq5e6k.Incident> markFalsePositive(
+    int id, {
+    String? note,
+  }) => caller.callServerEndpoint<_i1aq5e6k.Incident>(
+    'incident',
+    'markFalsePositive',
+    {
+      'id': id,
+      'note': note,
+    },
+  );
+}
+
+/// {@category Endpoint}
+class EndpointRule extends _isc.EndpointRef {
+  EndpointRule(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'rule';
+
+  _ida.Future<List<_iu4sgp9a.RuleSpec>> list() =>
+      caller.callServerEndpoint<List<_iu4sgp9a.RuleSpec>>(
+        'rule',
+        'list',
+        {},
+      );
+
+  _ida.Future<_iu4sgp9a.RuleSpec> save(_iu4sgp9a.RuleSpec rule) =>
+      caller.callServerEndpoint<_iu4sgp9a.RuleSpec>(
+        'rule',
+        'save',
+        {'rule': rule},
+      );
+
+  _ida.Future<void> delete(int id) => caller.callServerEndpoint<void>(
+    'rule',
+    'delete',
+    {'id': id},
+  );
+
+  _ida.Future<_itpxon2j.ParseResult> interpret(
+    String sentence, {
+    int? cameraId,
+  }) => caller.callServerEndpoint<_itpxon2j.ParseResult>(
+    'rule',
+    'interpret',
+    {
+      'sentence': sentence,
+      'cameraId': cameraId,
+    },
+  );
+
+  _ida.Future<_i6u54chj.DryRunResult> dryRun(
+    _iu4sgp9a.RuleSpec rule,
+    String replayClipId,
+  ) => caller.callServerEndpoint<_i6u54chj.DryRunResult>(
+    'rule',
+    'dryRun',
+    {
+      'rule': rule,
+      'replayClipId': replayClipId,
+    },
+  );
+}
+
+/// {@category Endpoint}
+class EndpointSignal extends _isc.EndpointRef {
+  EndpointSignal(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'signal';
+
+  _ida.Future<_idevjgfk.SignalAck> send(_if0pbfo6.SignalBatch batch) =>
+      caller.callServerEndpoint<_idevjgfk.SignalAck>(
+        'signal',
+        'send',
+        {'batch': batch},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointWorkspace extends _isc.EndpointRef {
+  EndpointWorkspace(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'workspace';
+
+  _ida.Future<_ijok4rmj.Workspace> ensure() =>
+      caller.callServerEndpoint<_ijok4rmj.Workspace>(
+        'workspace',
+        'ensure',
+        {},
+      );
+
+  _ida.Future<_igkec3gh.WorkspaceSettings> updateSettings(
+    _igkec3gh.WorkspaceSettings settings,
+  ) => caller.callServerEndpoint<_igkec3gh.WorkspaceSettings>(
+    'workspace',
+    'updateSettings',
+    {'settings': settings},
+  );
+
+  _ida.Future<void> deleteWorkspaceData() => caller.callServerEndpoint<void>(
+    'workspace',
+    'deleteWorkspaceData',
+    {},
+  );
+}
+
+/// {@category Endpoint}
+class EndpointZone extends _isc.EndpointRef {
+  EndpointZone(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'zone';
+
+  _ida.Future<List<_igytwnus.Zone>> list(int cameraId) =>
+      caller.callServerEndpoint<List<_igytwnus.Zone>>(
+        'zone',
+        'list',
+        {'cameraId': cameraId},
+      );
+
+  _ida.Future<_igytwnus.Zone> save(_igytwnus.Zone zone) =>
+      caller.callServerEndpoint<_igytwnus.Zone>(
+        'zone',
+        'save',
+        {'zone': zone},
+      );
+
+  _ida.Future<void> delete(int id) => caller.callServerEndpoint<void>(
+    'zone',
+    'delete',
+    {'id': id},
+  );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -303,6 +643,17 @@ class Client extends _isc.ServerpodClientShared {
        ) {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    audit = EndpointAudit(this);
+    camera = EndpointCamera(this);
+    contact = EndpointContact(this);
+    demo = EndpointDemo(this);
+    evidence = EndpointEvidence(this);
+    health = EndpointHealth(this);
+    incident = EndpointIncident(this);
+    rule = EndpointRule(this);
+    signal = EndpointSignal(this);
+    workspace = EndpointWorkspace(this);
+    zone = EndpointZone(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -310,6 +661,28 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointEmailIdp emailIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
+
+  late final EndpointAudit audit;
+
+  late final EndpointCamera camera;
+
+  late final EndpointContact contact;
+
+  late final EndpointDemo demo;
+
+  late final EndpointEvidence evidence;
+
+  late final EndpointHealth health;
+
+  late final EndpointIncident incident;
+
+  late final EndpointRule rule;
+
+  late final EndpointSignal signal;
+
+  late final EndpointWorkspace workspace;
+
+  late final EndpointZone zone;
 
   late final EndpointGreeting greeting;
 
@@ -319,6 +692,17 @@ class Client extends _isc.ServerpodClientShared {
   Map<String, _isc.EndpointRef> get endpointRefLookup => {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'audit': audit,
+    'camera': camera,
+    'contact': contact,
+    'demo': demo,
+    'evidence': evidence,
+    'health': health,
+    'incident': incident,
+    'rule': rule,
+    'signal': signal,
+    'workspace': workspace,
+    'zone': zone,
     'greeting': greeting,
   };
 

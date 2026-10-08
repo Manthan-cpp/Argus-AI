@@ -1,8 +1,11 @@
 class: Contact
+table: argus_contact
 fields:
-  id: int?
   workspaceId: int
   name: String
   role: String
-  telegramChatId: String?
   notifyInApp: bool
+  telegramChatId: String?
+  telegramLinkCode: String?
+  isLinked: bool?
+  createdAt: DateTime?

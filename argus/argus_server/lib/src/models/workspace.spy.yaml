@@ -1,6 +1,6 @@
 class: Workspace
+table: argus_workspace
 fields:
-  id: int?
   ownerUserId: String
   name: String
   createdAt: DateTime

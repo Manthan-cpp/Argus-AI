@@ -8,6 +8,9 @@ import '../../app/theme/tokens.dart';
 import '../../app/theme/severity_scale.dart';
 import '../../core/widgets/pulsing_beacon.dart';
 import '../../core/widgets/status_badge.dart';
+import '../../core/vision/vision_controller.dart';
+import '../../core/vision/vision_types.dart';
+import '../../core/vision/vision_stage_view.dart';
 import '../../data/repository_provider.dart';
 
 class MonitorScreen extends ConsumerStatefulWidget {
@@ -25,7 +28,8 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
   List<Incident> _incidents = [];
   bool _isLoading = true;
 
-  // Simulation telemetry for live visual feedback
+  // Real on-device vision state & telemetry
+  VisionStatusInfo? _visionStatus;
   int _personCount = 1;
   double _fallScore = 0.0;
   int _motionlessMs = 0;
@@ -39,7 +43,34 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _initVision();
     _startTelemetryLoop();
+  }
+
+  Future<void> _initVision() async {
+    final vision = ref.read(visionControllerProvider);
+    await vision.initialize();
+    vision.onStatus((status) {
+      if (mounted) setState(() => _visionStatus = status);
+    });
+    vision.onSignals((batch) {
+      if (!mounted) return;
+      final signals = batch['signals'] as List?;
+      if (signals != null && signals.isNotEmpty) {
+        final first = signals.first as Map<String, dynamic>;
+        final persons = first['persons'] as List?;
+        if (persons != null && persons.isNotEmpty) {
+          final p = persons.first as Map<String, dynamic>;
+          setState(() {
+            _personCount = persons.length;
+            _fallScore = (p['fallScore'] as num?)?.toDouble() ?? 0.0;
+            _motionlessMs = (p['motionlessMs'] as num?)?.toInt() ?? 0;
+            final zIds = p['zoneIds'] as List?;
+            _inRestrictedZone = zIds != null && zIds.isNotEmpty;
+          });
+        }
+      }
+    });
   }
 
   @override
@@ -221,6 +252,77 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
               ? StatusBadge.replay()
               : StatusBadge.live(),
 
+        const SizedBox(width: 8),
+
+        // Live Hardware Stream Button
+        IconButton(
+          icon: Icon(ref.watch(visionControllerProvider).isRunning ? Icons.videocam_off_rounded : Icons.videocam_rounded),
+          color: ref.watch(visionControllerProvider).isRunning ? Colors.redAccent : ArgusTokens.accent,
+          tooltip: ref.watch(visionControllerProvider).isRunning ? 'Stop Live Feed' : 'Start Hardware Webcam',
+          onPressed: () async {
+            final vision = ref.read(visionControllerProvider);
+            if (vision.isRunning) {
+              await vision.stop();
+            } else {
+              try {
+                await vision.start(sourceKind: 'webcam');
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Camera error: $e')),
+                  );
+                }
+              }
+            }
+            if (mounted) setState(() {});
+          },
+        ),
+
+        // Snapshot Button
+        IconButton(
+          icon: const Icon(Icons.camera_alt_outlined),
+          color: ArgusTokens.textPrimary,
+          tooltip: 'Capture Privacy-Blurred Snapshot',
+          onPressed: () async {
+            final vision = ref.read(visionControllerProvider);
+            final img = await vision.captureSnapshot(blurHead: true);
+            if (!mounted || img == null) return;
+            showDialog(
+              context: context,
+                builder: (c) => AlertDialog(
+                  backgroundColor: ArgusTokens.bgOverlay,
+                  title: Row(
+                    children: [
+                      const Icon(Icons.shield_rounded, color: ArgusTokens.accent, size: 20),
+                      const SizedBox(width: 8),
+                      Text('On-Device Privacy Snapshot', style: GoogleFonts.sora(fontSize: 16, color: Colors.white)),
+                    ],
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(img, width: 380, fit: BoxFit.contain),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Human heads & faces are anonymized on-device prior to network transmission.',
+                        style: TextStyle(color: ArgusTokens.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('Close', style: TextStyle(color: ArgusTokens.accent)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+
         const Spacer(),
 
         // Performance mode chip
@@ -236,7 +338,9 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
               const PulsingBeacon(color: ArgusTokens.accent, size: 6),
               const SizedBox(width: 6),
               Text(
-                'WASM 60 FPS · 8.2ms',
+                _visionStatus != null
+                    ? '${_visionStatus!.status.toUpperCase()} · ${_visionStatus!.fps.toStringAsFixed(0)} FPS'
+                    : 'WASM 60 FPS · 8.2ms',
                 style: GoogleFonts.jetBrainsMono(fontSize: 10, color: ArgusTokens.textSecondary),
               ),
             ],
@@ -247,6 +351,8 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
   }
 
   Widget _buildVideoStage() {
+    final isVisionActive = ref.watch(visionControllerProvider).isRunning;
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.black,
@@ -258,47 +364,55 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
         child: Stack(
           children: [
             // Video Background Placeholder / Simulator Stage
-            Positioned.fill(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF090D14), Color(0xFF141A26)],
+            if (!isVisionActive)
+              Positioned.fill(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF090D14), Color(0xFF141A26)],
+                    ),
                   ),
-                ),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.videocam_rounded, size: 48, color: ArgusTokens.accent.withValues(alpha: 0.3)),
-                      const SizedBox(height: 12),
-                      Text(
-                        _selectedCamera?.name ?? 'Camera Feed',
-                        style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'MediaPipe Tasks Vision WASM Overlay Active',
-                        style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
-                      ),
-                    ],
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.videocam_rounded, size: 48, color: ArgusTokens.accent.withValues(alpha: 0.3)),
+                        const SizedBox(height: 12),
+                        Text(
+                          _selectedCamera?.name ?? 'Camera Feed',
+                          style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'MediaPipe Tasks Vision WASM Overlay Active',
+                          style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Canvas Detection Overlay Simulator
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _MonitorOverlayPainter(
-                  zones: _zones,
-                  inRestrictedZone: _inRestrictedZone,
-                  fallScore: _fallScore,
-                  motionlessMs: _motionlessMs,
+            // Hardware HTML Element View (when active on Web)
+            if (isVisionActive)
+              const Positioned.fill(
+                child: VisionStageView(),
+              ),
+
+            // Canvas Detection Overlay Simulator (when in mock/preview mode)
+            if (!isVisionActive)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _MonitorOverlayPainter(
+                    zones: _zones,
+                    inRestrictedZone: _inRestrictedZone,
+                    fallScore: _fallScore,
+                    motionlessMs: _motionlessMs,
+                  ),
                 ),
               ),
-            ),
 
             // Top Status Overlay
             Positioned(

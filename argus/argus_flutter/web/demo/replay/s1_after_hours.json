@@ -1,0 +1,116 @@
+{
+  "clipId": "S1_after_hours_entry",
+  "name": "Scenario 1: After-Hours Lab Entry",
+  "fps": 8,
+  "durationMs": 8000,
+  "batches": [
+    {
+      "cameraId": 1,
+      "sentAtMs": 1000,
+      "seq": 1,
+      "signals": [
+        {
+          "tsMs": 1000,
+          "kind": "heartbeat",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 1,
+              "bboxN": { "x": 0.05, "y": 0.25, "w": 0.16, "h": 0.55 },
+              "footN": { "x": 0.13, "y": 0.80 },
+              "zoneIds": [],
+              "aspect": 0.29,
+              "torsoAngleDeg": 4.2,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.35,
+              "fallScore": 0.05,
+              "motionlessMs": 0,
+              "confidence": 0.92
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cameraId": 1,
+      "sentAtMs": 2500,
+      "seq": 2,
+      "signals": [
+        {
+          "tsMs": 2500,
+          "kind": "change",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 1,
+              "bboxN": { "x": 0.22, "y": 0.26, "w": 0.17, "h": 0.54 },
+              "footN": { "x": 0.30, "y": 0.80 },
+              "zoneIds": [],
+              "aspect": 0.31,
+              "torsoAngleDeg": 6.1,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.42,
+              "fallScore": 0.06,
+              "motionlessMs": 0,
+              "confidence": 0.94
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cameraId": 1,
+      "sentAtMs": 3500,
+      "seq": 3,
+      "signals": [
+        {
+          "tsMs": 3500,
+          "kind": "change",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 1,
+              "bboxN": { "x": 0.42, "y": 0.27, "w": 0.18, "h": 0.53 },
+              "footN": { "x": 0.51, "y": 0.80 },
+              "zoneIds": [1],
+              "aspect": 0.34,
+              "torsoAngleDeg": 5.5,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.28,
+              "fallScore": 0.04,
+              "motionlessMs": 0,
+              "confidence": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "cameraId": 1,
+      "sentAtMs": 5500,
+      "seq": 4,
+      "signals": [
+        {
+          "tsMs": 5500,
+          "kind": "heartbeat",
+          "personCount": 1,
+          "persons": [
+            {
+              "trackId": 1,
+              "bboxN": { "x": 0.50, "y": 0.28, "w": 0.18, "h": 0.53 },
+              "footN": { "x": 0.59, "y": 0.81 },
+              "zoneIds": [1],
+              "aspect": 0.34,
+              "torsoAngleDeg": 8.0,
+              "hipDropRatio": 0.0,
+              "motionScore": 0.15,
+              "fallScore": 0.05,
+              "motionlessMs": 1200,
+              "confidence": 0.96
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

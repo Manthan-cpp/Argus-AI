@@ -1,0 +1,3 @@
+class: RetentionPayload
+fields:
+  workspaceId: int?

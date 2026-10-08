@@ -40,6 +40,8 @@ dependencies:
     path: ../argus_client
   serverpod_flutter: 4.0.4
   serverpod_auth_idp_flutter: 4.0.4
+  web: ^1.1.1
+  crypto: ^3.0.3
 
 dev_dependencies:
   # Used for agents to drive the app through the Dart MCP

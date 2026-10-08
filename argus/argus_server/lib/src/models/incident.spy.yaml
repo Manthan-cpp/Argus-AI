@@ -1,6 +1,6 @@
 class: Incident
+table: argus_incident
 fields:
-  id: int?
   workspaceId: int
   cameraId: int
   ruleId: int

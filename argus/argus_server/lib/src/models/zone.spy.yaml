@@ -1,6 +1,6 @@
 class: Zone
+table: argus_zone
 fields:
-  id: int?
   cameraId: int
   name: String
   kind: String

@@ -11,6 +11,12 @@
 // ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:argus_client/src/protocol/audit_entry.dart' as _ikvg5xfi;
+import 'package:argus_client/src/protocol/camera.dart' as _i20qtz6o;
+import 'package:argus_client/src/protocol/contact.dart' as _is7rcw5z;
+import 'package:argus_client/src/protocol/incident.dart' as _i1aq5e6k;
+import 'package:argus_client/src/protocol/rule_spec.dart' as _iu4sgp9a;
+import 'package:argus_client/src/protocol/zone.dart' as _igytwnus;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
@@ -24,6 +30,7 @@ import 'contact.dart' as _id7ivncr;
 import 'demo_seed_result.dart' as _ie4ytcen;
 import 'detector_lab_report.dart' as _iai3zb4w;
 import 'dry_run_result.dart' as _i89uufof;
+import 'escalation_payload.dart' as _iqlp7fhc;
 import 'evidence_upload.dart' as _iuxz12ty;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'health_info.dart' as _ib4ibs59;
@@ -35,6 +42,7 @@ import 'lab_clip_result.dart' as _ie6zb0fp;
 import 'parse_result.dart' as _i717k81t;
 import 'person_signal.dart' as _izlx5iyl;
 import 'point_n.dart' as _ixjrd72v;
+import 'retention_payload.dart' as _i1ksi047;
 import 'rule_action.dart' as _ie2yorw3;
 import 'rule_conditions.dart' as _ibwozmvt;
 import 'rule_escalation.dart' as _ig7l9g0k;
@@ -57,6 +65,7 @@ export 'contact.dart';
 export 'demo_seed_result.dart';
 export 'detector_lab_report.dart';
 export 'dry_run_result.dart';
+export 'escalation_payload.dart';
 export 'evidence_upload.dart';
 export 'greetings/greeting.dart';
 export 'health_info.dart';
@@ -68,6 +77,7 @@ export 'lab_clip_result.dart';
 export 'parse_result.dart';
 export 'person_signal.dart';
 export 'point_n.dart';
+export 'retention_payload.dart';
 export 'rule_action.dart';
 export 'rule_conditions.dart';
 export 'rule_escalation.dart';
@@ -142,6 +152,9 @@ class Protocol extends _isc.SerializationManager {
     if (t == _i89uufof.DryRunResult) {
       return _i89uufof.DryRunResult.fromJson(data) as T;
     }
+    if (t == _iqlp7fhc.EscalationPayload) {
+      return _iqlp7fhc.EscalationPayload.fromJson(data) as T;
+    }
     if (t == _iuxz12ty.EvidenceUpload) {
       return _iuxz12ty.EvidenceUpload.fromJson(data) as T;
     }
@@ -174,6 +187,9 @@ class Protocol extends _isc.SerializationManager {
     }
     if (t == _ixjrd72v.PointN) {
       return _ixjrd72v.PointN.fromJson(data) as T;
+    }
+    if (t == _i1ksi047.RetentionPayload) {
+      return _i1ksi047.RetentionPayload.fromJson(data) as T;
     }
     if (t == _ie2yorw3.RuleAction) {
       return _ie2yorw3.RuleAction.fromJson(data) as T;
@@ -243,6 +259,10 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_i89uufof.DryRunResult?>()) {
       return (data != null ? _i89uufof.DryRunResult.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_iqlp7fhc.EscalationPayload?>()) {
+      return (data != null ? _iqlp7fhc.EscalationPayload.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_iuxz12ty.EvidenceUpload?>()) {
       return (data != null ? _iuxz12ty.EvidenceUpload.fromJson(data) : null)
           as T;
@@ -280,6 +300,10 @@ class Protocol extends _isc.SerializationManager {
     }
     if (t == _isc.getType<_ixjrd72v.PointN?>()) {
       return (data != null ? _ixjrd72v.PointN.fromJson(data) : null) as T;
+    }
+    if (t == _isc.getType<_i1ksi047.RetentionPayload?>()) {
+      return (data != null ? _i1ksi047.RetentionPayload.fromJson(data) : null)
+          as T;
     }
     if (t == _isc.getType<_ie2yorw3.RuleAction?>()) {
       return (data != null ? _ie2yorw3.RuleAction.fromJson(data) : null) as T;
@@ -381,6 +405,40 @@ class Protocol extends _isc.SerializationManager {
               .toList()
           as T;
     }
+    if (t == List<_ikvg5xfi.AuditEntry>) {
+      return (data as List)
+              .map((e) => deserialize<_ikvg5xfi.AuditEntry>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_i20qtz6o.Camera>) {
+      return (data as List)
+              .map((e) => deserialize<_i20qtz6o.Camera>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_is7rcw5z.Contact>) {
+      return (data as List)
+              .map((e) => deserialize<_is7rcw5z.Contact>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_i1aq5e6k.Incident>) {
+      return (data as List)
+              .map((e) => deserialize<_i1aq5e6k.Incident>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_iu4sgp9a.RuleSpec>) {
+      return (data as List)
+              .map((e) => deserialize<_iu4sgp9a.RuleSpec>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_igytwnus.Zone>) {
+      return (data as List).map((e) => deserialize<_igytwnus.Zone>(e)).toList()
+          as T;
+    }
     try {
       return _iaic.Protocol().deserialize<T>(data, t);
     } on _isc.DeserializationTypeNotFoundException catch (_) {}
@@ -400,6 +458,7 @@ class Protocol extends _isc.SerializationManager {
       _ie4ytcen.DemoSeedResult => 'DemoSeedResult',
       _iai3zb4w.DetectorLabReport => 'DetectorLabReport',
       _i89uufof.DryRunResult => 'DryRunResult',
+      _iqlp7fhc.EscalationPayload => 'EscalationPayload',
       _iuxz12ty.EvidenceUpload => 'EvidenceUpload',
       _izw8z7ou.Greeting => 'Greeting',
       _ib4ibs59.HealthInfo => 'HealthInfo',
@@ -411,6 +470,7 @@ class Protocol extends _isc.SerializationManager {
       _i717k81t.ParseResult => 'ParseResult',
       _izlx5iyl.PersonSignal => 'PersonSignal',
       _ixjrd72v.PointN => 'PointN',
+      _i1ksi047.RetentionPayload => 'RetentionPayload',
       _ie2yorw3.RuleAction => 'RuleAction',
       _ibwozmvt.RuleConditions => 'RuleConditions',
       _ig7l9g0k.RuleEscalation => 'RuleEscalation',
@@ -455,6 +515,8 @@ class Protocol extends _isc.SerializationManager {
         return 'DetectorLabReport';
       case _i89uufof.DryRunResult():
         return 'DryRunResult';
+      case _iqlp7fhc.EscalationPayload():
+        return 'EscalationPayload';
       case _iuxz12ty.EvidenceUpload():
         return 'EvidenceUpload';
       case _izw8z7ou.Greeting():
@@ -477,6 +539,8 @@ class Protocol extends _isc.SerializationManager {
         return 'PersonSignal';
       case _ixjrd72v.PointN():
         return 'PointN';
+      case _i1ksi047.RetentionPayload():
+        return 'RetentionPayload';
       case _ie2yorw3.RuleAction():
         return 'RuleAction';
       case _ibwozmvt.RuleConditions():
@@ -551,6 +615,9 @@ class Protocol extends _isc.SerializationManager {
     if (dataClassName == 'DryRunResult') {
       return deserialize<_i89uufof.DryRunResult>(data['data']);
     }
+    if (dataClassName == 'EscalationPayload') {
+      return deserialize<_iqlp7fhc.EscalationPayload>(data['data']);
+    }
     if (dataClassName == 'EvidenceUpload') {
       return deserialize<_iuxz12ty.EvidenceUpload>(data['data']);
     }
@@ -583,6 +650,9 @@ class Protocol extends _isc.SerializationManager {
     }
     if (dataClassName == 'PointN') {
       return deserialize<_ixjrd72v.PointN>(data['data']);
+    }
+    if (dataClassName == 'RetentionPayload') {
+      return deserialize<_i1ksi047.RetentionPayload>(data['data']);
     }
     if (dataClassName == 'RuleAction') {
       return deserialize<_ie2yorw3.RuleAction>(data['data']);

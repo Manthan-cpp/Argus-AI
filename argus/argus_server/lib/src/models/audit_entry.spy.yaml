@@ -1,6 +1,6 @@
 class: AuditEntry
+table: argus_audit_entry
 fields:
-  id: int?
   workspaceId: int
   at: DateTime
   actor: String

@@ -1,12 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:argus_client/argus_client.dart';
 import 'argus_repository.dart';
 import 'mock/mock_argus_repository.dart';
+import 'remote/remote_argus_repository.dart';
 
-/// Provider for ArgusRepository.
-/// Phase 1 defaults to MockArgusRepository with visible MOCK DATA badge.
-/// Phase 3 introduces RemoteArgusRepository.
+/// Provider for Serverpod Client connecting to backend API & WebSocket
+final serverpodClientProvider = Provider<Client>((ref) {
+  return Client(
+    'http://localhost:8080/',
+  );
+});
+
+/// Toggle between Production Live Serverpod Backend and Local Mock
+final useMockOverrideProvider = StateProvider<bool>((ref) => false);
+
+/// Production ArgusRepository provider
 final argusRepositoryProvider = Provider<ArgusRepository>((ref) {
-  return MockArgusRepository();
+  final useMock = ref.watch(useMockOverrideProvider);
+  if (useMock) {
+    return MockArgusRepository();
+  }
+  final client = ref.watch(serverpodClientProvider);
+  return RemoteArgusRepository(client);
 });
 
 final isMockModeProvider = Provider<bool>((ref) {

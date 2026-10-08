@@ -9,5 +9,45 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
+audit:
+  - list:
+camera:
+  - list:
+  - save:
+  - delete:
+contact:
+  - list:
+  - save:
+  - delete:
+  - createTelegramLinkCode:
+demo:
+  - seed:
+evidence:
+  - upload:
+health:
+  - ping:
+incident:
+  - watch:
+  - list:
+  - get:
+  - acknowledge:
+  - resolve:
+  - markFalsePositive:
+rule:
+  - list:
+  - save:
+  - delete:
+  - interpret:
+  - dryRun:
+signal:
+  - send:
+workspace:
+  - ensure:
+  - updateSettings:
+  - deleteWorkspaceData:
+zone:
+  - list:
+  - save:
+  - delete:
 greeting:
   - hello:

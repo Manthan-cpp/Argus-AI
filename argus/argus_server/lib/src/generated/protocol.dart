@@ -11,6 +11,12 @@
 // ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:argus_server/src/generated/audit_entry.dart' as _ix6hgqpa;
+import 'package:argus_server/src/generated/camera.dart' as _irrewps0;
+import 'package:argus_server/src/generated/contact.dart' as _ikdntdes;
+import 'package:argus_server/src/generated/incident.dart' as _iyz089d3;
+import 'package:argus_server/src/generated/rule_spec.dart' as _ihw84zwb;
+import 'package:argus_server/src/generated/zone.dart' as _i8tshavy;
 import 'package:serverpod/protocol.dart' as _isp;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
@@ -25,6 +31,7 @@ import 'contact.dart' as _id7ivncr;
 import 'demo_seed_result.dart' as _ie4ytcen;
 import 'detector_lab_report.dart' as _iai3zb4w;
 import 'dry_run_result.dart' as _i89uufof;
+import 'escalation_payload.dart' as _iqlp7fhc;
 import 'evidence_upload.dart' as _iuxz12ty;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'health_info.dart' as _ib4ibs59;
@@ -36,6 +43,7 @@ import 'lab_clip_result.dart' as _ie6zb0fp;
 import 'parse_result.dart' as _i717k81t;
 import 'person_signal.dart' as _izlx5iyl;
 import 'point_n.dart' as _ixjrd72v;
+import 'retention_payload.dart' as _i1ksi047;
 import 'rule_action.dart' as _ie2yorw3;
 import 'rule_conditions.dart' as _ibwozmvt;
 import 'rule_escalation.dart' as _ig7l9g0k;
@@ -58,6 +66,7 @@ export 'contact.dart';
 export 'demo_seed_result.dart';
 export 'detector_lab_report.dart';
 export 'dry_run_result.dart';
+export 'escalation_payload.dart';
 export 'evidence_upload.dart';
 export 'greetings/greeting.dart';
 export 'health_info.dart';
@@ -69,6 +78,7 @@ export 'lab_clip_result.dart';
 export 'parse_result.dart';
 export 'person_signal.dart';
 export 'point_n.dart';
+export 'retention_payload.dart';
 export 'rule_action.dart';
 export 'rule_conditions.dart';
 export 'rule_escalation.dart';
@@ -92,6 +102,546 @@ class Protocol extends _is.DatabaseSerializationManager {
   static final Protocol _instance = Protocol._().._registerHostProtocols();
 
   static List<_isp.TableDefinition> get targetTableDefinitions => [
+    _isp.TableDefinition(
+      name: 'argus_audit_entry',
+      dartName: 'AuditEntry',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'at',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'actor',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'action',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'targetKind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'targetId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'detail',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_camera',
+      dartName: 'Camera',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceKind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceRef',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'enabled',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'lastSignalAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'status',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_contact',
+      dartName: 'Contact',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'role',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'notifyInApp',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'telegramChatId',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'telegramLinkCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'isLinked',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: true,
+          dartType: 'bool?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_incident',
+      dartName: 'Incident',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cameraId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ruleId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ruleSnapshotJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'severity',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'status',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'openedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ackedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'resolvedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'evidenceFileKey',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'verification',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:VerificationInfo',
+        ),
+        _isp.ColumnDefinition(
+          name: 'summary',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'signalContextJson',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'assignedTo',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_incident_event',
+      dartName: 'IncidentEvent',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'incidentId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'at',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'detail',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_rule_spec',
+      dartName: 'RuleSpec',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'enabled',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cameraIds',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'List<int>',
+        ),
+        _isp.ColumnDefinition(
+          name: 'trigger',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:RuleTrigger',
+        ),
+        _isp.ColumnDefinition(
+          name: 'conditions',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:RuleConditions',
+        ),
+        _isp.ColumnDefinition(
+          name: 'severity',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'verify',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:RuleVerify',
+        ),
+        _isp.ColumnDefinition(
+          name: 'actions',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'List<protocol:RuleAction>',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cooldownSec',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'escalation',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'List<protocol:RuleEscalation>',
+        ),
+        _isp.ColumnDefinition(
+          name: 'sourceText',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'parsedBy',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'version',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_workspace',
+      dartName: 'Workspace',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'ownerUserId',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'settings',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'protocol:WorkspaceSettings',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_zone',
+      dartName: 'Zone',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cameraId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'color',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'polygon',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'List<protocol:PointN>',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
     ..._iais.Protocol.targetTableDefinitions,
     ..._iacs.Protocol.targetTableDefinitions,
     ..._isp.Protocol.targetTableDefinitions,
@@ -148,6 +698,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _i89uufof.DryRunResult) {
       return _i89uufof.DryRunResult.fromJson(data) as T;
     }
+    if (t == _iqlp7fhc.EscalationPayload) {
+      return _iqlp7fhc.EscalationPayload.fromJson(data) as T;
+    }
     if (t == _iuxz12ty.EvidenceUpload) {
       return _iuxz12ty.EvidenceUpload.fromJson(data) as T;
     }
@@ -180,6 +733,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _ixjrd72v.PointN) {
       return _ixjrd72v.PointN.fromJson(data) as T;
+    }
+    if (t == _i1ksi047.RetentionPayload) {
+      return _i1ksi047.RetentionPayload.fromJson(data) as T;
     }
     if (t == _ie2yorw3.RuleAction) {
       return _ie2yorw3.RuleAction.fromJson(data) as T;
@@ -249,6 +805,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_i89uufof.DryRunResult?>()) {
       return (data != null ? _i89uufof.DryRunResult.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_iqlp7fhc.EscalationPayload?>()) {
+      return (data != null ? _iqlp7fhc.EscalationPayload.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_iuxz12ty.EvidenceUpload?>()) {
       return (data != null ? _iuxz12ty.EvidenceUpload.fromJson(data) : null)
           as T;
@@ -286,6 +846,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_ixjrd72v.PointN?>()) {
       return (data != null ? _ixjrd72v.PointN.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i1ksi047.RetentionPayload?>()) {
+      return (data != null ? _i1ksi047.RetentionPayload.fromJson(data) : null)
+          as T;
     }
     if (t == _is.getType<_ie2yorw3.RuleAction?>()) {
       return (data != null ? _ie2yorw3.RuleAction.fromJson(data) : null) as T;
@@ -387,6 +951,40 @@ class Protocol extends _is.DatabaseSerializationManager {
               .toList()
           as T;
     }
+    if (t == List<_ix6hgqpa.AuditEntry>) {
+      return (data as List)
+              .map((e) => deserialize<_ix6hgqpa.AuditEntry>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_irrewps0.Camera>) {
+      return (data as List)
+              .map((e) => deserialize<_irrewps0.Camera>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ikdntdes.Contact>) {
+      return (data as List)
+              .map((e) => deserialize<_ikdntdes.Contact>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_iyz089d3.Incident>) {
+      return (data as List)
+              .map((e) => deserialize<_iyz089d3.Incident>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ihw84zwb.RuleSpec>) {
+      return (data as List)
+              .map((e) => deserialize<_ihw84zwb.RuleSpec>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_i8tshavy.Zone>) {
+      return (data as List).map((e) => deserialize<_i8tshavy.Zone>(e)).toList()
+          as T;
+    }
     try {
       return _iais.Protocol().deserialize<T>(data, t);
     } on _is.DeserializationTypeNotFoundException catch (_) {}
@@ -409,6 +1007,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _ie4ytcen.DemoSeedResult => 'DemoSeedResult',
       _iai3zb4w.DetectorLabReport => 'DetectorLabReport',
       _i89uufof.DryRunResult => 'DryRunResult',
+      _iqlp7fhc.EscalationPayload => 'EscalationPayload',
       _iuxz12ty.EvidenceUpload => 'EvidenceUpload',
       _izw8z7ou.Greeting => 'Greeting',
       _ib4ibs59.HealthInfo => 'HealthInfo',
@@ -420,6 +1019,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _i717k81t.ParseResult => 'ParseResult',
       _izlx5iyl.PersonSignal => 'PersonSignal',
       _ixjrd72v.PointN => 'PointN',
+      _i1ksi047.RetentionPayload => 'RetentionPayload',
       _ie2yorw3.RuleAction => 'RuleAction',
       _ibwozmvt.RuleConditions => 'RuleConditions',
       _ig7l9g0k.RuleEscalation => 'RuleEscalation',
@@ -464,6 +1064,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'DetectorLabReport';
       case _i89uufof.DryRunResult():
         return 'DryRunResult';
+      case _iqlp7fhc.EscalationPayload():
+        return 'EscalationPayload';
       case _iuxz12ty.EvidenceUpload():
         return 'EvidenceUpload';
       case _izw8z7ou.Greeting():
@@ -486,6 +1088,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'PersonSignal';
       case _ixjrd72v.PointN():
         return 'PointN';
+      case _i1ksi047.RetentionPayload():
+        return 'RetentionPayload';
       case _ie2yorw3.RuleAction():
         return 'RuleAction';
       case _ibwozmvt.RuleConditions():
@@ -564,6 +1168,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (dataClassName == 'DryRunResult') {
       return deserialize<_i89uufof.DryRunResult>(data['data']);
     }
+    if (dataClassName == 'EscalationPayload') {
+      return deserialize<_iqlp7fhc.EscalationPayload>(data['data']);
+    }
     if (dataClassName == 'EvidenceUpload') {
       return deserialize<_iuxz12ty.EvidenceUpload>(data['data']);
     }
@@ -596,6 +1203,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'PointN') {
       return deserialize<_ixjrd72v.PointN>(data['data']);
+    }
+    if (dataClassName == 'RetentionPayload') {
+      return deserialize<_i1ksi047.RetentionPayload>(data['data']);
     }
     if (dataClassName == 'RuleAction') {
       return deserialize<_ie2yorw3.RuleAction>(data['data']);
@@ -678,6 +1288,24 @@ class Protocol extends _is.DatabaseSerializationManager {
       if (table != null) {
         return table;
       }
+    }
+    switch (t) {
+      case _i1613bfs.AuditEntry:
+        return _i1613bfs.AuditEntry.t;
+      case _imwagalw.Camera:
+        return _imwagalw.Camera.t;
+      case _id7ivncr.Contact:
+        return _id7ivncr.Contact.t;
+      case _iy4wsyyx.Incident:
+        return _iy4wsyyx.Incident.t;
+      case _icglyrab.IncidentEvent:
+        return _icglyrab.IncidentEvent.t;
+      case _ixr8yfub.RuleSpec:
+        return _ixr8yfub.RuleSpec.t;
+      case _io6eoug6.Workspace:
+        return _io6eoug6.Workspace.t;
+      case _ixcxr4o1.Zone:
+        return _ixcxr4o1.Zone.t;
     }
     return null;
   }

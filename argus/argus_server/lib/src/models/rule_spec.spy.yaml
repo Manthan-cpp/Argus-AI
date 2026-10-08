@@ -1,6 +1,6 @@
 class: RuleSpec
+table: argus_rule_spec
 fields:
-  id: int?
   workspaceId: int
   name: String
   enabled: bool
