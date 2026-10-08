@@ -4,11 +4,27 @@
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
+pubspec_overrides.yaml
 
-# Serverpod secrets & local config
+# Serverpod secrets & local runtime
 argus_server/config/passwords.yaml
 config/passwords.yaml
 *.local.yaml
+.serverpod/
+.scloud/
+**/sp_*.db*
+
+# Environment and logs
+*.log
+.env
+.env.*
+
+# AI & Tooling caches
+.dart_skills/
+.agents/
+.gemini/
+.claude/
+.cursor/
 
 # IDE
 .idea/
