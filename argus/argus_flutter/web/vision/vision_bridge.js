@@ -37,6 +37,44 @@
     return union > 0 ? intersection / union : 0.0;
   }
 
+  // --- Bounding Box Spatial Similarity (IoU + Centroid + Ground Proximity) ---
+  function computeBboxSimilarity(b1, b2) {
+    const iou = computeIoU(b1, b2);
+    if (iou >= 0.25) return 1.0 + iou;
+
+    const cx1 = b1.x + b1.w / 2;
+    const cy1 = b1.y + b1.h / 2;
+    const cx2 = b2.x + b2.w / 2;
+    const cy2 = b2.y + b2.h / 2;
+    const dist = Math.hypot(cx1 - cx2, cy1 - cy2);
+
+    if (iou >= 0.08 && dist < 0.16) return 0.8 + iou;
+
+    // Ground contact proximity (bottom-center of bbox):
+    // When an upright person collapses or sits, their horizontal position on the floor remains nearly identical!
+    const footX1 = cx1;
+    const footY1 = b1.y + b1.h;
+    const footX2 = cx2;
+    const footY2 = b2.y + b2.h;
+    const footDist = Math.hypot(footX1 - footX2, footY1 - footY2);
+    if (footDist < 0.16) {
+      return 0.85 + (0.16 - footDist);
+    }
+
+    const diag = Math.hypot(b2.w, b2.h);
+    const maxAllowableDist = Math.max(0.08, Math.min(0.24, diag * 1.6));
+    if (dist < maxAllowableDist) {
+      const score = 0.5 * (1.0 - dist / maxAllowableDist);
+      const area1 = b1.w * b1.h;
+      const area2 = b2.w * b2.h;
+      const ratio = Math.min(area1, area2) / Math.max(area1, area2, 1e-6);
+      if (ratio > 0.15) {
+        return score + ratio * 0.35;
+      }
+    }
+    return 0.0;
+  }
+
   class ArgusVisionEngine {
     constructor() {
       this.isInitialized = false;
@@ -55,6 +93,10 @@
       this.objectDetector = null;
       this.poseLandmarker = null;
       this.hasMediaPipeLoaded = false;
+      this._lastDetectorTimestamp = 0;
+      this._lastPoseTimestamp = 0;
+      this.procCanvas = null;
+      this.procCtx = null;
       
       // State
       this.zones = [];
@@ -92,14 +134,23 @@
 
     notifyStatus(status, detail) {
       if (this.statusCallback) {
-        this.statusCallback({ status, detail, fps: this.measuredFps, latencyMs: this.avgLatencyMs });
+        const payload = { status, detail, fps: this.measuredFps, latencyMs: this.avgLatencyMs };
+        try {
+          this.statusCallback(JSON.stringify(payload));
+        } catch (_) {
+          try { this.statusCallback(payload); } catch (e) {}
+        }
       }
     }
 
-    async init(options = {}) {
-      if (options.wasmBaseUrl) this.wasmBaseUrl = options.wasmBaseUrl;
-      if (options.detectorModelPath) this.detectorModelPath = options.detectorModelPath;
-      if (options.poseModelPath) this.poseModelPath = options.poseModelPath;
+    async init(rawOptions = {}) {
+      let options = rawOptions;
+      if (typeof options === 'string') {
+        try { options = JSON.parse(options); } catch (e) { options = {}; }
+      }
+      if (options && options.wasmBaseUrl) this.wasmBaseUrl = options.wasmBaseUrl;
+      if (options && options.detectorModelPath) this.detectorModelPath = options.detectorModelPath;
+      if (options && options.poseModelPath) this.poseModelPath = options.poseModelPath;
 
       this.notifyStatus('initializing', 'Loading on-device vision WASM and models...');
 
@@ -114,8 +165,8 @@
               modelAssetPath: this.detectorModelPath,
               delegate: 'GPU'
             },
-            runningMode: 'VIDEO',
-            scoreThreshold: 0.45,
+            runningMode: 'IMAGE',
+            scoreThreshold: 0.15,
             categoryAllowlist: ['person']
           });
 
@@ -124,11 +175,11 @@
               modelAssetPath: this.poseModelPath,
               delegate: 'GPU'
             },
-            runningMode: 'VIDEO',
-            numPoses: 3,
-            minPoseDetectionConfidence: 0.45,
-            minPosePresenceConfidence: 0.45,
-            minTrackingConfidence: 0.45
+            runningMode: 'IMAGE',
+            numPoses: 8,
+            minPoseDetectionConfidence: 0.15,
+            minPosePresenceConfidence: 0.15,
+            minTrackingConfidence: 0.15
           });
 
           this.hasMediaPipeLoaded = true;
@@ -140,19 +191,25 @@
             const vision = await visionPkg.FilesetResolver.forVisionTasks(this.wasmBaseUrl);
             
             this.objectDetector = await visionPkg.ObjectDetector.createFromOptions(vision, {
-              baseOptions: { modelAssetPath: this.detectorModelPath },
-              runningMode: 'VIDEO',
-              scoreThreshold: 0.45,
+              baseOptions: {
+                modelAssetPath: this.detectorModelPath,
+                delegate: 'GPU'
+              },
+              runningMode: 'IMAGE',
+              scoreThreshold: 0.15,
               categoryAllowlist: ['person']
             });
 
             this.poseLandmarker = await visionPkg.PoseLandmarker.createFromOptions(vision, {
-              baseOptions: { modelAssetPath: this.poseModelPath },
-              runningMode: 'VIDEO',
-              numPoses: 3,
-              minPoseDetectionConfidence: 0.45,
-              minPosePresenceConfidence: 0.45,
-              minTrackingConfidence: 0.45
+              baseOptions: {
+                modelAssetPath: this.poseModelPath,
+                delegate: 'GPU'
+              },
+              runningMode: 'IMAGE',
+              numPoses: 8,
+              minPoseDetectionConfidence: 0.15,
+              minPosePresenceConfidence: 0.15,
+              minTrackingConfidence: 0.15
             });
 
             this.hasMediaPipeLoaded = true;
@@ -173,7 +230,12 @@
       return true;
     }
 
-    attach({ videoId, canvasId, videoElement, canvasElement }) {
+    attach(rawOptions = {}) {
+      let options = rawOptions;
+      if (typeof options === 'string') {
+        try { options = JSON.parse(options); } catch (e) { options = {}; }
+      }
+      const { videoId, canvasId, videoElement, canvasElement } = options || {};
       this.videoEl = videoElement || (videoId ? document.getElementById(videoId) : null);
       this.canvasEl = canvasElement || (canvasId ? document.getElementById(canvasId) : null);
 
@@ -204,9 +266,65 @@
       this.statusCallback = cb;
     }
 
-    async start({ targetFps = 8, sourceKind = 'webcam', sourceUrl = null } = {}) {
+    async start(rawOptions = {}) {
+      let options = rawOptions;
+      if (typeof options === 'string') {
+        try {
+          options = JSON.parse(options);
+        } catch (e) {
+          console.error('[ArgusVision] Failed to parse start options:', e);
+          options = {};
+        }
+      }
+      const { targetFps = 8, sourceKind = 'webcam', sourceUrl = null } = options || {};
+      console.log('[ArgusVision] Pipeline starting. sourceKind:', sourceKind, 'sourceUrl:', sourceUrl);
+
+      // ALWAYS stop any existing hardware webcam stream so it never leaks onto screen
+      if (this.stream) {
+        this.stream.getTracks().forEach(t => t.stop());
+        this.stream = null;
+      }
+
       if (!this.videoEl) {
-        throw new Error('Video element not attached. Call attach() first.');
+        this.videoEl = document.getElementById('argus-video-element');
+        this.canvasEl = document.getElementById('argus-canvas-element');
+        if (this.canvasEl) {
+          this.ctx = this.canvasEl.getContext('2d', { willReadFrequently: true });
+        }
+      }
+
+      if (!this.videoEl) {
+        // Auto-create video and canvas elements if HtmlElementView hasn't finished mounting
+        const container = document.getElementById('argus-vision-container') || document.createElement('div');
+        container.id = 'argus-vision-container';
+        if (!container.parentElement) {
+          container.style.position = 'relative';
+          container.style.width = '100%';
+          container.style.height = '100%';
+          document.body.appendChild(container);
+        }
+
+        this.videoEl = document.createElement('video');
+        this.videoEl.id = 'argus-video-element';
+        this.videoEl.autoplay = true;
+        this.videoEl.playsInline = true;
+        this.videoEl.muted = true;
+        this.videoEl.style.width = '100%';
+        this.videoEl.style.height = '100%';
+        this.videoEl.style.objectFit = 'contain';
+        container.appendChild(this.videoEl);
+
+        this.canvasEl = document.createElement('canvas');
+        this.canvasEl.id = 'argus-canvas-element';
+        this.canvasEl.style.position = 'absolute';
+        this.canvasEl.style.top = '0';
+        this.canvasEl.style.left = '0';
+        this.canvasEl.style.width = '100%';
+        this.canvasEl.style.height = '100%';
+        this.canvasEl.style.pointerEvents = 'none';
+        container.appendChild(this.canvasEl);
+
+        this.ctx = this.canvasEl.getContext('2d', { willReadFrequently: true });
       }
 
       this.targetFps = targetFps;
@@ -214,7 +332,98 @@
       this.frameCount = 0;
       this.tracks.clear();
 
-      if (sourceKind === 'webcam') {
+      if (sourceKind === 'file') {
+        // 100% detach webcam MediaStream
+        this.videoEl.pause();
+        this.videoEl.srcObject = null;
+
+        if (!sourceUrl || sourceUrl === 'local' || sourceUrl.trim() === '') {
+          this.notifyStatus('error', 'No video file selected for this camera. Please click "Change MP4".');
+          throw new Error('No local video file selected');
+        }
+
+        this.videoEl.src = sourceUrl;
+        this.videoEl.loop = false; // Do NOT loop automatically
+        this.videoEl.muted = true;
+        this.videoEl.playsInline = true;
+        this.videoEl.autoplay = true;
+
+        if (this._onVideoEnded) this.videoEl.removeEventListener('ended', this._onVideoEnded);
+        this._onVideoEnded = () => {
+          console.log('[ArgusVision] Video ended. Resetting tracks and canvas overlay.');
+          this.isRunning = false;
+          this.tracks.clear();
+          if (this.ctx && this.canvasEl) {
+            this.ctx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
+          }
+          this.notifyStatus('ended', 'Video playback ended. Click Replay to play again.');
+          // Emit clean reset batch to clear Flutter telemetry
+          if (this.signalCallback) {
+            const resetBatch = {
+              cameraId: 1,
+              sentAtMs: Date.now(),
+              seq: this.batchSeq++,
+              signals: [{
+                tsMs: Date.now(),
+                kind: 'reset',
+                personCount: 0,
+                persons: []
+              }]
+            };
+            try { this.signalCallback(JSON.stringify(resetBatch)); } catch (_) {
+              try { this.signalCallback(resetBatch); } catch (e) {}
+            }
+          }
+        };
+        this.videoEl.addEventListener('ended', this._onVideoEnded);
+
+        if (this._onVideoPlay) this.videoEl.removeEventListener('play', this._onVideoPlay);
+        this._onVideoPlay = () => {
+          console.log('[ArgusVision] Video started. Resetting fresh tracks.');
+          this.tracks.clear();
+          if (this.ctx && this.canvasEl) {
+            this.ctx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
+          }
+        };
+        this.videoEl.addEventListener('play', this._onVideoPlay);
+
+        try {
+          await this.videoEl.play();
+          this.notifyStatus('running', 'Video file playing: ' + sourceUrl);
+        } catch (playErr) {
+          console.warn('[ArgusVision] video.play() waiting for canplay:', playErr);
+          try {
+            await new Promise((resolve, reject) => {
+              const onCanPlay = () => {
+                this.videoEl.removeEventListener('canplay', onCanPlay);
+                this.videoEl.removeEventListener('error', onError);
+                resolve();
+              };
+              const onError = () => {
+                this.videoEl.removeEventListener('canplay', onCanPlay);
+                this.videoEl.removeEventListener('error', onError);
+                reject(new Error('Failed to load video file. Please re-select the MP4 file.'));
+              };
+              if (this.videoEl.readyState >= 3) {
+                resolve();
+              } else {
+                this.videoEl.addEventListener('canplay', onCanPlay);
+                this.videoEl.addEventListener('error', onError);
+                this.videoEl.load();
+              }
+            });
+            await this.videoEl.play();
+            this.notifyStatus('running', 'Video file playing: ' + sourceUrl);
+          } catch (retryErr) {
+            this.notifyStatus('error', retryErr.message);
+            throw retryErr;
+          }
+        }
+      } else if (sourceKind === 'webcam') {
+        this.videoEl.pause();
+        this.videoEl.src = '';
+        this.videoEl.removeAttribute('src');
+
         try {
           const constraints = {
             video: {
@@ -232,13 +441,8 @@
           this.notifyStatus('error', 'Camera access denied or unavailable: ' + err.message);
           throw err;
         }
-      } else if (sourceUrl) {
-        this.videoEl.srcObject = null;
-        this.videoEl.src = sourceUrl;
-        this.videoEl.loop = true;
-        this.videoEl.muted = true;
-        await this.videoEl.play();
-        this.notifyStatus('running', 'Video stream playing: ' + sourceKind);
+      } else {
+        console.warn('[ArgusVision] Unknown sourceKind:', sourceKind);
       }
 
       this._scheduleNextFrame();
@@ -254,6 +458,8 @@
       if (this.videoEl) {
         this.videoEl.pause();
         this.videoEl.srcObject = null;
+        this.videoEl.src = '';
+        this.videoEl.removeAttribute('src');
       }
       if (this.ctx && this.canvasEl) {
         this.ctx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
@@ -281,12 +487,21 @@
 
     async _processFrame(nowMs) {
       if (!this.isRunning) return;
+      if (this.videoEl && this.videoEl.ended) return;
 
       const now = performance.now();
       const minInterval = 1000 / this.targetFps;
       if (now - this.lastFrameTime < minInterval) {
         this._scheduleNextFrame();
         return;
+      }
+
+      // If video was seeked backwards (user restarted or replayed), reset tracks
+      if (this.videoEl && this.videoEl.currentTime < (this._lastVideoCurrentTime || 0) - 0.5) {
+        this.tracks.clear();
+      }
+      if (this.videoEl) {
+        this._lastVideoCurrentTime = this.videoEl.currentTime;
       }
 
       const frameStartTime = performance.now();
@@ -300,14 +515,36 @@
 
       if (this.hasMediaPipeLoaded && this.objectDetector && this.videoEl.readyState >= 2) {
         try {
-          const detections = this.objectDetector.detectForVideo(this.videoEl, now);
-          detectedPersons = this._extractPersons(detections);
+          const vw = this.videoEl.videoWidth || 640;
+          const vh = this.videoEl.videoHeight || 480;
+
+          // Prepare intermediate processing canvas for reliable frame capture
+          if (!this.procCanvas) {
+            this.procCanvas = document.createElement('canvas');
+          }
+          const procW = Math.min(vw, 1280);
+          const procH = Math.min(vh, 720);
+          if (this.procCanvas.width !== procW || this.procCanvas.height !== procH) {
+            this.procCanvas.width = procW;
+            this.procCanvas.height = procH;
+            this.procCtx = this.procCanvas.getContext('2d', { willReadFrequently: true });
+          }
+
+          // Blit current video frame to processing canvas
+          this.procCtx.drawImage(this.videoEl, 0, 0, procW, procH);
+
+          // 1. Primary detection: ObjectDetector (runs on procCanvas)
+          const detections = this.objectDetector.detect(this.procCanvas);
+          detectedPersons = this._extractPersons(detections, procW, procH);
           
-          // Alternate frame pose landmarking for optimal FPS
-          if (this.poseLandmarker && (this.frameCount % 2 === 0 || detectedPersons.length > 0)) {
-            const poseResult = this.poseLandmarker.detectForVideo(this.videoEl, now);
+          // 2. Secondary detection: PoseLandmarker (runs on procCanvas)
+          if (this.poseLandmarker) {
+            const poseResult = this.poseLandmarker.detect(this.procCanvas);
             this._matchPosesToDetections(detectedPersons, poseResult);
           }
+
+          // Deduplicate and fuse overlapping multi-pass detections
+          detectedPersons = this._filterOverlappingDetections(detectedPersons);
         } catch (inferenceErr) {
           console.warn('[ArgusVision] Frame inference glitch:', inferenceErr);
         }
@@ -346,25 +583,38 @@
       }
     }
 
-    _extractPersons(detections) {
+    _extractPersons(detections, procW, procH) {
       if (!detections || !detections.detections) return [];
-      const vw = this.videoEl.videoWidth || 1;
-      const vh = this.videoEl.videoHeight || 1;
+      const pw = procW || (this.procCanvas ? this.procCanvas.width : (this.videoEl ? this.videoEl.videoWidth : 1));
+      const ph = procH || (this.procCanvas ? this.procCanvas.height : (this.videoEl ? this.videoEl.videoHeight : 1));
       const persons = [];
 
       for (const d of detections.detections) {
-        const cat = d.categories[0];
-        if (!cat || cat.categoryName !== 'person') continue;
+        const cat = d.categories?.find(c => c.categoryName === 'person') ||
+                    (d.categories?.[0]?.categoryName === 'person' ? d.categories[0] : null);
+        if (!cat) continue;
 
         const b = d.boundingBox;
-        // Normalize to 0.0 .. 1.0
+        if (!b) continue;
+
+        // Normalize to 0.0 .. 1.0 with robust clamping
+        const nx = Math.max(0, Math.min(0.99, b.originX / pw));
+        const ny = Math.max(0, Math.min(0.99, b.originY / ph));
+        const nw = Math.max(0.01, Math.min(1.0 - nx, b.width / pw));
+        const nh = Math.max(0.01, Math.min(1.0 - ny, b.height / ph));
+
+        // Filter out floor reflection / light artifact bounding boxes:
+        // Standing and walking humans are vertically oriented (aspect nw/nh <= 1.0).
+        // Flat horizontal boxes on the floor (aspect > 1.20) with low confidence (< 0.35)
+        // are specular reflections on polished tile surfaces.
+        // (Legitimate fallen humans are accurately captured by PoseLandmarker).
+        const asp = nw / Math.max(0.01, nh);
+        if (asp > 1.20 && cat.score < 0.35) {
+          continue;
+        }
+
         persons.push({
-          bboxN: {
-            x: Math.max(0, b.originX / vw),
-            y: Math.max(0, b.originY / vh),
-            w: Math.min(1, b.width / vw),
-            h: Math.min(1, b.height / vh)
-          },
+          bboxN: { x: nx, y: ny, w: nw, h: nh },
           confidence: cat.score,
           poseLandmarks: null
         });
@@ -376,16 +626,24 @@
       if (!poseResult || !poseResult.landmarks || poseResult.landmarks.length === 0) return;
       
       for (const pose of poseResult.landmarks) {
-        // Calculate pose centroid
+        // Calculate pose centroid and bounding box from key visible landmarks
         let cx = 0, cy = 0, count = 0;
+        let minX = 1, minY = 1, maxX = 0, maxY = 0;
+
         for (const lm of pose) {
-          if (lm.visibility > 0.4) {
+          const vis = (lm.visibility !== undefined) ? lm.visibility : 1.0;
+          const pres = (lm.presence !== undefined) ? lm.presence : 1.0;
+          if (vis > 0.20 && pres > 0.20) {
             cx += lm.x;
             cy += lm.y;
             count++;
+            if (lm.x < minX) minX = lm.x;
+            if (lm.x > maxX) maxX = lm.x;
+            if (lm.y < minY) minY = lm.y;
+            if (lm.y > maxY) maxY = lm.y;
           }
         }
-        if (count === 0) continue;
+        if (count < 4) continue;
         cx /= count;
         cy /= count;
 
@@ -396,16 +654,76 @@
           const pcx = p.bboxN.x + p.bboxN.w / 2;
           const pcy = p.bboxN.y + p.bboxN.h / 2;
           const dist = Math.hypot(cx - pcx, cy - pcy);
-          if (dist < 0.3 && dist < bestDist) {
+          const isInside = cx >= p.bboxN.x - 0.05 && cx <= p.bboxN.x + p.bboxN.w + 0.05 &&
+                           cy >= p.bboxN.y - 0.05 && cy <= p.bboxN.y + p.bboxN.h + 0.05;
+          if ((isInside || dist < 0.25) && dist < bestDist) {
             bestDist = dist;
             bestPerson = p;
           }
         }
 
         if (bestPerson) {
-          bestPerson.poseLandmarks = pose;
+          if (!bestPerson.poseLandmarks) {
+            bestPerson.poseLandmarks = pose;
+          }
+          // Expand/refine bounding box if pose covers ankles/head better
+          const pMinX = Math.min(bestPerson.bboxN.x, minX - 0.015);
+          const pMaxX = Math.max(bestPerson.bboxN.x + bestPerson.bboxN.w, maxX + 0.015);
+          const pMinY = Math.min(bestPerson.bboxN.y, minY - 0.02);
+          const pMaxY = Math.max(bestPerson.bboxN.y + bestPerson.bboxN.h, maxY + 0.02);
+          const nx = Math.max(0, pMinX);
+          const ny = Math.max(0, pMinY);
+          bestPerson.bboxN = {
+            x: nx,
+            y: ny,
+            w: Math.min(1.0 - nx, pMaxX - pMinX),
+            h: Math.min(1.0 - ny, pMaxY - pMinY)
+          };
+        } else {
+          // Dual-pass synthesis: person detected by pose landmarker, but missed by object detector!
+          const spanW = maxX - minX;
+          const spanH = maxY - minY;
+          if (spanH > 0.04) {
+            const padX = Math.max(0.018, spanW * 0.22);
+            const padY = Math.max(0.02, spanH * 0.12);
+            const nx = Math.max(0, minX - padX);
+            const ny = Math.max(0, minY - padY);
+            const nw = Math.min(1.0 - nx, spanW + 2 * padX);
+            const nh = Math.min(1.0 - ny, spanH + 2 * padY);
+
+            persons.push({
+              bboxN: { x: nx, y: ny, w: nw, h: nh },
+              confidence: 0.88,
+              poseLandmarks: pose,
+              isSynthesized: true
+            });
+          }
         }
       }
+    }
+
+    _filterOverlappingDetections(detections) {
+      if (detections.length <= 1) return detections;
+      const sorted = [...detections].sort((a, b) => b.confidence - a.confidence);
+      const filtered = [];
+
+      for (const cur of sorted) {
+        let isDuplicate = false;
+        for (const prev of filtered) {
+          const iou = computeIoU(cur.bboxN, prev.bboxN);
+          if (iou > 0.50) {
+            if (!prev.poseLandmarks && cur.poseLandmarks) {
+              prev.poseLandmarks = cur.poseLandmarks;
+            }
+            isDuplicate = true;
+            break;
+          }
+        }
+        if (!isDuplicate) {
+          filtered.push(cur);
+        }
+      }
+      return filtered;
     }
 
     _generateSimulatedDetections(now) {
@@ -427,61 +745,85 @@
     }
 
     _updateTracker(detectedPersons, now) {
-      // Match detections with existing tracks using IoU & Centroid Distance
-      const unmatchedTracks = new Set(this.tracks.keys());
-      const matches = [];
+      // Bipartite matching with combined IoU + Centroid proximity
+      const candidatePairs = [];
 
       for (let i = 0; i < detectedPersons.length; i++) {
-        const det = detectedPersons[i];
-        let bestTrackId = null;
-        let bestIoU = 0.2; // Min IoU threshold
-
         for (const [trackId, track] of this.tracks.entries()) {
-          const iou = computeIoU(det.bboxN, track.bboxN);
-          if (iou > bestIoU) {
-            bestIoU = iou;
-            bestTrackId = trackId;
+          const score = computeBboxSimilarity(detectedPersons[i].bboxN, track.bboxN);
+          if (score >= 0.30) {
+            candidatePairs.push({ detIndex: i, trackId, score });
           }
         }
+      }
 
-        if (bestTrackId !== null) {
-          matches.push({ detIndex: i, trackId: bestTrackId });
-          unmatchedTracks.delete(bestTrackId);
-        } else {
-          // New track
+      // Sort candidate matches by highest similarity first
+      candidatePairs.sort((a, b) => b.score - a.score);
+
+      const matchedDets = new Set();
+      const matchedTracks = new Set();
+      const finalMatches = [];
+
+      for (const pair of candidatePairs) {
+        if (!matchedDets.has(pair.detIndex) && !matchedTracks.has(pair.trackId)) {
+          matchedDets.add(pair.detIndex);
+          matchedTracks.add(pair.trackId);
+          finalMatches.push(pair);
+        }
+      }
+
+      // 1. Update matched tracks with EMA smoothing
+      for (const m of finalMatches) {
+        const det = detectedPersons[m.detIndex];
+        const track = this.tracks.get(m.trackId);
+        const alpha = 0.65; // Exponential Moving Average smoothing factor
+
+        track.bboxN = {
+          x: track.bboxN.x * (1 - alpha) + det.bboxN.x * alpha,
+          y: track.bboxN.y * (1 - alpha) + det.bboxN.y * alpha,
+          w: track.bboxN.w * (1 - alpha) + det.bboxN.w * alpha,
+          h: track.bboxN.h * (1 - alpha) + det.bboxN.h * alpha,
+        };
+        track.confidence = track.confidence * 0.3 + det.confidence * 0.7;
+        if (det.poseLandmarks) track.poseLandmarks = det.poseLandmarks;
+        track.lastSeenMs = now;
+      }
+
+      // 2. Initialize new tracks for unmatched detections
+      for (let i = 0; i < detectedPersons.length; i++) {
+        if (!matchedDets.has(i)) {
+          const det = detectedPersons[i];
           const newId = this.nextTrackId++;
           this.tracks.set(newId, {
             trackId: newId,
-            bboxN: det.bboxN,
+            bboxN: { ...det.bboxN },
             footN: { x: det.bboxN.x + det.bboxN.w / 2, y: det.bboxN.y + det.bboxN.h },
             zoneIds: [],
             confidence: det.confidence,
             poseLandmarks: det.poseLandmarks,
             firstSeenMs: now,
             lastSeenMs: now,
-            motionScore: 0.1,
+            smoothCx: det.bboxN.x + det.bboxN.w / 2,
+            smoothCy: det.bboxN.y + det.bboxN.h / 2,
+            motionScore: 0.05,
+            motionlessStartMs: null,
             motionlessMs: 0,
+            movingFramesCount: 0,
             fallScore: 0.0,
+            hasFallen: false,
+            fallenSinceMs: null,
+            uprightFramesCount: 0,
             history: []
           });
         }
       }
 
-      // Update matched tracks
-      for (const m of matches) {
-        const det = detectedPersons[m.detIndex];
-        const track = this.tracks.get(m.trackId);
-        track.bboxN = det.bboxN;
-        track.confidence = det.confidence;
-        if (det.poseLandmarks) track.poseLandmarks = det.poseLandmarks;
-        track.lastSeenMs = now;
-      }
-
-      // Age out tracks unseen for > 1.5 seconds (1500 ms)
-      for (const trackId of unmatchedTracks) {
-        const track = this.tracks.get(trackId);
-        if (now - track.lastSeenMs > 1500) {
-          this.tracks.delete(trackId);
+      // 3. Age out tracks unseen for > 1.8 seconds (1800 ms)
+      for (const [trackId, track] of this.tracks.entries()) {
+        if (!matchedTracks.has(trackId)) {
+          if (now - track.lastSeenMs > 1800) {
+            this.tracks.delete(trackId);
+          }
         }
       }
     }
@@ -512,37 +854,63 @@
         }
         track.zoneIds = matchedZoneIds;
 
-        // 3. Motion & Velocity Tracking
-        const cx = b.x + b.w / 2;
-        const cy = b.y + b.h / 2;
+        // 3. Motion & Velocity Tracking with EMA smoothing & Hysteresis
+        const rawCx = b.x + b.w / 2;
+        const rawCy = b.y + b.h / 2;
         const aspect = b.w / Math.max(0.01, b.h);
 
-        // Record history
-        track.history.push({ t: now, cx, cy, w: b.w, h: b.h, aspect });
-        // Retain only last 2 seconds of history
-        track.history = track.history.filter(h => now - h.t <= 2000);
+        // Smooth centroid to cancel pixel jitter
+        track.smoothCx = (track.smoothCx !== undefined) ? (track.smoothCx * 0.70 + rawCx * 0.30) : rawCx;
+        track.smoothCy = (track.smoothCy !== undefined) ? (track.smoothCy * 0.70 + rawCy * 0.30) : rawCy;
 
-        // Calculate motion displacement over ~1 second
-        const sample1s = track.history[0];
-        const dist1s = sample1s ? Math.hypot(cx - sample1s.cx, cy - sample1s.cy) : 0.05;
-        track.motionScore = Math.min(1.0, dist1s * 5.0);
+        // Record history for displacement & transition checks
+        track.history.push({ t: now, cx: track.smoothCx, cy: track.smoothCy, w: b.w, h: b.h, aspect });
+        // Retain 3 seconds of history
+        track.history = track.history.filter(h => now - h.t <= 3000);
 
-        // Motionless accumulation
-        if (track.motionScore < 0.025) {
-          track.motionlessMs += (now - (track.lastSeenMs || now));
+        // Measure displacement over the last ~1.0 second (sample between 0.7s and 1.5s ago)
+        let sample1s = track.history.find(h => (now - h.t) >= 700 && (now - h.t) <= 1500);
+        if (!sample1s && track.history.length > 0) sample1s = track.history[0];
+
+        const elapsedSec = sample1s ? Math.max(0.2, (now - sample1s.t) / 1000) : 1.0;
+        const dist = sample1s ? Math.hypot(track.smoothCx - sample1s.cx, track.smoothCy - sample1s.cy) : 0.0;
+        const velocityNormPerSec = dist / elapsedSec;
+        track.motionScore = Math.min(1.0, velocityNormPerSec * 4.0);
+
+        // Stationary detection threshold:
+        // A lying down or collapsed subject has higher horizontal span so detection box edge jitter is slightly larger;
+        // walking people move at > 0.04 per second.
+        const isLyingOrFallen = (aspect >= 0.95 || track.hasFallen);
+        const stationaryThreshold = isLyingOrFallen ? 0.045 : 0.030;
+        const isStationary = velocityNormPerSec < stationaryThreshold;
+
+        // Jitter-proof motionless accumulation:
+        if (isStationary) {
+          track.movingFramesCount = 0;
+          if (!track.motionlessStartMs) {
+            track.motionlessStartMs = now;
+          }
+          track.motionlessMs = Math.max(0, now - track.motionlessStartMs);
         } else {
-          track.motionlessMs = 0;
+          // Require at least 5 consecutive moving frames (~600ms) to reset motionless state
+          // This prevents single-frame noise/jitter from wiping out accumulated motionless seconds!
+          track.movingFramesCount = (track.movingFramesCount || 0) + 1;
+          if (track.movingFramesCount >= 5) {
+            track.motionlessStartMs = null;
+            track.motionlessMs = 0;
+          }
         }
 
-        // 4. Fall Heuristic Calculation
+        // 4. Fall & Sustained Posture Calculation
         let torsoAngleDeg = 0;
         let hipDropRatio = 0;
+        let shoulderX = 0, shoulderY = 0, hipX = 0, hipY = 0;
 
         if (pose && pose[11] && pose[12] && pose[23] && pose[24]) {
-          const shoulderX = (pose[11].x + pose[12].x) / 2;
-          const shoulderY = (pose[11].y + pose[12].y) / 2;
-          const hipX = (pose[23].x + pose[24].x) / 2;
-          const hipY = (pose[23].y + pose[24].y) / 2;
+          shoulderX = (pose[11].x + pose[12].x) / 2;
+          shoulderY = (pose[11].y + pose[12].y) / 2;
+          hipX = (pose[23].x + pose[24].x) / 2;
+          hipY = (pose[23].y + pose[24].y) / 2;
 
           const dx = shoulderX - hipX;
           const dy = shoulderY - hipY;
@@ -553,18 +921,79 @@
           }
         }
 
-        // Check if aspect ratio inverted (was tall, now flat)
-        const wasTallBefore = track.history.some(h => (now - h.t > 400) && h.aspect < 0.85);
-        const aspectInverted = (aspect > 0.95 && wasTallBefore) ? 1.0 : 0.0;
+        if (track.history.length > 0) {
+          track.history[track.history.length - 1].hipY = hipY;
+        }
 
-        const aspectTerm = 0.40 * aspectInverted;
-        const hipDropTerm = 0.35 * Math.min(1.0, Math.max(0, hipDropRatio / 0.35));
-        const angleTerm = 0.25 * Math.min(1.0, Math.max(0, torsoAngleDeg / 70.0));
+        // Check if person was upright earlier (aspect < 0.85 in past 0.3s to 3.0s)
+        const wasUprightBefore = track.history.some(h => (now - h.t > 300) && h.aspect < 0.85);
 
-        let computedFall = Math.max(0, Math.min(1.0, aspectTerm + hipDropTerm + angleTerm));
-        if (track.isFalling) computedFall = 0.88; // Ensure simulated fall triggers
+        // Dynamic collapse score (active drop event)
+        const aspectInverted = (aspect > 0.95 && wasUprightBefore) ? 1.0 : 0.0;
+        const dynamicDropScore = (0.45 * aspectInverted) +
+                                 (0.35 * Math.min(1.0, Math.max(0, hipDropRatio / 0.35))) +
+                                 (0.25 * Math.min(1.0, Math.max(0, torsoAngleDeg / 65.0)));
 
-        track.fallScore = computedFall;
+        // Static horizontal / prone posture cues:
+        // Must require verified human pose keypoints or confirmed prior upright history!
+        // This prevents inanimate horizontal floor objects (tile reflections, shadows) from ever triggering a fall.
+        const isHorizontalBbox = aspect >= 1.15;
+        const isHorizontalTorso = pose && torsoAngleDeg >= 50;
+        const isPronePose = !!(pose && Math.abs(shoulderY - hipY) < 0.14 && Math.abs(shoulderX - hipX) > 0.08);
+
+        let staticProneScore = 0.0;
+        if (isHorizontalBbox && isHorizontalTorso && pose) {
+          staticProneScore = Math.min(0.95, 0.75 + Math.min(0.20, (aspect - 1.0) * 0.15));
+        } else if (isPronePose) {
+          staticProneScore = Math.min(0.92, 0.70 + Math.min(0.22, (aspect - 0.9) * 0.15));
+        } else if (wasUprightBefore && isHorizontalBbox && dynamicDropScore >= 0.50) {
+          staticProneScore = 0.75;
+        }
+
+        // Trigger fall latch if dynamic drop OR prone posture detected
+        if (dynamicDropScore >= 0.60 || staticProneScore >= 0.70) {
+          track.hasFallen = true;
+          if (!track.fallenSinceMs) track.fallenSinceMs = now;
+        }
+
+        // Sustained lying check: is the person still on the ground?
+        const isStillDown = isHorizontalBbox || isPronePose || (aspect > 0.85 && (torsoAngleDeg > 40 || track.motionlessMs > 1000));
+
+        let computedFall = 0.0;
+        if (track.hasFallen && isStillDown) {
+          // Person has fallen and is still lying on the ground!
+          // Sustain high fall score (85% - 95%) so it never drops back down while lying!
+          const targetScore = Math.max(0.85, staticProneScore);
+          computedFall = Math.max(targetScore, (track.fallScore || 0) * 0.98);
+          track.uprightFramesCount = 0;
+          if (track.fallenSinceMs) {
+            const downDuration = Math.max(0, now - track.fallenSinceMs);
+            if (downDuration > track.motionlessMs) {
+              track.motionlessMs = downDuration;
+            }
+          }
+        } else if (track.hasFallen && !isStillDown) {
+          // Person might be standing back up: require 8 consecutive frames (~1s) of upright posture before unlatching
+          const isUpright = aspect < 0.65 && (torsoAngleDeg < 35 || !pose);
+          if (isUpright) {
+            track.uprightFramesCount = (track.uprightFramesCount || 0) + 1;
+            if (track.uprightFramesCount >= 8) {
+              track.hasFallen = false;
+              track.fallenSinceMs = null;
+              computedFall = 0.0;
+            } else {
+              computedFall = 0.45;
+            }
+          } else {
+            computedFall = 0.65;
+          }
+        } else {
+          // Normal standing or walking person
+          computedFall = Math.max(dynamicDropScore, staticProneScore);
+        }
+
+        if (track.isFalling) computedFall = 0.92; // Ensure simulated fall triggers
+        track.fallScore = Number(Math.max(0.0, Math.min(1.0, computedFall)).toFixed(2));
 
         signals.push({
           trackId,
@@ -577,11 +1006,55 @@
           motionScore: Number(track.motionScore.toFixed(3)),
           fallScore: Number(track.fallScore.toFixed(2)),
           motionlessMs: Math.round(track.motionlessMs),
-          confidence: Number(track.confidence.toFixed(2))
+          confidence: Number(track.confidence.toFixed(2)),
+          poseLandmarks: track.poseLandmarks
         });
       }
 
       return signals;
+    }
+
+    _drawSkeleton(landmarks, w, h, color) {
+      if (!landmarks || landmarks.length === 0) return;
+      const connections = [
+        [11, 12], [11, 23], [12, 24], [23, 24], // Torso
+        [11, 13], [13, 15],                      // Left arm
+        [12, 14], [14, 16],                      // Right arm
+        [23, 25], [25, 27],                      // Left leg
+        [24, 26], [26, 28]                       // Right leg
+      ];
+      this.ctx.save();
+      this.ctx.strokeStyle = this._hexToRgba(color, 0.70);
+      this.ctx.lineWidth = 1.8;
+      for (const [i, j] of connections) {
+        const p1 = landmarks[i];
+        const p2 = landmarks[j];
+        if (p1 && p2) {
+          const v1 = (p1.visibility !== undefined) ? p1.visibility : 1.0;
+          const v2 = (p2.visibility !== undefined) ? p2.visibility : 1.0;
+          if (v1 > 0.22 && v2 > 0.22) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1.x * w, p1.y * h);
+            this.ctx.lineTo(p2.x * w, p2.y * h);
+            this.ctx.stroke();
+          }
+        }
+      }
+      // Joint nodes
+      this.ctx.fillStyle = color;
+      const keypoints = [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+      for (const idx of keypoints) {
+        const pt = landmarks[idx];
+        if (pt) {
+          const v = (pt.visibility !== undefined) ? pt.visibility : 1.0;
+          if (v > 0.22) {
+            this.ctx.beginPath();
+            this.ctx.arc(pt.x * w, pt.y * h, 2.5, 0, Math.PI * 2);
+            this.ctx.fill();
+          }
+        }
+      }
+      this.ctx.restore();
     }
 
     _drawOverlay(personSignals) {
@@ -622,47 +1095,74 @@
 
       // 2. Draw Detected Persons
       for (const p of personSignals) {
-        const bx = p.bboxN.x * w;
-        const by = p.bboxN.y * h;
-        const bw = p.bboxN.w * w;
-        const bh = p.bboxN.h * h;
+        try {
+          const bx = p.bboxN.x * w;
+          const by = p.bboxN.y * h;
+          const bw = p.bboxN.w * w;
+          const bh = p.bboxN.h * h;
 
-        const isAlarm = p.fallScore >= 0.6 || (p.zoneIds.length > 0 && p.fallScore > 0.3);
-        const boxColor = isAlarm ? '#F43F5E' : '#38BDF8';
+          const isAlarm = p.fallScore >= 0.6 || (p.zoneIds.length > 0 && p.fallScore > 0.3);
+          const boxColor = isAlarm ? '#F43F5E' : '#38BDF8';
 
-        // Bounding box
-        this.ctx.strokeStyle = boxColor;
-        this.ctx.lineWidth = 2.5;
-        this.ctx.strokeRect(bx, by, bw, bh);
+          // Draw posture skeleton if pose landmarks are detected
+          if (p.poseLandmarks) {
+            this._drawSkeleton(p.poseLandmarks, w, h, boxColor);
+          }
 
-        // Corner accents
-        this._drawBoxCorners(bx, by, bw, bh, boxColor);
+          // Translucent cybernetic fill
+          this.ctx.fillStyle = this._hexToRgba(boxColor, 0.08);
+          this.ctx.fillRect(bx, by, bw, bh);
 
-        // Header Pill: Track ID + Confidence
-        this.ctx.fillStyle = boxColor;
-        this.ctx.fillRect(bx, Math.max(0, by - 22), 80, 20);
-        this.ctx.fillStyle = '#0B0E13';
-        this.ctx.font = 'bold 11px monospace';
-        this.ctx.fillText(`ID ${p.trackId} ${(p.confidence * 100).toFixed(0)}%`, bx + 6, Math.max(14, by - 8));
+          // Bounding box outline
+          this.ctx.strokeStyle = boxColor;
+          this.ctx.lineWidth = 2.0;
+          this.ctx.strokeRect(bx, by, bw, bh);
 
-        // Foot Anchor Dot
-        this.ctx.beginPath();
-        this.ctx.arc(p.footN.x * w, p.footN.y * h, 4, 0, Math.PI * 2);
-        this.ctx.fillStyle = boxColor;
-        this.ctx.fill();
+          // Corner accents
+          this._drawBoxCorners(bx, by, bw, bh, boxColor);
 
-        // Alarm status tags
-        let tagY = by + bh + 16;
-        if (p.fallScore >= 0.6) {
-          this._drawTag('FALL SUSPECTED', bx, tagY, '#F43F5E');
-          tagY += 18;
-        }
-        if (p.motionlessMs > 3000) {
-          this._drawTag(`MOTIONLESS ${(p.motionlessMs / 1000).toFixed(0)}s`, bx, tagY, '#FBBF24');
-          tagY += 18;
-        }
-        if (p.zoneIds.length > 0) {
-          this._drawTag('ZONE INTRUSION', bx, tagY, '#FB923C');
+          // Header Pill: Track ID + Confidence
+          const label = `ID ${p.trackId} ${(p.confidence * 100).toFixed(0)}%`;
+          this.ctx.font = 'bold 11px monospace';
+          const textWidth = this.ctx.measureText(label).width;
+          const pillW = Math.max(76, textWidth + 12);
+          const pillY = Math.max(0, by - 20);
+
+          this.ctx.fillStyle = boxColor;
+          this.ctx.fillRect(bx, pillY, pillW, 18);
+          this.ctx.fillStyle = '#0B0E13';
+          this.ctx.fillText(label, bx + 6, pillY + 13);
+
+          // Foot Anchor Dot with glowing radar ring
+          this.ctx.beginPath();
+          this.ctx.arc(p.footN.x * w, p.footN.y * h, 3.5, 0, Math.PI * 2);
+          this.ctx.fillStyle = boxColor;
+          this.ctx.fill();
+
+          this.ctx.beginPath();
+          this.ctx.arc(p.footN.x * w, p.footN.y * h, 6.5, 0, Math.PI * 2);
+          this.ctx.strokeStyle = this._hexToRgba(boxColor, 0.5);
+          this.ctx.lineWidth = 1.2;
+          this.ctx.stroke();
+
+          // Alarm status tags (keep within visible canvas bounds)
+          let tagY = by + bh + 16;
+          if (by + bh > h - 35) {
+            tagY = Math.max(32, by - 6);
+          }
+          if (p.fallScore >= 0.6) {
+            this._drawTag('FALL SUSPECTED', bx, tagY, '#F43F5E');
+            tagY += 18;
+          }
+          if (p.motionlessMs >= 2000) {
+            this._drawTag(`MOTIONLESS ${(p.motionlessMs / 1000).toFixed(0)}s`, bx, tagY, '#FBBF24');
+            tagY += 18;
+          }
+          if (p.zoneIds.length > 0) {
+            this._drawTag('ZONE INTRUSION', bx, tagY, '#FB923C');
+          }
+        } catch (drawErr) {
+          console.warn('[ArgusVision] Draw person error:', drawErr);
         }
       }
     }
@@ -726,6 +1226,20 @@
         this.lastEmittedStateHash = stateHash;
         this.lastBatchSentAt = now;
 
+        const clientPersons = personSignals.map(p => ({
+          trackId: p.trackId,
+          bboxN: p.bboxN,
+          footN: p.footN,
+          zoneIds: p.zoneIds,
+          aspect: p.aspect,
+          torsoAngleDeg: p.torsoAngleDeg,
+          hipDropRatio: p.hipDropRatio,
+          motionScore: p.motionScore,
+          fallScore: p.fallScore,
+          motionlessMs: p.motionlessMs,
+          confidence: p.confidence
+        }));
+
         const batch = {
           cameraId: 1,
           sentAtMs: Date.now(),
@@ -733,8 +1247,8 @@
           signals: [{
             tsMs: Date.now(),
             kind: stateChanged ? 'change' : 'heartbeat',
-            personCount: personSignals.length,
-            persons: personSignals
+            personCount: clientPersons.length,
+            persons: clientPersons
           }]
         };
 
@@ -743,9 +1257,11 @@
         }
 
         try {
-          this.signalCallback(batch);
-        } catch (cbErr) {
-          console.error('[ArgusVision] Signal callback error:', cbErr);
+          this.signalCallback(JSON.stringify(batch));
+        } catch (_) {
+          try { this.signalCallback(batch); } catch (cbErr) {
+            console.error('[ArgusVision] Signal callback error:', cbErr);
+          }
         }
       }
     }
@@ -768,20 +1284,55 @@
       // Draw original video frame
       offCtx.drawImage(this.videoEl, 0, 0, sw, sh);
 
-      // Blur human heads by default (Privacy by design)
+      // Blur human heads & faces by default (Privacy by design)
       if (blurHead) {
         for (const [trackId, track] of this.tracks.entries()) {
           const b = track.bboxN;
-          let headX = Math.round((b.x + b.w * 0.15) * sw);
-          let headY = Math.round(b.y * sh);
-          let headW = Math.round(b.w * 0.70 * sw);
-          let headH = Math.round(b.h * 0.28 * sh); // Top 28% of bounding box
+          let headX, headY, headW, headH;
+
+          // Check if pose landmarks for the face (nose: 0, eyes: 1-6, ears: 7-8, mouth: 9-10) are present
+          let facePoints = [];
+          if (track.poseLandmarks && Array.isArray(track.poseLandmarks)) {
+            for (let i = 0; i <= 10; i++) {
+              const lm = track.poseLandmarks[i];
+              if (lm && (lm.visibility === undefined || lm.visibility > 0.25)) {
+                facePoints.push(lm);
+              }
+            }
+          }
+
+          if (facePoints.length >= 2) {
+            // Landmark-based face bounding box
+            const minX = Math.min(...facePoints.map(p => p.x));
+            const maxX = Math.max(...facePoints.map(p => p.x));
+            const minY = Math.min(...facePoints.map(p => p.y));
+            const maxY = Math.max(...facePoints.map(p => p.y));
+
+            const cx = (minX + maxX) / 2;
+            const cy = (minY + maxY) / 2;
+            const spanW = Math.max((maxX - minX) * 1.8, b.w * 0.7);
+            const spanH = Math.max((maxY - minY) * 2.0, b.h * 0.58);
+
+            headX = Math.max(0, Math.round((cx - spanW / 2) * sw));
+            headY = Math.max(0, Math.round((cy - spanH * 0.52) * sh));
+            headW = Math.min(sw - headX, Math.round(spanW * sw));
+            headH = Math.min(sh - headY, Math.round(spanH * sh));
+          } else {
+            // Fallback: estimate from person bounding box.
+            // In webcam / desk scenarios (aspect ratio > 0.45 or close up), face takes top 65% of the box.
+            const isUpperBody = (b.w / b.h > 0.45) || (b.h < 0.75);
+            const heightFraction = isUpperBody ? 0.65 : 0.42;
+
+            headX = Math.max(0, Math.round((b.x + b.w * 0.05) * sw));
+            headY = Math.max(0, Math.round(b.y * sh));
+            headW = Math.min(sw - headX, Math.round(b.w * 0.90 * sw));
+            headH = Math.min(sh - headY, Math.round(b.h * heightFraction * sh));
+          }
 
           // Apply heavy pixelation / box blur filter to protect privacy
           try {
             offCtx.save();
-            // Pixelation technique for guaranteed on-device anonymization
-            const pxSize = 10;
+            const pxSize = 12;
             const tempC = document.createElement('canvas');
             tempC.width = Math.max(1, Math.round(headW / pxSize));
             tempC.height = Math.max(1, Math.round(headH / pxSize));
@@ -872,7 +1423,11 @@
         this.replayIndex = (this.replayIndex + 1) % this.replayBatches.length;
 
         if (this.signalCallback) {
-          this.signalCallback(batch);
+          try {
+            this.signalCallback(typeof batch === 'string' ? batch : JSON.stringify(batch));
+          } catch (_) {
+            this.signalCallback(batch);
+          }
         }
       }, 500);
     }

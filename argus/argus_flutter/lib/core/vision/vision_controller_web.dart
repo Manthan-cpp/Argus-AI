@@ -11,6 +11,9 @@ VisionController createVisionController() => VisionControllerWeb();
 @JS('argusVision')
 external ArgusVisionJS? get _argusVision;
 
+@JS('JSON.stringify')
+external JSString _jsStringify(JSAny? value);
+
 @JS()
 @staticInterop
 class ArgusVisionJS {}
@@ -109,20 +112,32 @@ class VisionControllerWeb implements VisionController {
     // Set callbacks
     v.onSignals(((JSAny batch) {
       try {
-        final jsonStr = (batch as JSString).toDart;
+        String jsonStr;
+        if (batch.isA<JSString>()) {
+          jsonStr = (batch as JSString).toDart;
+        } else {
+          jsonStr = _jsStringify(batch).toDart;
+        }
         final decoded = json.decode(jsonStr) as Map<String, dynamic>;
         _signalCallback?.call(decoded);
-      } catch (_) {
-        // Handle JS Object format
+      } catch (e) {
+        web.console.error('VisionController onSignals error: $e'.toJS);
       }
     }).toJS);
 
     v.onStatus(((JSAny status) {
       try {
-        final jsonStr = (status as JSString).toDart;
+        String jsonStr;
+        if (status.isA<JSString>()) {
+          jsonStr = (status as JSString).toDart;
+        } else {
+          jsonStr = _jsStringify(status).toDart;
+        }
         final decoded = json.decode(jsonStr) as Map<String, dynamic>;
         _statusCallback?.call(VisionStatusInfo.fromJson(decoded));
-      } catch (_) {}
+      } catch (e) {
+        web.console.error('VisionController onStatus error: $e'.toJS);
+      }
     }).toJS);
 
     final options = <String, dynamic>{
@@ -144,17 +159,45 @@ class VisionControllerWeb implements VisionController {
     final v = _argusVision;
     if (v == null) return;
 
-    // Attach to HTML elements created by HtmlElementView
-    final video = web.document.getElementById('argus-video-element') as web.HTMLVideoElement?;
-    final canvas = web.document.getElementById('argus-canvas-element') as web.HTMLCanvasElement?;
+    // Attach to HTML elements created by HtmlElementView or ensure fallback
+    var video = web.document.getElementById('argus-video-element') as web.HTMLVideoElement?;
+    var canvas = web.document.getElementById('argus-canvas-element') as web.HTMLCanvasElement?;
 
-    if (video != null && canvas != null) {
-      final attachPayload = <String, dynamic>{
-        'videoId': 'argus-video-element',
-        'canvasId': 'argus-canvas-element',
-      };
-      v.attach(json.encode(attachPayload).toJS);
+    if (video == null || canvas == null) {
+      final container = web.document.getElementById('argus-vision-container') ?? web.document.createElement('div');
+      container.id = 'argus-vision-container';
+      if (video == null) {
+        video = web.document.createElement('video') as web.HTMLVideoElement;
+        video.id = 'argus-video-element';
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.style.width = '100%';
+        video.style.height = '100%';
+        video.style.objectFit = 'contain';
+        container.appendChild(video);
+      }
+      if (canvas == null) {
+        canvas = web.document.createElement('canvas') as web.HTMLCanvasElement;
+        canvas.id = 'argus-canvas-element';
+        canvas.style.position = 'absolute';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.pointerEvents = 'none';
+        container.appendChild(canvas);
+      }
+      if (container.parentElement == null) {
+        web.document.body?.appendChild(container);
+      }
     }
+
+    final attachPayload = <String, dynamic>{
+      'videoId': 'argus-video-element',
+      'canvasId': 'argus-canvas-element',
+    };
+    v.attach(json.encode(attachPayload).toJS);
 
     final startOpts = <String, dynamic>{
       'targetFps': targetFps,
