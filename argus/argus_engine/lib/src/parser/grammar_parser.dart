@@ -48,7 +48,7 @@ class GrammarParser {
     // Signal pattern 2: Fall suspected
     else if (lower.contains('fall') || lower.contains('falls') || lower.contains('fallen') || lower.contains('stays down') || lower.contains('collapsed')) {
       signal = TriggerSignal.fall_suspected;
-      final staysDownMatch = RegExp(r'stays down for (?:more than |over )?(\d+)\s*(?:s|sec|seconds?)').firstMatch(lower);
+      final staysDownMatch = RegExp(r"(?:stays down|does not get up|doesn't get up|remains down|unresponsive|within|for)\s*(?:for\s*)?(?:more than\s*|over\s*|within\s*)?(\d+)\s*(?:s|sec|seconds?)").firstMatch(lower);
       if (staysDownMatch != null) {
         minDurationSec = int.parse(staysDownMatch.group(1)!);
       }

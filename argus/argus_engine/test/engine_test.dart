@@ -58,6 +58,13 @@ void main() {
       expect(res.spec!.escalation.first.afterSec, equals(120));
     });
 
+    test('S2b: Fall and does not get up within 3 seconds', () {
+      final res = parser.parse('if a person falls and does not get up within 3 seconds, alert security');
+      expect(res.spec, isNotNull);
+      expect(res.spec!.trigger.signal, equals(TriggerSignal.fall_suspected));
+      expect(res.spec!.trigger.minDurationSec, equals(3));
+    });
+
     test('S3: Restricted zone dwell', () {
       final res = parser.parse('If a person stays in Chemical Lab for more than 5 seconds, create a high-severity incident', knownZones: zones);
       expect(res.spec, isNotNull);
