@@ -1,0 +1,5 @@
+class: RuleConditions
+fields:
+  timeWindows: List<TimeWindow>
+  daysOfWeek: List<int>
+  timezone: String

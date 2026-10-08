@@ -1,0 +1,15 @@
+name: argus_engine
+description: Pure Dart domain engine for Argus safety workflows (grammar parsing, rule state machines, geometry, and escalation).
+version: 1.0.0
+repository: https://github.com/manthan/argus
+
+environment:
+  sdk: '^3.12.2'
+
+resolution: workspace
+
+dependencies:
+
+dev_dependencies:
+  lints: ^4.0.0
+  test: ^1.25.0

@@ -1,0 +1,10 @@
+class: AuditEntry
+fields:
+  id: int?
+  workspaceId: int
+  at: DateTime
+  actor: String
+  action: String
+  targetKind: String
+  targetId: int
+  detail: String

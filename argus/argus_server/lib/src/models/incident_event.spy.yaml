@@ -1,0 +1,7 @@
+class: IncidentEvent
+fields:
+  id: int?
+  incidentId: int
+  at: DateTime
+  kind: String
+  detail: String

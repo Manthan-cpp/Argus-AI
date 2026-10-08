@@ -1,0 +1,5 @@
+class: VerificationInfo
+fields:
+  status: String
+  reason: String?
+  model: String?

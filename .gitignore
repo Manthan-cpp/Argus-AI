@@ -1,0 +1,22 @@
+# Flutter and Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Serverpod secrets & local config
+argus_server/config/passwords.yaml
+config/passwords.yaml
+*.local.yaml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+Thumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store

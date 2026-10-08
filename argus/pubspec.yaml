@@ -1,0 +1,12 @@
+name: _
+publish_to: none
+
+environment:
+  sdk: '^3.12.2'
+
+workspace:
+  - argus_client
+  - argus_server
+  - argus_flutter
+  - argus_engine
+

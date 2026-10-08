@@ -1,0 +1,18 @@
+class: RuleSpec
+fields:
+  id: int?
+  workspaceId: int
+  name: String
+  enabled: bool
+  cameraIds: List<int>
+  trigger: RuleTrigger
+  conditions: RuleConditions
+  severity: String
+  verify: RuleVerify
+  actions: List<RuleAction>
+  cooldownSec: int
+  escalation: List<RuleEscalation>
+  sourceText: String
+  parsedBy: String
+  createdAt: DateTime
+  version: int

@@ -1,0 +1,7 @@
+class: Workspace
+fields:
+  id: int?
+  ownerUserId: String
+  name: String
+  createdAt: DateTime
+  settings: WorkspaceSettings

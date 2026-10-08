@@ -1,0 +1,10 @@
+class: LabClipResult
+fields:
+  clipId: String
+  scenario: String
+  expectedEvents: int
+  detectedEvents: int
+  tp: int
+  fp: int
+  fn: int
+  latencyMsP50: int

@@ -1,0 +1,5 @@
+class: SignalAck
+fields:
+  accepted: bool
+  needEvidenceFor: List<int>
+  serverTimeMs: int

@@ -1,0 +1,6 @@
+class: BBoxN
+fields:
+  x: double
+  y: double
+  w: double
+  h: double

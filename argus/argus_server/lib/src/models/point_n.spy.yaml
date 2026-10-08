@@ -1,0 +1,4 @@
+class: PointN
+fields:
+  x: double
+  y: double

@@ -1,0 +1,5 @@
+class: DemoSeedResult
+fields:
+  workspaceId: int
+  cameraIds: List<int>
+  ruleIds: List<int>

@@ -1,0 +1,8 @@
+class: WorkspaceSettings
+fields:
+  cloudVerification: bool
+  blurEvidence: bool
+  retentionDays: int
+  browserNotifications: bool
+  telegramLinked: bool
+  timezone: String

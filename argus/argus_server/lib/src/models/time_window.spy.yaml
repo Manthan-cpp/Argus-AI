@@ -1,0 +1,4 @@
+class: TimeWindow
+fields:
+  start: String
+  end: String

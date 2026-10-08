@@ -1,0 +1,13 @@
+class: PersonSignal
+fields:
+  trackId: int
+  bboxN: BBoxN
+  footN: PointN
+  zoneIds: List<int>
+  torsoAngleDeg: double?
+  hipDropRatio: double?
+  aspect: double
+  motionScore: double
+  fallScore: double
+  motionlessMs: int
+  confidence: double

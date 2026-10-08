@@ -1,0 +1,4 @@
+class: IncidentUpdate
+fields:
+  incident: Incident
+  event: IncidentEvent?

@@ -1,0 +1,5 @@
+class: EvidenceUpload
+fields:
+  incidentId: int
+  snapshotJpegBase64: String
+  verificationCropJpeg: String?

@@ -1,0 +1,5 @@
+class: IncidentDetail
+fields:
+  incident: Incident
+  events: List<IncidentEvent>
+  evidenceUrl: String?

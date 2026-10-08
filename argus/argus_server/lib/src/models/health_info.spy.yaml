@@ -1,0 +1,7 @@
+class: HealthInfo
+fields:
+  version: String
+  engineVersion: String
+  geminiState: String
+  quotaNote: String
+  queueDepth: int

@@ -1,0 +1,6 @@
+class: DryRunResult
+fields:
+  triggered: bool
+  triggeredAtMs: int?
+  explanation: String
+  firedPointsMs: List<int>

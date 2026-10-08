@@ -1,0 +1,7 @@
+class: DetectorLabReport
+fields:
+  clips: List<LabClipResult>
+  precision: double
+  recall: double
+  generatedAt: DateTime
+  notes: String

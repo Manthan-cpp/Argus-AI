@@ -1,0 +1,6 @@
+class: SignalEvent
+fields:
+  tsMs: int
+  kind: String
+  personCount: int
+  persons: List<PersonSignal>

@@ -1,0 +1,8 @@
+class: Contact
+fields:
+  id: int?
+  workspaceId: int
+  name: String
+  role: String
+  telegramChatId: String?
+  notifyInApp: bool

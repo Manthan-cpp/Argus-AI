@@ -1,0 +1,6 @@
+class: SignalBatch
+fields:
+  cameraId: int
+  sentAtMs: int
+  seq: int
+  signals: List<SignalEvent>

@@ -1,0 +1,4 @@
+class: RuleAction
+fields:
+  kind: String
+  paramsJson: String

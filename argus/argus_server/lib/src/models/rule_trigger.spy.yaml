@@ -1,0 +1,8 @@
+class: RuleTrigger
+fields:
+  signal: String
+  zoneId: int?
+  minDurationSec: int
+  minConfidence: double
+  minCount: int?
+  ppe: String?

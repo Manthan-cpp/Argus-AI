@@ -1,0 +1,8 @@
+class: ParseResult
+fields:
+  spec: RuleSpec?
+  parsedBy: String
+  confidence: double
+  warnings: List<String>
+  unsupportedReason: String?
+  alternatives: List<String>

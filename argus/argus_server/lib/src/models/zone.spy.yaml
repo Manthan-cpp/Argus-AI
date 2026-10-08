@@ -1,0 +1,9 @@
+class: Zone
+fields:
+  id: int?
+  cameraId: int
+  name: String
+  kind: String
+  color: String
+  polygon: List<PointN>
+  createdAt: DateTime

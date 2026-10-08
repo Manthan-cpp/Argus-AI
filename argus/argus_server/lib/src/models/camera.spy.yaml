@@ -1,0 +1,11 @@
+class: Camera
+fields:
+  id: int?
+  workspaceId: int
+  name: String
+  sourceKind: String
+  sourceRef: String
+  enabled: bool
+  createdAt: DateTime
+  lastSignalAt: DateTime?
+  status: String

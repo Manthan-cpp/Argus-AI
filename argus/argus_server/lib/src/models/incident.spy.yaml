@@ -1,0 +1,17 @@
+class: Incident
+fields:
+  id: int?
+  workspaceId: int
+  cameraId: int
+  ruleId: int
+  ruleSnapshotJson: String
+  severity: String
+  status: String
+  openedAt: DateTime
+  ackedAt: DateTime?
+  resolvedAt: DateTime?
+  evidenceFileKey: String?
+  verification: VerificationInfo
+  summary: String
+  signalContextJson: String
+  assignedTo: String?

@@ -1,0 +1,4 @@
+class: RuleVerify
+fields:
+  enabled: bool
+  kind: String
