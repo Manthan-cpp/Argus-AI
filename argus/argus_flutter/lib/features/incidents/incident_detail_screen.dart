@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
 import '../../app/theme/severity_scale.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../data/repository_provider.dart';
 
@@ -48,6 +49,53 @@ class _IncidentDetailScreenState extends ConsumerState<IncidentDetailScreen> {
       await repo.markFalsePositive(widget.incidentId);
     }
     _loadDetail();
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline_rounded, color: ArgusTokens.severityCritical, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Incident #${widget.incidentId}?',
+              style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+            ),
+          ],
+        ),
+        content: Text(
+          'This will permanently delete this incident and its history from Argus.',
+          style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: ArgusTokens.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ArgusTokens.severityCritical,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final repo = ref.read(argusRepositoryProvider);
+      await repo.deleteIncident(widget.incidentId);
+      if (mounted) context.go('/app/incidents');
+    }
   }
 
   @override
@@ -113,36 +161,66 @@ class _IncidentDetailScreenState extends ConsumerState<IncidentDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  if (inc.status != 'false_positive')
+                  if (inc.status != 'false_positive') ...[
                     TextButton.icon(
                       onPressed: () => _handleAction('false_positive'),
                       icon: const Icon(Icons.flag_outlined, size: 16, color: ArgusTokens.severityCritical),
                       label: Text('False Positive', style: GoogleFonts.inter(color: ArgusTokens.severityCritical)),
                     ),
+                    const SizedBox(width: 8),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: _confirmDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16, color: ArgusTokens.severityCritical),
+                    label: Text('Delete', style: GoogleFonts.inter(color: ArgusTokens.severityCritical)),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: ArgusTokens.severityCritical.withValues(alpha: 0.4)),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
 
               // Summary Card
-              Container(
-                padding: const EdgeInsets.all(ArgusTokens.space20),
-                decoration: BoxDecoration(
-                  color: ArgusTokens.bgRaised,
-                  borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
-                  border: Border.all(color: ArgusTokens.borderSubtle),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(inc.summary, style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Opened: ${inc.openedAt.toLocal().toString().substring(0, 19)} · Camera #${inc.cameraId} · Assigned: ${inc.assignedTo ?? "Unassigned"}',
-                      style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textTertiary),
+              inc.status == 'open'
+                  ? RainbowMovingBorder(
+                      borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                      borderWidth: 1.5,
+                      baseBorderColor: Colors.white,
+                      backgroundColor: ArgusTokens.bgRaised,
+                      padding: const EdgeInsets.all(ArgusTokens.space20),
+                      isLive: true,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(inc.summary, style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Opened: ${inc.openedAt.toLocal().toString().substring(0, 19)} · Camera #${inc.cameraId} · Assigned: ${inc.assignedTo ?? "Unassigned"}',
+                            style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textTertiary),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      padding: const EdgeInsets.all(ArgusTokens.space20),
+                      decoration: BoxDecoration(
+                        color: ArgusTokens.bgRaised,
+                        borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                        border: Border.all(color: ArgusTokens.borderSubtle),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(inc.summary, style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Opened: ${inc.openedAt.toLocal().toString().substring(0, 19)} · Camera #${inc.cameraId} · Assigned: ${inc.assignedTo ?? "Unassigned"}',
+                            style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textTertiary),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
               const SizedBox(height: 20),
 
               // Split View: Evidence & Verification Card

@@ -6,6 +6,7 @@ import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
 import '../../app/theme/severity_scale.dart';
 import '../../core/widgets/hover_card.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../data/repository_provider.dart';
@@ -50,6 +51,27 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
     final ackCount = _incidents.where((i) => i.status == 'acknowledged').length;
     final fpCount = _incidents.where((i) => i.status == 'false_positive').length;
 
+    // Calculate real median ack time from acknowledged incidents
+    final ackDurations = _incidents
+        .where((i) => i.ackedAt != null)
+        .map((i) => i.ackedAt!.difference(i.openedAt).inSeconds)
+        .where((sec) => sec >= 0)
+        .toList()
+      ..sort();
+
+    String medianAckStr = '--';
+    if (ackDurations.isNotEmpty) {
+      final middle = ackDurations.length ~/ 2;
+      final medianSec = ackDurations.length.isOdd
+          ? ackDurations[middle]
+          : ((ackDurations[middle - 1] + ackDurations[middle]) / 2).round();
+      if (medianSec < 60) {
+        medianAckStr = '${medianSec}s';
+      } else {
+        medianAckStr = '${(medianSec / 60).toStringAsFixed(1)}m';
+      }
+    }
+
     final filtered = _incidents.where((i) {
       if (_selectedStatusFilter != 'ALL' && i.status.toUpperCase() != _selectedStatusFilter) return false;
       if (_selectedSeverityFilter != 'ALL' && i.severity.toUpperCase() != _selectedSeverityFilter) return false;
@@ -84,7 +106,7 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
                   const SizedBox(width: 12),
                   _buildStatCard('ACKNOWLEDGED', '$ackCount', ArgusTokens.statusAcknowledged, Icons.visibility_outlined),
                   const SizedBox(width: 12),
-                  _buildStatCard('MEDIAN ACK TIME', '42s', ArgusTokens.accent, Icons.timer_outlined),
+                  _buildStatCard('MEDIAN ACK TIME', medianAckStr, ArgusTokens.accent, Icons.timer_outlined),
                   const SizedBox(width: 12),
                   _buildStatCard('FALSE POSITIVE RATE', '${((fpCount / (_incidents.isEmpty ? 1 : _incidents.length)) * 100).toInt()}%', ArgusTokens.textSecondary, Icons.tune_rounded),
                 ],
@@ -107,107 +129,183 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
                       _selectedSeverityFilter = _selectedSeverityFilter == 'CRITICAL' ? 'ALL' : 'CRITICAL';
                     });
                   }),
+                  const SizedBox(width: 12),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: ArgusTokens.severityCritical),
+                    label: Text(
+                      'Clear All',
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ArgusTokens.severityCritical),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ArgusTokens.severityCritical,
+                      side: BorderSide(color: ArgusTokens.severityCritical.withValues(alpha: 0.6)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    onPressed: _incidents.isEmpty ? null : _confirmDeleteAll,
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
 
-              // Incidents List
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, idx) {
-                  final inc = filtered[idx];
-                  final sev = SeverityLevel.fromString(inc.severity);
-                  final ageMins = DateTime.now().difference(inc.openedAt).inMinutes;
+              // Incidents List / Empty State
+              if (filtered.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: ArgusTokens.bgRaised,
+                    borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                    border: Border.all(color: ArgusTokens.borderSubtle),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle_outline_rounded, size: 48, color: ArgusTokens.accent),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No Incidents Found',
+                        style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _incidents.isEmpty
+                            ? 'All safety channels clear. No active or historic alerts.'
+                            : 'No incidents match the active status or severity filter.',
+                        style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, idx) {
+                    final inc = filtered[idx];
+                    final sev = SeverityLevel.fromString(inc.severity);
+                    final ageMins = DateTime.now().difference(inc.openedAt).inMinutes;
 
-                  return RevealAnimation(
-                    delay: Duration(milliseconds: 50 * idx),
-                    child: HoverCard(
-                      onTap: () => context.go('/app/incidents/${inc.id}'),
-                      padding: const EdgeInsets.all(ArgusTokens.space16),
-                      child: Row(
-                        children: [
-                          // Evidence Thumbnail
-                          Container(
-                            width: 80,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: ArgusTokens.borderSubtle),
-                            ),
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                const Icon(Icons.image_outlined, size: 24, color: ArgusTokens.textTertiary),
-                                Positioned(
-                                  bottom: 2,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.8),
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                    child: Text(
-                                      'BLURRED',
-                                      style: GoogleFonts.jetBrainsMono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
+                    final isOpen = inc.status == 'open';
+
+                    final cardContent = Row(
+                      children: [
+                        // Evidence Thumbnail
+                        Container(
+                          width: 80,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.black,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: ArgusTokens.borderSubtle),
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              const Icon(Icons.image_outlined, size: 24, color: ArgusTokens.textTertiary),
+                              Positioned(
+                                bottom: 2,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                  child: Text(
+                                    'BLURRED',
+                                    style: GoogleFonts.jetBrainsMono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-
-                          // Summary Details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    StatusBadge.fromSeverity(sev),
-                                    const SizedBox(width: 8),
-                                    StatusBadge.fromStatus(inc.status),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${ageMins}m ago · Camera #${inc.cameraId}',
-                                      style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  inc.summary,
-                                  style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Quick Action
-                          if (inc.status == 'open')
-                            ElevatedButton(
-                              onPressed: () async {
-                                final repo = ref.read(argusRepositoryProvider);
-                                await repo.acknowledge(inc.id!);
-                                _loadIncidents();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                               ),
-                              child: const Text('Acknowledge'),
-                            )
-                          else
-                            const Icon(Icons.chevron_right_rounded, color: ArgusTokens.textTertiary),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Summary Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  StatusBadge.fromSeverity(sev),
+                                  const SizedBox(width: 8),
+                                  StatusBadge.fromStatus(inc.status),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${ageMins}m ago · Camera #${inc.cameraId}',
+                                    style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                inc.summary,
+                                style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Quick Actions
+                        if (isOpen) ...[
+                          ElevatedButton(
+                            onPressed: () async {
+                              final repo = ref.read(argusRepositoryProvider);
+                              await repo.acknowledge(inc.id!);
+                              _loadIncidents();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            ),
+                            child: const Text('Acknowledge'),
+                          ),
+                          const SizedBox(width: 8),
                         ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+                        OutlinedButton.icon(
+                          onPressed: () => _confirmDeleteIncident(inc),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 16, color: ArgusTokens.severityCritical),
+                          label: Text(
+                            'Delete',
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ArgusTokens.severityCritical),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: ArgusTokens.severityCritical,
+                            side: BorderSide(color: ArgusTokens.severityCritical.withValues(alpha: 0.6)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.chevron_right_rounded, color: ArgusTokens.textTertiary),
+                      ],
+                    );
+
+                    return RevealAnimation(
+                      delay: Duration(milliseconds: 50 * idx),
+                      child: isOpen
+                          ? InkWell(
+                              onTap: () => context.go('/app/incidents/${inc.id}'),
+                              borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                              child: RainbowMovingBorder(
+                                borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                                borderWidth: 1.3,
+                                baseBorderColor: Colors.white,
+                                backgroundColor: ArgusTokens.bgRaised,
+                                isLive: true,
+                                padding: const EdgeInsets.all(ArgusTokens.space16),
+                                child: cardContent,
+                              ),
+                            )
+                          : HoverCard(
+                              onTap: () => context.go('/app/incidents/${inc.id}'),
+                              padding: const EdgeInsets.all(ArgusTokens.space16),
+                              child: cardContent,
+                            ),
+                    );
+                  },
+                ),
             ],
           ),
         ),
@@ -271,5 +369,99 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteIncident(Incident inc) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline_rounded, color: ArgusTokens.severityCritical, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Delete Incident #${inc.id}?',
+              style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+            ),
+          ],
+        ),
+        content: Text(
+          'This will permanently delete this incident and its audit history from Argus.',
+          style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: ArgusTokens.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ArgusTokens.severityCritical,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && inc.id != null) {
+      final repo = ref.read(argusRepositoryProvider);
+      await repo.deleteIncident(inc.id!);
+      _loadIncidents();
+    }
+  }
+
+  Future<void> _confirmDeleteAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgRaised,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_sweep_outlined, color: ArgusTokens.severityCritical, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              'Delete All Incidents?',
+              style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+            ),
+          ],
+        ),
+        content: Text(
+          'This will permanently remove all ${_incidents.length} safety incidents and associated events from the system.',
+          style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: ArgusTokens.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ArgusTokens.severityCritical,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete All'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final repo = ref.read(argusRepositoryProvider);
+      await repo.deleteAllIncidents();
+      _loadIncidents();
+    }
   }
 }
