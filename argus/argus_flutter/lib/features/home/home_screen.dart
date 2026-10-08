@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/copy/strings.dart';
 import '../../core/widgets/hover_card.dart';
-import '../../core/widgets/mouse_glow_tracker.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../data/repository_provider.dart';
 
@@ -106,20 +106,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildHeroSection() {
     return RevealAnimation(
       duration: const Duration(milliseconds: 650),
-      child: MouseGlowTracker(
-        glowColor: ArgusTokens.accent,
-        radius: 480,
-        opacity: 0.15,
-        child: Container(
-          padding: const EdgeInsets.all(ArgusTokens.space32),
-          decoration: BoxDecoration(
-            color: ArgusTokens.bgRaised,
-            borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
-            border: Border.all(color: ArgusTokens.borderSubtle),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: RainbowMovingBorder(
+        borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+        borderWidth: 1.5,
+        baseBorderColor: ArgusTokens.borderStrong,
+        backgroundColor: ArgusTokens.bgRaised,
+        padding: const EdgeInsets.all(ArgusTokens.space32),
+        isLive: true,
+        duration: const Duration(seconds: 5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
               // Pill
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -209,8 +206,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildScenariosSection() {

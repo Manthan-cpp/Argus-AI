@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../data/repository_provider.dart';
 
@@ -95,13 +96,13 @@ class _EscalationScreenState extends ConsumerState<EscalationScreen> {
 
               // Telegram Integration Card
               RevealAnimation(
-                child: Container(
+                child: RainbowMovingBorder(
                   padding: const EdgeInsets.all(ArgusTokens.space20),
-                  decoration: BoxDecoration(
-                    color: ArgusTokens.bgRaised,
-                    borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
-                    border: Border.all(color: ArgusTokens.borderSubtle),
-                  ),
+                  borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                  borderWidth: 1.4,
+                  baseBorderColor: Colors.white,
+                  backgroundColor: ArgusTokens.bgRaised,
+                  isLive: true,
                   child: Row(
                     children: [
                       Container(

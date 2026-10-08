@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 import '../../data/repository_provider.dart';
 
 class DetectorLabScreen extends ConsumerStatefulWidget {
@@ -76,12 +77,12 @@ class _DetectorLabScreenState extends ConsumerState<DetectorLabScreen> {
               const SizedBox(height: 28),
 
               // Benchmark Clips Table
-              Container(
-                decoration: BoxDecoration(
-                  color: ArgusTokens.bgRaised,
-                  borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
-                  border: Border.all(color: ArgusTokens.borderSubtle),
-                ),
+              RainbowMovingBorder(
+                borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                borderWidth: 1.4,
+                baseBorderColor: Colors.white,
+                backgroundColor: ArgusTokens.bgRaised,
+                isLive: true,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

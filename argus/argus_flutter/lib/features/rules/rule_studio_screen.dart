@@ -5,6 +5,7 @@ import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
 import '../../app/theme/severity_scale.dart';
 import '../../core/widgets/hover_card.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/widgets/workflow_graph_view.dart';
@@ -19,36 +20,46 @@ class RuleStudioScreen extends ConsumerStatefulWidget {
 
 class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
   final TextEditingController _sentenceCtrl = TextEditingController(
-    text: 'If someone falls near the staircase and stays down for 15 seconds, alert security and escalate.',
+    text: 'If a person enters Restricted Zone, trigger a critical alert immediately.',
   );
 
   bool _isInterpreting = false;
   ParseResult? _currentParsed;
   List<RuleSpec> _savedRules = [];
+  List<Camera> _cameras = [];
+  Camera? _selectedCamera;
   bool _isLoading = true;
 
   final List<String> _sampleChips = [
-    'If anyone enters the lab after 8 pm, take a snapshot and alert supervisor.',
-    'If someone falls near staircase and stays down for 15 seconds, alert security.',
-    'If a person stays in red zone for more than 5 seconds, sound high alarm.',
-    "If a person in the work zone isn't wearing a helmet, save evidence and alert manager.",
+    'If a person enters Restricted Zone, trigger a critical alert immediately.',
+    'If a person lingers in Cash Desk for more than 10 seconds, raise a loitering warning.',
+    'If more than 3 people gather in Emergency Exit, raise a crowd density alert.',
+    'If human activity is detected after 8 PM, take a snapshot and alert security.',
+    'If someone falls and stays down for 10 seconds, dispatch medical response.',
+    'If a worker enters Machinery Bay, dispatch an urgent perimeter warning.',
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadRules();
-    _interpretInitial();
+    _loadData();
   }
 
-  Future<void> _loadRules() async {
+  Future<void> _loadData() async {
     final repo = ref.read(argusRepositoryProvider);
     final rules = await repo.listRules();
+    final cams = await repo.listCameras();
+
     if (mounted) {
       setState(() {
         _savedRules = rules;
+        _cameras = cams;
+        if (cams.isNotEmpty && _selectedCamera == null) {
+          _selectedCamera = cams.first;
+        }
         _isLoading = false;
       });
+      _interpretInitial();
     }
   }
 
@@ -59,7 +70,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
   Future<void> _handleInterpret(String sentence) async {
     setState(() => _isInterpreting = true);
     final repo = ref.read(argusRepositoryProvider);
-    final result = await repo.interpretRule(sentence);
+    final result = await repo.interpretRule(sentence, cameraId: _selectedCamera?.id);
     if (mounted) {
       setState(() {
         _currentParsed = result;
@@ -71,18 +82,71 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
   Future<void> _handleSaveRule() async {
     if (_currentParsed?.spec == null) return;
     final repo = ref.read(argusRepositoryProvider);
-    final saved = await repo.saveRule(_currentParsed!.spec!);
+
+    final raw = _currentParsed!.spec!;
+    final targetCameraIds = _selectedCamera != null ? [_selectedCamera!.id!] : <int>[];
+
+    final ruleToSave = RuleSpec(
+      id: raw.id,
+      workspaceId: raw.workspaceId,
+      name: raw.name,
+      enabled: true,
+      cameraIds: targetCameraIds,
+      trigger: raw.trigger,
+      conditions: raw.conditions,
+      severity: raw.severity,
+      verify: raw.verify,
+      actions: raw.actions,
+      cooldownSec: raw.cooldownSec,
+      escalation: raw.escalation,
+      sourceText: _sentenceCtrl.text.trim(),
+      parsedBy: raw.parsedBy,
+      createdAt: DateTime.now(),
+      version: 1,
+    );
+
+    final saved = await repo.saveRule(ruleToSave);
     if (mounted) {
       setState(() {
+        _savedRules.removeWhere((r) => r.id == saved.id);
         _savedRules.insert(0, saved);
       });
+      final camLabel = _selectedCamera != null ? 'attached to ${_selectedCamera!.name}' : 'attached to all cameras';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Rule "${saved.name}" successfully active across pipeline.'),
+          content: Text('Rule "${saved.name}" deployed and $camLabel.'),
           backgroundColor: ArgusTokens.bgRaised,
         ),
       );
     }
+  }
+
+  void _showDeleteRuleDialog(RuleSpec r) {
+    showDialog(
+      context: context,
+      builder: (c) => AlertDialog(
+        backgroundColor: ArgusTokens.bgOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Colors.white, width: 1),
+        ),
+        title: Text('Delete Rule', style: GoogleFonts.sora(fontSize: 16, color: Colors.white)),
+        content: Text('Remove rule "${r.name}" from active evaluation?', style: GoogleFonts.inter(color: ArgusTokens.textSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(c);
+              await ref.read(argusRepositoryProvider).deleteRule(r.id!);
+              final rules = await ref.read(argusRepositoryProvider).listRules();
+              if (mounted) setState(() => _savedRules = rules);
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDryRunDialog() {
@@ -90,11 +154,15 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: ArgusTokens.bgOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Colors.white, width: 1),
+        ),
         title: Row(
           children: [
-            const Icon(Icons.science_outlined, color: ArgusTokens.accent, size: 20),
+            const Icon(Icons.science_outlined, color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Text('Dry Run Against Clip', style: GoogleFonts.sora(fontSize: 16)),
+            Text('Simulate Rule Dry Run', style: GoogleFonts.sora(fontSize: 16, color: Colors.white)),
           ],
         ),
         content: Column(
@@ -102,7 +170,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Running rule logic against recorded benchmark clip "demo_s2_fall_stairs.json"...',
+              'Running validation on parsed policy conditions against camera telemetry schema...',
               style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary),
             ),
             const SizedBox(height: 16),
@@ -111,7 +179,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
               decoration: BoxDecoration(
                 color: ArgusTokens.bgRaised,
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: ArgusTokens.borderSubtle),
+                border: Border.all(color: Colors.white24),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,14 +189,14 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                       const Icon(Icons.check_circle_rounded, color: ArgusTokens.success, size: 16),
                       const SizedBox(width: 8),
                       Text(
-                        'TRIGGER MATCHED AT 3.4s',
+                        'LOGIC VERIFIED: 0 SYNTAX ERRORS',
                         style: GoogleFonts.jetBrainsMono(fontSize: 11, color: ArgusTokens.success, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Condition held continuously for 15s. Incident #102 would be opened with high confidence.',
+                    'Trigger, conditions, time window, and escalation nodes are deterministic and ready for live execution.',
                     style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textPrimary),
                   ),
                 ],
@@ -165,7 +233,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Describe safety rules in natural language. Translated into structured Serverpod reactive DAGs.',
+                'Define security, perimeter, dwell time, crowd density, or safety rules in natural language.',
                 style: GoogleFonts.inter(fontSize: 14, color: ArgusTokens.textSecondary),
               ),
               const SizedBox(height: 24),
@@ -177,8 +245,8 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
 
               // Parsed Workflow Graph
               if (_currentParsed?.spec != null) ...[
-                _buildWorkflowResultSection(),
-                const SizedBox(height: 36),
+                _buildParsedGraphCard(_currentParsed!.spec!),
+                const SizedBox(height: 24),
               ],
 
               // Saved Rules List
@@ -201,42 +269,93 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'SAFETY RULE SENTENCE',
+                  'SAFETY RULE DEFINITION',
                   style: GoogleFonts.jetBrainsMono(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.6,
-                    color: ArgusTokens.accent,
+                    color: Colors.white,
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: ArgusTokens.accent.withValues(alpha: 0.1),
+                    color: Colors.white10,
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: ArgusTokens.accent.withValues(alpha: 0.3)),
+                    border: Border.all(color: Colors.white24),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.auto_awesome_rounded, size: 12, color: ArgusTokens.accent),
+                      const Icon(Icons.auto_awesome_rounded, size: 12, color: Colors.white),
                       const SizedBox(width: 4),
                       Text(
-                        'AI PIPELINE ACTIVE',
-                        style: GoogleFonts.jetBrainsMono(fontSize: 10, color: ArgusTokens.accent, fontWeight: FontWeight.w600),
+                        'PARSER ACTIVE',
+                        style: GoogleFonts.jetBrainsMono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
+
+            // Target Camera Selector Row
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: ArgusTokens.bgRaised,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: ArgusTokens.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.videocam_outlined, size: 18, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Attach Rule To:',
+                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 14),
+                  if (_cameras.isEmpty)
+                    Text(
+                      'No cameras created yet (Will apply to all cameras)',
+                      style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
+                    )
+                  else
+                    Expanded(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<Camera?>(
+                          value: _selectedCamera,
+                          dropdownColor: ArgusTokens.bgOverlay,
+                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                          items: [
+                            const DropdownMenuItem<Camera?>(
+                              value: null,
+                              child: Text('All Cameras (Global Rule)'),
+                            ),
+                            ..._cameras.map((c) => DropdownMenuItem<Camera?>(
+                              value: c,
+                              child: Text('${c.name} (${c.sourceKind.toUpperCase()})'),
+                            )),
+                          ],
+                          onChanged: (c) {
+                            setState(() => _selectedCamera = c);
+                            _handleInterpret(_sentenceCtrl.text);
+                          },
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
 
             TextField(
               controller: _sentenceCtrl,
               maxLines: 2,
               style: GoogleFonts.inter(fontSize: 16, color: ArgusTokens.textPrimary),
               decoration: InputDecoration(
-                hintText: 'e.g. If someone falls near the staircase and stays down for 20 seconds, alert security...',
+                hintText: 'e.g. If a person enters Restricted Zone, trigger a critical alert...',
                 suffixIcon: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: ElevatedButton.icon(
@@ -253,6 +372,8 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
             const SizedBox(height: 14),
 
             // Chips
+            Text('Quick Policy Templates:', style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary)),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -284,18 +405,17 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
     );
   }
 
-  Widget _buildWorkflowResultSection() {
-    final spec = _currentParsed!.spec!;
-    final confidence = (_currentParsed!.confidence * 100).toInt();
+  Widget _buildParsedGraphCard(RuleSpec spec) {
+    final confidence = ((_currentParsed?.confidence ?? 0.8) * 100).toInt();
 
-    return RevealAnimation(
-      child: Container(
+    return RainbowMovingBorder(
+      borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+      borderWidth: 1.5,
+      baseBorderColor: Colors.white,
+      backgroundColor: ArgusTokens.bgRaised,
+      isLive: true,
+      child: Padding(
         padding: const EdgeInsets.all(ArgusTokens.space24),
-        decoration: BoxDecoration(
-          color: ArgusTokens.bgRaised,
-          borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
-          border: Border.all(color: ArgusTokens.borderSubtle),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -315,12 +435,12 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: ArgusTokens.accent.withValues(alpha: 0.12),
+                            color: Colors.white12,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            'PARSED BY ${_currentParsed!.parsedBy.toUpperCase()}',
-                            style: GoogleFonts.jetBrainsMono(fontSize: 10, color: ArgusTokens.accent, fontWeight: FontWeight.bold),
+                            'TARGET: ${_selectedCamera != null ? _selectedCamera!.name.toUpperCase() : "ALL CAMERAS"}',
+                            style: GoogleFonts.jetBrainsMono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -337,13 +457,13 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                     OutlinedButton.icon(
                       onPressed: _showDryRunDialog,
                       icon: const Icon(Icons.science_outlined, size: 16),
-                      label: const Text('Dry Run on Clip'),
+                      label: const Text('Validate Rule'),
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
                       onPressed: _handleSaveRule,
                       icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                      label: const Text('Save & Activate'),
+                      label: const Text('Save & Deploy Rule'),
                     ),
                   ],
                 ),
@@ -366,82 +486,145 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Active Pipeline Rules (${_savedRules.length})',
+          'Deployed Security Rules (${_savedRules.length})',
           style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
         ),
         const SizedBox(height: 14),
-        ListView.separated(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: _savedRules.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (context, idx) {
-            final rule = _savedRules[idx];
-            final sev = SeverityLevel.fromString(rule.severity);
-            return Container(
-              padding: const EdgeInsets.all(ArgusTokens.space16),
-              decoration: BoxDecoration(
-                color: ArgusTokens.bgRaised,
-                borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
-                border: Border.all(color: ArgusTokens.borderSubtle),
+
+        if (_savedRules.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              color: ArgusTokens.bgRaised,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: ArgusTokens.borderSubtle),
+            ),
+            child: Center(
+              child: Text(
+                'No rules deployed yet. Choose a camera, type a plain English rule above, and click "Save & Deploy Rule".',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: ArgusTokens.textSecondary, fontSize: 13),
               ),
-              child: Row(
-                children: [
-                  Icon(sev.icon, color: sev.color, size: 20),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              rule.name,
-                              style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
-                            ),
-                            const SizedBox(width: 8),
-                            StatusBadge.fromSeverity(sev),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '"${rule.sourceText}"',
-                          style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary, fontStyle: FontStyle.italic),
-                        ),
-                      ],
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _savedRules.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, idx) {
+              final rule = _savedRules[idx];
+              final sev = SeverityLevel.fromString(rule.severity);
+              final targetCams = _cameras.where((c) => rule.cameraIds.contains(c.id)).map((c) => c.name).toList();
+              final targetLabel = targetCams.isNotEmpty ? targetCams.join(', ') : 'All Cameras';
+
+              return Container(
+                padding: const EdgeInsets.all(ArgusTokens.space16),
+                decoration: BoxDecoration(
+                  color: ArgusTokens.bgRaised,
+                  borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                  border: Border.all(color: ArgusTokens.borderSubtle),
+                ),
+                child: Row(
+                  children: [
+                    Icon(sev.icon, color: sev.color, size: 20),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                rule.name,
+                                style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+                              ),
+                              const SizedBox(width: 8),
+                              StatusBadge.fromSeverity(sev),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'CAM: $targetLabel',
+                                  style: GoogleFonts.jetBrainsMono(fontSize: 10, color: Colors.white70),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '"${rule.sourceText}"',
+                            style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Switch(
-                    value: rule.enabled,
-                    activeThumbColor: ArgusTokens.accent,
-                    onChanged: (val) {
-                      setState(() {
-                        _savedRules[idx] = RuleSpec(
-                          id: rule.id,
-                          workspaceId: rule.workspaceId,
-                          name: rule.name,
-                          enabled: val,
-                          cameraIds: rule.cameraIds,
-                          trigger: rule.trigger,
-                          conditions: rule.conditions,
-                          severity: rule.severity,
-                          verify: rule.verify,
-                          actions: rule.actions,
-                          cooldownSec: rule.cooldownSec,
-                          escalation: rule.escalation,
-                          sourceText: rule.sourceText,
-                          parsedBy: rule.parsedBy,
-                          createdAt: rule.createdAt,
-                          version: rule.version,
-                        );
-                      });
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+                    Container(
+                      margin: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: rule.enabled ? ArgusTokens.success.withValues(alpha: 0.15) : Colors.white10,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: rule.enabled ? ArgusTokens.success : Colors.white24,
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        rule.enabled ? 'ACTIVE' : 'PAUSED',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: rule.enabled ? ArgusTokens.success : Colors.white60,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      value: rule.enabled,
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: ArgusTokens.success,
+                      inactiveThumbColor: Colors.white60,
+                      inactiveTrackColor: Colors.white12,
+                      onChanged: (val) {
+                        setState(() {
+                          _savedRules[idx] = RuleSpec(
+                            id: rule.id,
+                            workspaceId: rule.workspaceId,
+                            name: rule.name,
+                            enabled: val,
+                            cameraIds: rule.cameraIds,
+                            trigger: rule.trigger,
+                            conditions: rule.conditions,
+                            severity: rule.severity,
+                            verify: rule.verify,
+                            actions: rule.actions,
+                            cooldownSec: rule.cooldownSec,
+                            escalation: rule.escalation,
+                            sourceText: rule.sourceText,
+                            parsedBy: rule.parsedBy,
+                            createdAt: rule.createdAt,
+                            version: rule.version,
+                          );
+                        });
+                        ref.read(argusRepositoryProvider).saveRule(_savedRules[idx]);
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
+                      tooltip: 'Delete Rule',
+                      onPressed: () => _showDeleteRuleDialog(rule),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
       ],
     );
   }

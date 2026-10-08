@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/tokens.dart';
+import '../../core/widgets/rainbow_moving_border.dart';
 
 class CommandPalette extends StatefulWidget {
   const CommandPalette({super.key});
@@ -91,26 +92,15 @@ class _CommandPaletteState extends State<CommandPalette> {
         child: Container(
           width: 580,
           margin: const EdgeInsets.all(ArgusTokens.space24),
-          decoration: BoxDecoration(
-            color: ArgusTokens.bgOverlay,
+          child: RainbowMovingBorder(
             borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
-            border: Border.all(color: ArgusTokens.borderStrong, width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
-                blurRadius: 32,
-                spreadRadius: 8,
-              ),
-              BoxShadow(
-                color: ArgusTokens.accent.withValues(alpha: 0.15),
-                blurRadius: 24,
-                spreadRadius: 0,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+            borderWidth: 1.5,
+            baseBorderColor: Colors.white,
+            backgroundColor: ArgusTokens.bgOverlay,
+            isLive: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               // Search Header
               Padding(
                 padding: const EdgeInsets.all(ArgusTokens.space16),
@@ -229,8 +219,9 @@ class _CommandPaletteState extends State<CommandPalette> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _CommandItem {
