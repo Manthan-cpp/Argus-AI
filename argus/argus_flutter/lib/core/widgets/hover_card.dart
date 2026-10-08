@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/theme/tokens.dart';
-import 'mouse_glow_tracker.dart';
+import 'rainbow_moving_border.dart';
 
 /// Elevated interactive card with smooth hover lift, border glow,
 /// and integrated mouse-tracking spotlight.
@@ -35,49 +35,26 @@ class _HoverCardState extends State<HoverCard> {
 
   @override
   Widget build(BuildContext context) {
-    final border = Border.all(
-      color: _isHovered
-          ? (widget.hoverBorderColor ?? ArgusTokens.accent.withValues(alpha: 0.6))
-          : (widget.borderColor ?? ArgusTokens.borderSubtle),
-      width: _isHovered ? 1.2 : 1.0,
-    );
-
-    final cardContent = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      transform: Matrix4.translationValues(0, _isHovered ? -3 : 0, 0),
-      padding: widget.padding,
-      decoration: BoxDecoration(
-        color: widget.backgroundColor ?? ArgusTokens.bgRaised,
-        borderRadius: BorderRadius.circular(widget.borderRadius),
-        border: border,
-        boxShadow: _isHovered
-            ? [
-                BoxShadow(
-                  color: ArgusTokens.accent.withValues(alpha: 0.08),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                )
-              ]
-            : const [],
-      ),
-      child: widget.child,
-    );
-
-    final inner = widget.enableGlow
-        ? MouseGlowTracker(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            child: cardContent,
-          )
-        : cardContent;
-
     return MouseRegion(
       cursor: widget.onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
-        child: inner,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
+          child: RainbowMovingBorder(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            backgroundColor: widget.backgroundColor ?? ArgusTokens.bgRaised,
+            baseBorderColor: _isHovered ? Colors.white : (widget.borderColor ?? ArgusTokens.borderSubtle),
+            borderWidth: _isHovered ? 1.2 : 1.0,
+            isLive: widget.enableGlow && _isHovered,
+            padding: widget.padding,
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }

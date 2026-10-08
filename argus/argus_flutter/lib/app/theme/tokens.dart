@@ -3,22 +3,37 @@ import 'package:flutter/material.dart';
 /// Design tokens for Argus Control Room theme.
 /// Normative specifications from plan.md § 9.3.
 class ArgusTokens {
-  // Dark Palette (Default)
-  static const Color bgBase = Color(0xFF0B0E13);
-  static const Color bgRaised = Color(0xFF11161E);
-  static const Color bgOverlay = Color(0xFF171D27);
-  static const Color borderSubtle = Color(0xFF212A37);
-  static const Color borderStrong = Color(0xFF2E3A4B);
+  // Strict Monochrome Palette (Pitch Black & Pure White)
+  static const Color bgBase = Color(0xFF000000);
+  static const Color bgRaised = Color(0xFF0A0A0A);
+  static const Color bgOverlay = Color(0xFF141414);
+  static const Color borderSubtle = Color(0x33FFFFFF); // 20% white
+  static const Color borderStrong = Color(0x80FFFFFF); // 50% white
+  static const Color borderWhite = Color(0xFFFFFFFF);  // 100% crisp pure white
 
-  static const Color textPrimary = Color(0xFFE8EDF5);
-  static const Color textSecondary = Color(0xFFA1AEC2);
-  static const Color textTertiary = Color(0xFF6A778B);
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFA3A3A3);
+  static const Color textTertiary = Color(0xFF737373);
 
-  // Accents
-  static const Color accent = Color(0xFF38BDF8); // Electric Sky / Cyan
-  static const Color accentInk = Color(0xFF031A26);
-  static const Color accentGlow = Color(0x3338BDF8);
-  static const Color focusRing = Color(0xFF38BDF8);
+  // Accents (Monochrome High-Contrast)
+  static const Color accent = Color(0xFFFFFFFF);
+  static const Color accentInk = Color(0xFF000000);
+  static const Color accentGlow = Color(0x33FFFFFF);
+  static const Color focusRing = Color(0xFFFFFFFF);
+
+  // Ethereal Thin Rainbow Spectral Beam (For live moving borders)
+  static const List<Color> rainbowSpectrum = [
+    Color(0x00FFFFFF),
+    Color(0xAA38BDF8), // Light Cyan
+    Color(0xAA818CF8), // Light Indigo
+    Color(0xAAC084FC), // Light Violet
+    Color(0xAAF472B6), // Light Pink
+    Color(0xAAFB923C), // Light Orange
+    Color(0xAAFACC15), // Light Amber
+    Color(0xAA4ADE80), // Light Emerald
+    Color(0xAA2DD4BF), // Light Teal
+    Color(0x00FFFFFF),
+  ];
 
   // States
   static const Color success = Color(0xFF34D399); // Emerald

@@ -101,13 +101,8 @@ class _WorkflowGraphViewState extends State<WorkflowGraphView>
       width: 38,
       height: 2,
       margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            ArgusTokens.accent.withValues(alpha: 0.5),
-            ArgusTokens.accent.withValues(alpha: 0.2),
-          ],
-        ),
+      decoration: const BoxDecoration(
+        color: ArgusTokens.borderStrong,
       ),
     );
   }

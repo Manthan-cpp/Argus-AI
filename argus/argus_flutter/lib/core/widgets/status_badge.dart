@@ -85,6 +85,30 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
+  factory StatusBadge.videoFile() {
+    return const StatusBadge(
+      label: 'VIDEO FILE',
+      icon: Icons.movie_outlined,
+      color: Color(0xFF38BDF8),
+    );
+  }
+
+  factory StatusBadge.custom({
+    required String label,
+    IconData? icon,
+    required Color color,
+    bool isGlowing = false,
+    bool outlined = false,
+  }) {
+    return StatusBadge(
+      label: label,
+      icon: icon,
+      color: color,
+      isGlowing: isGlowing,
+      outlined: outlined,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
