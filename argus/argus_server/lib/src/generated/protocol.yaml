@@ -33,6 +33,8 @@ incident:
   - acknowledge:
   - resolve:
   - markFalsePositive:
+  - delete:
+  - deleteAll:
 rule:
   - list:
   - save:

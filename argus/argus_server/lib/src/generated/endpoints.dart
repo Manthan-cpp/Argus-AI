@@ -664,6 +664,35 @@ class Endpoints extends _is.EndpointDispatch {
                     note: params['note'],
                   ),
         ),
+        'delete': _is.MethodConnector(
+          name: 'delete',
+          params: {
+            'id': _is.ParameterDescription(
+              name: 'id',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['incident'] as _idvfe0v9.IncidentEndpoint).delete(
+                    session,
+                    params['id'],
+                  ),
+        ),
+        'deleteAll': _is.MethodConnector(
+          name: 'deleteAll',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['incident'] as _idvfe0v9.IncidentEndpoint)
+                  .deleteAll(session),
+        ),
         'watch': _is.MethodStreamConnector(
           name: 'watch',
           params: {
