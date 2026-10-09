@@ -59,7 +59,7 @@ class SignalEndpoint extends Endpoint {
           for (final p in persons) {
             final matchesZone = (targetZoneId == null || targetZoneId == 0)
                 ? p.zoneIds.isNotEmpty
-                : (p.zoneIds.contains(targetZoneId) || p.zoneIds.isNotEmpty);
+                : p.zoneIds.contains(targetZoneId);
             if (matchesZone) {
               conditionMet = true;
               triggerPerson = p;
@@ -73,8 +73,12 @@ class SignalEndpoint extends Endpoint {
           break;
 
         case 'fall_suspected':
+          final targetZoneId = rule.trigger.zoneId;
           final requiredFallMs = rule.trigger.minDurationSec * 1000;
           for (final p in persons) {
+            if (targetZoneId != null && targetZoneId > 0 && !p.zoneIds.contains(targetZoneId)) {
+              continue;
+            }
             if (p.fallScore >= 0.6) {
               if (requiredFallMs > 0) {
                 if (p.motionlessMs >= requiredFallMs) {
@@ -94,8 +98,12 @@ class SignalEndpoint extends Endpoint {
           break;
 
         case 'motionless':
+          final targetZoneId = rule.trigger.zoneId;
           final requiredMs = rule.trigger.minDurationSec * 1000;
           for (final p in persons) {
+            if (targetZoneId != null && targetZoneId > 0 && !p.zoneIds.contains(targetZoneId)) {
+              continue;
+            }
             if (p.motionlessMs >= requiredMs) {
               conditionMet = true;
               triggerPerson = p;
@@ -106,10 +114,17 @@ class SignalEndpoint extends Endpoint {
           break;
 
         case 'person_count':
+          final targetZoneId = rule.trigger.zoneId;
           final minCount = rule.trigger.minCount ?? 1;
-          if (persons.length >= minCount) {
+          final matchingPersons = (targetZoneId != null && targetZoneId > 0)
+              ? persons.where((p) => p.zoneIds.contains(targetZoneId)).toList()
+              : persons;
+          if (matchingPersons.length >= minCount) {
             conditionMet = true;
-            triggerDetail = 'Crowd surge: ${persons.length} persons detected (threshold: $minCount)';
+            final zoneLabel = (targetZoneId != null && targetZoneId > 0)
+                ? 'in Zone #$targetZoneId'
+                : 'in camera view';
+            triggerDetail = 'Crowd surge: ${matchingPersons.length} persons detected $zoneLabel (threshold: $minCount)';
           }
           break;
       }
