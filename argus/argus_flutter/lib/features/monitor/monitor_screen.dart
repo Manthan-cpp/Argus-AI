@@ -484,204 +484,226 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
   }
 
   Widget _buildVideoControlsHeader() {
-    return Row(
-      children: [
-        // Camera Switcher
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: ArgusTokens.bgRaised,
-            borderRadius: BorderRadius.circular(ArgusTokens.radiusSm),
-            border: Border.all(color: ArgusTokens.borderSubtle),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<Camera>(
-              value: _selectedCamera,
-              dropdownColor: ArgusTokens.bgOverlay,
-              style: GoogleFonts.inter(color: ArgusTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
-              icon: const Icon(Icons.arrow_drop_down, color: ArgusTokens.accent),
-              items: _cameras.map((c) {
-                return DropdownMenuItem<Camera>(
-                  value: c,
-                  child: Row(
-                    children: [
-                      Icon(
-                        c.sourceKind == 'file' ? Icons.movie_outlined : Icons.videocam_rounded,
-                        size: 16,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(c.name),
-                    ],
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final availableW = constraints.maxWidth;
+        final showPerformance = availableW > 820;
+        final showFullChip = availableW > 920;
+        final dropdownMaxW = availableW < 850 ? 190.0 : 230.0;
+
+        return Row(
+          children: [
+            // Camera Switcher
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: dropdownMaxW),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ArgusTokens.bgRaised,
+                  borderRadius: BorderRadius.circular(ArgusTokens.radiusSm),
+                  border: Border.all(color: ArgusTokens.borderSubtle),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<Camera>(
+                    value: _selectedCamera,
+                    isExpanded: true,
+                    dropdownColor: ArgusTokens.bgOverlay,
+                    style: GoogleFonts.inter(color: ArgusTokens.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                    icon: const Icon(Icons.arrow_drop_down, color: ArgusTokens.accent),
+                    items: _cameras.map((c) {
+                      return DropdownMenuItem<Camera>(
+                        value: c,
+                        child: Row(
+                          children: [
+                            Icon(
+                              c.sourceKind == 'file' ? Icons.movie_outlined : Icons.videocam_rounded,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                c.name,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (newCam) async {
+                      if (newCam != null) {
+                        setState(() => _selectedCamera = newCam);
+                        final z = await ref.read(argusRepositoryProvider).listZones(newCam.id!);
+                        if (mounted) {
+                          setState(() => _zones = z);
+                          _syncZonesToVision();
+                        }
+                        await _startCurrentCameraFeed();
+                      }
+                    },
                   ),
-                );
-              }).toList(),
-              onChanged: (newCam) async {
-                if (newCam != null) {
-                  setState(() => _selectedCamera = newCam);
-                  final z = await ref.read(argusRepositoryProvider).listZones(newCam.id!);
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Status Badge
+            if (_selectedCamera != null)
+              _selectedCamera!.sourceKind == 'file'
+                  ? StatusBadge.videoFile()
+                  : StatusBadge.live(),
+
+            const SizedBox(width: 8),
+
+            if (_selectedCamera?.sourceKind == 'file') ...[
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white30),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                ),
+                icon: const Icon(Icons.replay_rounded, size: 15),
+                label: const Text('Replay', style: TextStyle(fontSize: 12)),
+                onPressed: () async {
+                  await _startCurrentCameraFeed();
+                },
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.white30),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                ),
+                icon: const Icon(Icons.file_upload_outlined, size: 15),
+                label: const Text('Change MP4', style: TextStyle(fontSize: 12)),
+                onPressed: _pickVideoFileForCurrentCamera,
+              ),
+              const SizedBox(width: 6),
+            ],
+
+            // Play / Stop Action Button
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ref.watch(visionControllerProvider).isRunning
+                    ? Colors.redAccent.withValues(alpha: 0.15)
+                    : Colors.white,
+                foregroundColor: ref.watch(visionControllerProvider).isRunning
+                    ? Colors.redAccent
+                    : Colors.black,
+                side: BorderSide(
+                  color: ref.watch(visionControllerProvider).isRunning
+                      ? Colors.redAccent
+                      : Colors.white,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              icon: Icon(
+                ref.watch(visionControllerProvider).isRunning
+                    ? Icons.stop_rounded
+                    : (_selectedCamera?.sourceKind == 'file' ? Icons.play_arrow_rounded : Icons.videocam_rounded),
+                size: 16,
+              ),
+              label: Text(
+                ref.watch(visionControllerProvider).isRunning
+                    ? 'STOP FEED'
+                    : (_selectedCamera?.sourceKind == 'file' ? 'PLAY VIDEO' : 'START WEBCAM'),
+                style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+              onPressed: () async {
+                final vision = ref.read(visionControllerProvider);
+                if (vision.isRunning) {
+                  await vision.stop();
                   if (mounted) {
-                    setState(() => _zones = z);
-                    _syncZonesToVision();
+                    setState(() {
+                      _personCount = 0;
+                      _fallScore = 0.0;
+                      _motionlessMs = 0;
+                      _inRestrictedZone = false;
+                    });
                   }
+                } else {
                   await _startCurrentCameraFeed();
                 }
               },
             ),
-          ),
-        ),
-        const SizedBox(width: 12),
 
-        // Status Badge
-        if (_selectedCamera != null)
-          _selectedCamera!.sourceKind == 'file'
-              ? StatusBadge.videoFile()
-              : StatusBadge.live(),
-
-        const SizedBox(width: 12),
-
-        if (_selectedCamera?.sourceKind == 'file') ...[
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.white30),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            icon: const Icon(Icons.replay_rounded, size: 16),
-            label: const Text('Replay', style: TextStyle(fontSize: 12)),
-            onPressed: () async {
-              await _startCurrentCameraFeed();
-            },
-          ),
-          const SizedBox(width: 8),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.white30),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            ),
-            icon: const Icon(Icons.file_upload_outlined, size: 16),
-            label: const Text('Change MP4', style: TextStyle(fontSize: 12)),
-            onPressed: _pickVideoFileForCurrentCamera,
-          ),
-          const SizedBox(width: 8),
-        ],
-
-        // Play / Stop Action Button
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: ref.watch(visionControllerProvider).isRunning
-                ? Colors.redAccent.withValues(alpha: 0.15)
-                : Colors.white,
-            foregroundColor: ref.watch(visionControllerProvider).isRunning
-                ? Colors.redAccent
-                : Colors.black,
-            side: BorderSide(
-              color: ref.watch(visionControllerProvider).isRunning
-                  ? Colors.redAccent
-                  : Colors.white,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          ),
-          icon: Icon(
-            ref.watch(visionControllerProvider).isRunning
-                ? Icons.stop_rounded
-                : (_selectedCamera?.sourceKind == 'file' ? Icons.play_arrow_rounded : Icons.videocam_rounded),
-            size: 16,
-          ),
-          label: Text(
-            ref.watch(visionControllerProvider).isRunning
-                ? 'STOP FEED'
-                : (_selectedCamera?.sourceKind == 'file' ? 'PLAY VIDEO' : 'START WEBCAM'),
-            style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w700),
-          ),
-          onPressed: () async {
-            final vision = ref.read(visionControllerProvider);
-            if (vision.isRunning) {
-              await vision.stop();
-              if (mounted) {
-                setState(() {
-                  _personCount = 0;
-                  _fallScore = 0.0;
-                  _motionlessMs = 0;
-                  _inRestrictedZone = false;
-                });
-              }
-            } else {
-              await _startCurrentCameraFeed();
-            }
-          },
-        ),
-
-        // Snapshot Button
-        IconButton(
-          icon: const Icon(Icons.camera_alt_outlined),
-          color: ArgusTokens.textPrimary,
-          tooltip: 'Capture Privacy-Blurred Snapshot',
-          onPressed: () async {
-            final vision = ref.read(visionControllerProvider);
-            final img = await vision.captureSnapshot(blurHead: true);
-            if (!mounted || img == null) return;
-            showDialog(
-              context: context,
-                builder: (c) => AlertDialog(
-                  backgroundColor: ArgusTokens.bgOverlay,
-                  title: Row(
-                    children: [
-                      const Icon(Icons.shield_rounded, color: ArgusTokens.accent, size: 20),
-                      const SizedBox(width: 8),
-                      Text('On-Device Privacy Snapshot', style: GoogleFonts.sora(fontSize: 16, color: Colors.white)),
-                    ],
-                  ),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(img, width: 380, fit: BoxFit.contain),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Human heads & faces are anonymized on-device prior to network transmission.',
-                        style: TextStyle(color: ArgusTokens.textSecondary, fontSize: 12),
+            // Snapshot Button
+            IconButton(
+              icon: const Icon(Icons.camera_alt_outlined, size: 20),
+              color: ArgusTokens.textPrimary,
+              tooltip: 'Capture Privacy-Blurred Snapshot',
+              onPressed: () async {
+                final vision = ref.read(visionControllerProvider);
+                final img = await vision.captureSnapshot(blurHead: true);
+                if (!ctx.mounted || img == null) return;
+                showDialog(
+                  context: ctx,
+                  builder: (c) => AlertDialog(
+                    backgroundColor: ArgusTokens.bgOverlay,
+                    title: Row(
+                      children: [
+                        const Icon(Icons.shield_rounded, color: ArgusTokens.accent, size: 20),
+                        const SizedBox(width: 8),
+                        Text('On-Device Privacy Snapshot', style: GoogleFonts.sora(fontSize: 16, color: Colors.white)),
+                      ],
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(img, width: 380, fit: BoxFit.contain),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Human heads & faces are anonymized on-device prior to network transmission.',
+                          style: TextStyle(color: ArgusTokens.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(c),
+                        child: const Text('Close', style: TextStyle(color: ArgusTokens.accent)),
                       ),
                     ],
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(c),
-                      child: const Text('Close', style: TextStyle(color: ArgusTokens.accent)),
+                );
+              },
+            ),
+
+            if (showPerformance) ...[
+              const Spacer(),
+              // Performance mode chip
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ArgusTokens.bgRaised,
+                  borderRadius: BorderRadius.circular(ArgusTokens.radiusSm),
+                  border: Border.all(color: ArgusTokens.borderSubtle),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const PulsingBeacon(color: ArgusTokens.accent, size: 6),
+                    const SizedBox(width: 6),
+                    Text(
+                      showFullChip
+                          ? (_visionStatus != null
+                              ? '${_visionStatus!.status.toUpperCase()} · ${_visionStatus!.fps.toStringAsFixed(0)} FPS'
+                              : 'WASM 60 FPS · 8.2ms')
+                          : '60 FPS',
+                      style: GoogleFonts.jetBrainsMono(fontSize: 10, color: ArgusTokens.textSecondary),
                     ),
                   ],
                 ),
-              );
-            },
-          ),
-
-        const Spacer(),
-
-        // Performance mode chip
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: ArgusTokens.bgRaised,
-            borderRadius: BorderRadius.circular(ArgusTokens.radiusSm),
-            border: Border.all(color: ArgusTokens.borderSubtle),
-          ),
-          child: Row(
-            children: [
-              const PulsingBeacon(color: ArgusTokens.accent, size: 6),
-              const SizedBox(width: 6),
-              Text(
-                _visionStatus != null
-                    ? '${_visionStatus!.status.toUpperCase()} · ${_visionStatus!.fps.toStringAsFixed(0)} FPS'
-                    : 'WASM 60 FPS · 8.2ms',
-                style: GoogleFonts.jetBrainsMono(fontSize: 10, color: ArgusTokens.textSecondary),
               ),
             ],
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -735,41 +757,6 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                             ? 'Pre-Recorded CCTV Video Feed · MP4 / WebM'
                             : 'Physical Hardware Webcam Stream',
                         style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                            ),
-                            icon: const Icon(Icons.play_arrow_rounded, size: 20),
-                            label: Text(
-                              _selectedCamera?.sourceKind == 'file' ? 'START VIDEO PLAYBACK' : 'START WEBCAM FEED',
-                              style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w700),
-                            ),
-                            onPressed: _startCurrentCameraFeed,
-                          ),
-                          if (_selectedCamera?.sourceKind == 'file') ...[
-                            const SizedBox(width: 12),
-                            OutlinedButton.icon(
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.white70),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              ),
-                              icon: const Icon(Icons.file_upload_outlined, size: 18),
-                              label: Text(
-                                'CHOOSE / CHANGE MP4',
-                                style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                              onPressed: _pickVideoFileForCurrentCamera,
-                            ),
-                          ],
-                        ],
                       ),
                     ],
                   ),
