@@ -554,12 +554,20 @@ class MockArgusRepository implements ArgusRepository {
   // --- RULES ---
   @override
   Future<ParseResult> interpretRule(String sentence, {int? cameraId}) async {
+    // Filter zones to camera if specified
+    final targetZones = (cameraId != null)
+        ? _zones.where((z) => z.cameraId == cameraId).toList()
+        : _zones;
+
     // Convert to pure engine models for parsing
-    final engineZones = _zones.map((z) => engine.Zone(
+    final engineZones = targetZones.map((z) => engine.Zone(
       id: z.id ?? 1,
       cameraId: z.cameraId,
       name: z.name,
-      kind: engine.ZoneKind.values.byName(z.kind),
+      kind: engine.ZoneKind.values.firstWhere(
+        (k) => k.name.toLowerCase() == z.kind.toLowerCase(),
+        orElse: () => engine.ZoneKind.custom,
+      ),
       color: z.color,
       polygon: z.polygon.map((p) => engine.PointN(x: p.x, y: p.y)).toList(),
       createdAt: z.createdAt,
@@ -686,17 +694,38 @@ class MockArgusRepository implements ArgusRepository {
           for (final p in persons) {
             final matches = (targetZoneId == null || targetZoneId == 0)
                 ? p.zoneIds.isNotEmpty
-                : (p.zoneIds.contains(targetZoneId) || p.zoneIds.isNotEmpty);
+                : p.zoneIds.contains(targetZoneId);
             if (matches) {
               met = true;
-              final zoneDesc = (targetZoneId != null && targetZoneId > 0) ? 'Zone #$targetZoneId' : 'Restricted Zone';
+              final zoneObj = (targetZoneId != null && targetZoneId > 0)
+                  ? _zones.where((z) => z.id == targetZoneId).firstOrNull
+                  : null;
+              final zoneDesc = zoneObj != null ? zoneObj.name : ((targetZoneId != null && targetZoneId > 0) ? 'Zone #$targetZoneId' : 'Restricted Zone');
               detail = 'Person (ID ${p.trackId}) in $zoneDesc';
               break;
             }
           }
+        } else if (rule.trigger.signal == 'person_count') {
+          final targetZoneId = rule.trigger.zoneId;
+          final minCount = rule.trigger.minCount ?? 1;
+          final matchingPersons = (targetZoneId != null && targetZoneId > 0)
+              ? persons.where((p) => p.zoneIds.contains(targetZoneId)).toList()
+              : persons;
+          if (matchingPersons.length >= minCount) {
+            met = true;
+            final zoneObj = (targetZoneId != null && targetZoneId > 0)
+                ? _zones.where((z) => z.id == targetZoneId).firstOrNull
+                : null;
+            final zoneDesc = zoneObj != null ? zoneObj.name : 'camera field of view';
+            detail = 'Crowd surge: ${matchingPersons.length} people gathered in $zoneDesc (threshold: $minCount)';
+          }
         } else if (rule.trigger.signal == 'fall_suspected') {
+          final targetZoneId = rule.trigger.zoneId;
           final reqFallMs = rule.trigger.minDurationSec * 1000;
           for (final p in persons) {
+            if (targetZoneId != null && targetZoneId > 0 && !p.zoneIds.contains(targetZoneId)) {
+              continue;
+            }
             if (p.fallScore >= 0.6) {
               if (reqFallMs > 0) {
                 if (p.motionlessMs >= reqFallMs) {
@@ -712,8 +741,12 @@ class MockArgusRepository implements ArgusRepository {
             }
           }
         } else if (rule.trigger.signal == 'motionless') {
+          final targetZoneId = rule.trigger.zoneId;
           final reqMs = rule.trigger.minDurationSec * 1000;
           for (final p in persons) {
+            if (targetZoneId != null && targetZoneId > 0 && !p.zoneIds.contains(targetZoneId)) {
+              continue;
+            }
             if (p.motionlessMs >= reqMs) {
               met = true;
               detail = 'Motionless subject detected for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s';
