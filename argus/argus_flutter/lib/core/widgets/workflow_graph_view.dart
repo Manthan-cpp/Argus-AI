@@ -8,11 +8,13 @@ import 'mouse_glow_tracker.dart';
 class WorkflowGraphView extends StatefulWidget {
   final RuleSpec rule;
   final VoidCallback? onNodeTap;
+  final String? zoneName;
 
   const WorkflowGraphView({
     super.key,
     required this.rule,
     this.onNodeTap,
+    this.zoneName,
   });
 
   @override
@@ -36,7 +38,9 @@ class _WorkflowGraphViewState extends State<WorkflowGraphView>
   void didUpdateWidget(covariant WorkflowGraphView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.rule.id != oldWidget.rule.id ||
-        widget.rule.sourceText != oldWidget.rule.sourceText) {
+        widget.rule.sourceText != oldWidget.rule.sourceText ||
+        widget.zoneName != oldWidget.zoneName ||
+        widget.rule.trigger.zoneId != oldWidget.rule.trigger.zoneId) {
       _animController.reset();
       _animController.forward();
     }
@@ -129,7 +133,9 @@ class _WorkflowGraphViewState extends State<WorkflowGraphView>
       _GraphNodeData(
         step: '03',
         title: 'ZONE',
-        value: r.trigger.zoneId != null ? 'Zone #${r.trigger.zoneId}' : 'Full Frame',
+        value: widget.zoneName != null
+            ? widget.zoneName!
+            : (r.trigger.zoneId != null ? 'Zone #${r.trigger.zoneId}' : 'Full Frame / All Zones'),
         icon: Icons.crop_square_outlined,
         color: ArgusTokens.zoneRestricted,
       ),
