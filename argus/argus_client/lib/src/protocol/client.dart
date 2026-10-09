@@ -335,13 +335,6 @@ class EndpointContact extends _isc.EndpointRef {
     'delete',
     {'id': id},
   );
-
-  _ida.Future<String> createTelegramLinkCode() =>
-      caller.callServerEndpoint<String>(
-        'contact',
-        'createTelegramLinkCode',
-        {},
-      );
 }
 
 /// {@category Endpoint}

@@ -165,11 +165,6 @@ class RemoteArgusRepository implements ArgusRepository {
   }
 
   @override
-  Future<String> createTelegramLinkCode() async {
-    return await client.contact.createTelegramLinkCode();
-  }
-
-  @override
   Future<DetectorLabReport?> getLabReport() async {
     return DetectorLabReport(
       precision: 0.942,

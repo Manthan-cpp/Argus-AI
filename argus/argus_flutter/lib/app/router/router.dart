@@ -9,11 +9,9 @@ import '../../features/zones/zone_editor_screen.dart';
 import '../../features/rules/rule_studio_screen.dart';
 import '../../features/incidents/incidents_screen.dart';
 import '../../features/incidents/incident_detail_screen.dart';
-import '../../features/escalation/escalation_screen.dart';
 import '../../features/lab/detector_lab_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/about/about_screen.dart';
-import '../../features/dev/kitchen_sink_screen.dart';
 import '../../features/rooms/room_directory_screen.dart';
 import '../../features/rooms/dispatch_room_screen.dart';
 
@@ -86,7 +84,7 @@ final GoRouter argusRouter = GoRouter(
         ),
         GoRoute(
           path: '/app/escalation',
-          builder: (context, state) => const EscalationScreen(),
+          redirect: (context, state) => '/app/rooms',
         ),
         GoRoute(
           path: '/app/lab',
@@ -99,10 +97,6 @@ final GoRouter argusRouter = GoRouter(
         GoRoute(
           path: '/about',
           builder: (context, state) => const AboutScreen(),
-        ),
-        GoRoute(
-          path: '/dev/kitchen-sink',
-          builder: (context, state) => const KitchenSinkScreen(),
         ),
       ],
     ),

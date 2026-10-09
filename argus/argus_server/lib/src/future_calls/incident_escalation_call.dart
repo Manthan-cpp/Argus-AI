@@ -1,7 +1,6 @@
 import 'package:serverpod/serverpod.dart';
 import '../generated/protocol.dart';
 import '../endpoints/incident_endpoint.dart';
-import '../services/telegram_service.dart';
 
 class IncidentEscalationCall extends FutureCall<EscalationPayload> {
   Future<void> invoke(Session session, EscalationPayload? payload) async {
@@ -39,12 +38,6 @@ class IncidentEscalationCall extends FutureCall<EscalationPayload> {
       ),
     );
 
-    // Notify contacts via Telegram
-    final contacts = await Contact.db.find(
-      session,
-      where: (t) => t.workspaceId.equals(incident.workspaceId),
-    );
-
     // Fetch Camera for clear human-readable location context
     final camera = await Camera.db.findById(session, incident.cameraId);
     final cameraName = camera?.name ?? 'Camera #${incident.cameraId}';
@@ -58,19 +51,29 @@ class IncidentEscalationCall extends FutureCall<EscalationPayload> {
         .replaceAll(RegExp(r'\s*\(score:\s*[\d.]+[^\)]*\)', caseSensitive: false), '')
         .trim();
 
-    final telegramMsg = '*ARGUS SAFETY ESCALATION*\n\n'
-        '*Location:* $locationHeader\n'
-        '*Severity:* ${incident.severity.toUpperCase()}\n'
-        '*Summary:* $cleanSummary\n\n'
+    final escalationAlertMsg = 'ARGUS SAFETY ESCALATION\n\n'
+        'Location: $locationHeader\n'
+        'Severity: ${incident.severity.toUpperCase()}\n'
+        'Summary: $cleanSummary\n\n'
         'Guards near the $areaName, please look into the matter immediately.';
 
-    for (final contact in contacts) {
-      if (contact.telegramChatId != null && contact.telegramChatId!.isNotEmpty) {
-        await TelegramService.sendMessage(
-          session,
-          chatId: contact.telegramChatId!,
-          message: telegramMsg,
+    // Broadcast escalation to active in-app dispatch rooms
+    final rooms = await DispatchRoom.db.find(
+      session,
+      where: (t) => t.workspaceId.equals(incident.workspaceId) & t.isActive.equals(true),
+    );
+    for (final room in rooms) {
+      if (room.cameraIds.isEmpty || room.cameraIds.contains(incident.cameraId)) {
+        final alertMsg = RoomMessage(
+          roomId: room.id!,
+          senderName: 'Argus Escalation Engine',
+          senderRole: 'system',
+          kind: 'system_alert',
+          content: escalationAlertMsg,
+          createdAt: DateTime.now(),
         );
+        final inserted = await RoomMessage.db.insertRow(session, alertMsg);
+        await session.messages.postMessage('dispatch_room_${room.id}', inserted);
       }
     }
 

@@ -9,14 +9,13 @@ class ArgusStrings {
   static const navMonitor = 'Live Monitor';
   static const navCameras = 'Cameras';
   static const navRules = 'Rule Studio';
+  static const navRooms = 'Dispatch Rooms';
   static const navIncidents = 'Incidents';
-  static const navEscalation = 'Escalation';
   static const navLab = 'Detector Lab';
   static const navSettings = 'Settings';
   static const navAbout = 'About & Limits';
 
   // Badges & Labels
-  static const mockDataBadge = 'MOCK DATA';
   static const replayBadge = 'REPLAY CLIP';
   static const liveBadge = 'LIVE CAMERA';
   static const unverifiedBadge = 'AI UNVERIFIED';

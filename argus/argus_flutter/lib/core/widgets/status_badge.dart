@@ -58,15 +58,6 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  factory StatusBadge.mock() {
-    return const StatusBadge(
-      label: 'MOCK DATA',
-      icon: Icons.science_outlined,
-      color: Color(0xFFEC4899), // Pink
-      outlined: true,
-      isGlowing: true,
-    );
-  }
 
   factory StatusBadge.replay() {
     return const StatusBadge(

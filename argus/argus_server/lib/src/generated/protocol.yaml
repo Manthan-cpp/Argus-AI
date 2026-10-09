@@ -19,7 +19,6 @@ contact:
   - list:
   - save:
   - delete:
-  - createTelegramLinkCode:
 demo:
   - seed:
 evidence:

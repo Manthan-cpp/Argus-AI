@@ -21,20 +21,15 @@ void main() async {
     print(' - Min Duration: ${parseRes.spec!.trigger.minDurationSec}s');
   }
 
-  // 3. Test Contact Telegram Link Code Generation
-  print('3. Testing Contact Telegram linking code generation...');
-  final contact = await client.contact.save(
-    Contact(
-      workspaceId: 1,
-      name: 'Duty Commander V. Rao',
-      role: 'Emergency Dispatcher',
-      notifyInApp: true,
-      telegramChatId: 'demo_gov_dispatch_chat',
-    ),
+  // 3. Test In-App Dispatch Room Operations Hub
+  print('3. Testing Dispatch Room creation...');
+  final room = await client.room.create(
+    name: 'Sector 4 Operations Room',
+    description: 'Dispatch room for rapid incident response',
+    creatorName: 'Duty Commander V. Rao',
+    creatorRole: 'organizer',
   );
-  print(' - Saved contact: [${contact.id}] ${contact.name}');
-  final linkCode = await client.contact.createTelegramLinkCode();
-  print(' - Generated Telegram Link Code: $linkCode');
+  print(' - Created Dispatch Room: [${room.id}] "${room.name}" (Code: ${room.code})');
 
   // 4. Test Multi-Scenario Signal Processing & Deduplication
   print('4. Testing Vision Telemetry & Incident Lifecycle...');

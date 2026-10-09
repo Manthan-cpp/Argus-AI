@@ -7,7 +7,6 @@ import '../../core/copy/strings.dart';
 import '../../core/widgets/hover_card.dart';
 import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
-import '../../data/repository_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,8 +16,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _isSeeding = false;
-
   final List<_ScenarioCardData> _scenarios = [
     _ScenarioCardData(
       id: 'S1',
@@ -57,16 +54,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       badgeColor: ArgusTokens.severityMedium,
     ),
   ];
-
-  Future<void> _handleOpenDemo() async {
-    setState(() => _isSeeding = true);
-    final repo = ref.read(argusRepositoryProvider);
-    await repo.seedDemo();
-    if (mounted) {
-      setState(() => _isSeeding = false);
-      context.go('/app/monitor');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +118,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const Icon(Icons.bolt_rounded, size: 14, color: ArgusTokens.accent),
                     const SizedBox(width: 6),
                     Text(
-                      'SERVERPOD 4 HACKATHON ENTRY',
+                      'SOVEREIGN AI VISION PLATFORM',
                       style: GoogleFonts.jetBrainsMono(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -178,15 +165,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   ElevatedButton.icon(
-                    onPressed: _isSeeding ? null : _handleOpenDemo,
-                    icon: _isSeeding
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: ArgusTokens.accentInk),
-                          )
-                        : const Icon(Icons.play_arrow_rounded, size: 20),
-                    label: Text(_isSeeding ? 'Seeding Demo...' : 'Open the Live Demo'),
+                    onPressed: () => context.go('/app/monitor'),
+                    icon: const Icon(Icons.radar_rounded, size: 20),
+                    label: const Text('Launch Control Room'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go('/app/rooms'),
+                    icon: const Icon(Icons.hub_rounded, size: 18),
+                    label: const Text('Dispatch Rooms'),
                   ),
                   OutlinedButton.icon(
                     onPressed: () => context.go('/app/rules'),
@@ -223,7 +209,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Demo Scenarios (S1–S4)',
+                  'Safety Detection Capabilities',
                   style: GoogleFonts.sora(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
@@ -232,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Four real repeatable benchmark tests with simulated and camera feeds.',
+                  'Autonomous spatial intelligence pipelines calibrated for immediate threat mitigation.',
                   style: GoogleFonts.inter(fontSize: 14, color: ArgusTokens.textSecondary),
                 ),
               ],

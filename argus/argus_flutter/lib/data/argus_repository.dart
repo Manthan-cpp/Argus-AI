@@ -42,7 +42,6 @@ abstract class ArgusRepository {
   Future<List<Contact>> listContacts();
   Future<Contact> saveContact(Contact c);
   Future<void> deleteContact(int id);
-  Future<String> createTelegramLinkCode();
   Future<DetectorLabReport?> getLabReport();
   Future<void> saveLabReport(DetectorLabReport r);
   Future<List<AuditEntry>> listAudit({int limit = 100});

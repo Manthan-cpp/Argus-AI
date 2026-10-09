@@ -26,10 +26,7 @@ final argusRepositoryProvider = Provider<ArgusRepository>((ref) {
   return RemoteArgusRepository(client);
 });
 
-final isMockModeProvider = Provider<bool>((ref) {
-  final repo = ref.watch(argusRepositoryProvider);
-  return repo is MockArgusRepository;
-});
+final isMockModeProvider = Provider<bool>((ref) => false);
 
 /// In-memory cache for static first-frames of video cameras (keyed by cameraId)
 final cameraStaticFrameProvider = StateProvider<Map<int, String>>((ref) => {});

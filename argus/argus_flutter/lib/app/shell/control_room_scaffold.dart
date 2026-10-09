@@ -5,8 +5,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/copy/strings.dart';
 import '../../core/widgets/pulsing_beacon.dart';
-import '../../core/widgets/status_badge.dart';
-import '../../data/repository_provider.dart';
 import '../theme/tokens.dart';
 import 'command_palette.dart';
 import '../../features/rooms/room_providers.dart';
@@ -49,7 +47,6 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
     final width = MediaQuery.of(context).size.width;
     final isDesktop = width >= 1024;
     final isMobile = width < 768;
-    final isMock = ref.watch(isMockModeProvider);
 
     return KeyboardListener(
       focusNode: _keyboardFocusNode,
@@ -60,7 +57,7 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
         body: Column(
           children: [
             // Top Control Bar
-            _buildTopBar(isDesktop, isMock),
+            _buildTopBar(isDesktop),
 
             // Main View Area (Rail + Content)
             Expanded(
@@ -83,7 +80,7 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
     );
   }
 
-  Widget _buildTopBar(bool isDesktop, bool isMock) {
+  Widget _buildTopBar(bool isDesktop) {
     final user = ref.watch(currentUserProvider).valueOrNull;
     final role = (user?.role ?? 'organizer').toUpperCase();
     Color roleBadgeColor = Colors.amberAccent;
@@ -152,12 +149,6 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
           ),
 
           const Spacer(),
-
-          // Mock Data Banner / Badge
-          if (isMock) ...[
-            StatusBadge.mock(),
-            const SizedBox(width: 12),
-          ],
 
           // Command Palette Trigger
           if (isDesktop) ...[
@@ -266,7 +257,6 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
       _NavItem(icon: Icons.videocam_outlined, activeIcon: Icons.videocam_rounded, label: 'Cameras', route: '/app/cameras'),
       _NavItem(icon: Icons.rule_outlined, activeIcon: Icons.rule_rounded, label: 'Rules', route: '/app/rules'),
       _NavItem(icon: Icons.shield_outlined, activeIcon: Icons.shield_rounded, label: 'Incidents', route: '/app/incidents'),
-      _NavItem(icon: Icons.trending_up_outlined, activeIcon: Icons.trending_up_rounded, label: 'Escalation', route: '/app/escalation'),
       _NavItem(icon: Icons.science_outlined, activeIcon: Icons.science_rounded, label: 'Lab', route: '/app/lab'),
       _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Settings', route: '/app/settings'),
       _NavItem(icon: Icons.info_outline_rounded, activeIcon: Icons.info_rounded, label: 'About', route: '/about'),

@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:serverpod/serverpod.dart';
 import '../generated/protocol.dart';
 import 'workspace_endpoint.dart';
@@ -34,12 +33,5 @@ class ContactEndpoint extends Endpoint {
       session,
       where: (t) => t.id.equals(id),
     );
-  }
-
-  Future<String> createTelegramLinkCode(Session session) async {
-    final chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final rnd = Random();
-    final code = List.generate(6, (i) => chars[rnd.nextInt(chars.length)]).join();
-    return code;
   }
 }

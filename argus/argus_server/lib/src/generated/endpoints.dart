@@ -486,16 +486,6 @@ class Endpoints extends _is.EndpointDispatch {
                     params['id'],
                   ),
         ),
-        'createTelegramLinkCode': _is.MethodConnector(
-          name: 'createTelegramLinkCode',
-          params: {},
-          call:
-              (
-                _is.Session session,
-                Map<String, dynamic> params,
-              ) async => (endpoints['contact'] as _iioqm6zp.ContactEndpoint)
-                  .createTelegramLinkCode(session),
-        ),
       },
     );
     connectors['demo'] = _is.EndpointConnector(

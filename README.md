@@ -24,18 +24,18 @@ Built for **Build Something Real: The Serverpod Hackathon** (15 Sep – 14 Oct 2
 
 ```
  BROWSER (Flutter Web + JS MediaPipe Vision)
-   Flutter UI ──► Riverpod ──► ArgusRepository (Mock / Remote Serverpod)
-   <video> (webcam | MP4 | demo clips) ──► vision module (JS)
+   Flutter UI ──► Riverpod ──► ArgusRepository (Remote Serverpod)
+   <video> (webcam | MP4 | RTSP/CCTV) ──► vision module (JS)
         MediaPipe ObjectDetector + PoseLandmarker ──► tracker ──► geometry signals ──► SignalEvent batches
         snapshot() with head-blur ──► evidence upload (only when incident triggers)
-                         │  typed Serverpod client (generated)       ▲ stream: IncidentUpdate
+                         │  typed Serverpod client (generated)       ▲ stream: IncidentUpdate & RoomMessage
                          ▼                                           │
  SERVERPOD (argus_server)
-   endpoints: rule · camera · zone · signal · incident · evidence · demo · health
+   endpoints: room · roomMessage · user · rule · camera · zone · signal · incident · evidence · health
    argus_engine (pure Dart): schema validation · grammar parser · rule state machines · escalation planner
-   services: GeminiProxy (rate-limited + circuit breaker) · TelegramService · EvidenceService
+   services: GeminiProxy (rate-limited + circuit breaker) · DispatchRoomEngine · EvidenceService
    future calls: escalation steps · retention sweep
-   Postgres: workspaces, cameras, zones, rules, incidents, audit log
+   Postgres: workspaces, users, dispatch_rooms, room_members, room_messages, cameras, zones, rules, incidents, audit log
 ```
 
 ---
@@ -49,7 +49,6 @@ Argus-AI/
 │   ├── argus_server/     # Serverpod 4 backend (ORM models, migrations, endpoints, future calls)
 │   ├── argus_client/     # Generated client library for Serverpod protocol
 │   └── argus_flutter/    # Flutter control-room frontend (dark cyber theme, motion effects)
-├── docs/                 # Architectural specifications, decisions, and methodology
 ├── scripts/              # Fast startup scripts for Windows, macOS, and Linux
 ├── LICENSE               # Apache 2.0 open-source license
 └── README.md
