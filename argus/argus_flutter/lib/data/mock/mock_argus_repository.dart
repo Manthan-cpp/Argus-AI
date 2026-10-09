@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:argus_client/argus_client.dart';
 import 'package:argus_engine/argus_engine.dart' as engine;
+import '../../core/util/preloaded_scenes.dart';
 import '../argus_repository.dart';
 
 /// MockArgusRepository implementing full Phase 1 mock scenario pipelines (S1–S4).
@@ -831,8 +832,18 @@ class MockArgusRepository implements ArgusRepository {
     );
   }
 
+  final Map<int, String> _incidentEvidence = {};
+
   @override
-  Future<void> uploadEvidence(EvidenceUpload upload) async {}
+  Future<void> uploadEvidence(EvidenceUpload upload) async {
+    _incidentEvidence[upload.incidentId] = upload.snapshotJpegBase64;
+    final idx = _incidents.indexWhere((i) => i.id == upload.incidentId);
+    if (idx >= 0) {
+      _incidents[idx] = _incidents[idx].copyWith(
+        evidenceFileKey: 'ev_${upload.incidentId}',
+      );
+    }
+  }
 
   @override
   Stream<IncidentUpdate> watchIncidents({int? sinceIncidentId}) {
@@ -855,10 +866,15 @@ class MockArgusRepository implements ArgusRepository {
   Future<IncidentDetail> getIncident(int id) async {
     final inc = _incidents.firstWhere((i) => i.id == id);
     final events = _incidentEvents[id] ?? [];
+    String? evidence = _incidentEvidence[id];
+    if (evidence == null || evidence.isEmpty) {
+      final cam = _cameras.where((c) => c.id == inc.cameraId).firstOrNull;
+      evidence = getPreloadedSceneFrame(cam?.sourceRef);
+    }
     return IncidentDetail(
       incident: inc,
       events: events,
-      evidenceUrl: 'https://images.unsplash.com/photo-1584467735871-8e85353a8413?q=80&w=800&auto=format&fit=crop',
+      evidenceUrl: evidence,
     );
   }
 

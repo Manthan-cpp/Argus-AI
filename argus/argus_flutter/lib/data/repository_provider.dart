@@ -31,3 +31,6 @@ final isMockModeProvider = Provider<bool>((ref) {
 
 /// In-memory cache for static first-frames of video cameras (keyed by cameraId)
 final cameraStaticFrameProvider = StateProvider<Map<int, String>>((ref) => {});
+
+/// In-memory cache for evidence snapshots captured during incidents (keyed by incidentId)
+final incidentEvidenceProvider = StateProvider<Map<int, String>>((ref) => {});

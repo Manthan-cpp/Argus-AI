@@ -13,6 +13,7 @@ import '../../core/vision/vision_controller.dart';
 import '../../core/vision/vision_types.dart';
 import '../../core/vision/vision_stage_view.dart';
 import '../../data/repository_provider.dart';
+import '../../core/util/preloaded_scenes.dart';
 import '../../core/util/video_picker.dart';
 
 class MonitorScreen extends ConsumerStatefulWidget {
@@ -270,8 +271,9 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
           _streamSub = repo.watchIncidents().listen(
             (update) {
               if (mounted) {
+                final idx = _incidents.indexWhere((i) => i.id == update.incident.id);
+                final isNew = idx < 0;
                 setState(() {
-                  final idx = _incidents.indexWhere((i) => i.id == update.incident.id);
                   if (idx >= 0) {
                     _incidents[idx] = update.incident;
                   } else {
@@ -281,6 +283,10 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                     _eventLogs.insert(0, '[${DateTime.now().toIso8601String().substring(11, 19)}] ${update.event!.kind.toUpperCase()}: ${update.event!.detail}');
                   }
                 });
+
+                if (isNew) {
+                  _captureAndUploadEvidence(update.incident);
+                }
               }
             },
             onError: (err) {
@@ -293,6 +299,40 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _captureAndUploadEvidence(Incident inc) async {
+    final vision = ref.read(visionControllerProvider);
+    String? snapshotUrl;
+    if (vision.isRunning) {
+      try {
+        snapshotUrl = await vision.captureSnapshot(blurHead: true);
+      } catch (e) {
+        debugPrint('[Argus Monitor] Failed to capture live snapshot: $e');
+      }
+    }
+
+    if (snapshotUrl == null || snapshotUrl.isEmpty) {
+      final staticFrames = ref.read(cameraStaticFrameProvider);
+      snapshotUrl = staticFrames[inc.cameraId];
+    }
+    final String finalSnapshot = (snapshotUrl != null && snapshotUrl.isNotEmpty)
+        ? snapshotUrl
+        : getPreloadedSceneFrame(_selectedCamera?.sourceRef);
+
+    if (finalSnapshot.isNotEmpty && inc.id != null) {
+      ref.read(incidentEvidenceProvider.notifier).update((m) => {...m, inc.id!: finalSnapshot});
+      try {
+        await ref.read(argusRepositoryProvider).uploadEvidence(
+          EvidenceUpload(
+            incidentId: inc.id!,
+            snapshotJpegBase64: finalSnapshot,
+          ),
+        );
+      } catch (e) {
+        debugPrint('[Argus Monitor] Error uploading evidence: $e');
       }
     }
   }

@@ -9,6 +9,7 @@ import '../../core/widgets/hover_card.dart';
 import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
+import '../../core/util/preloaded_scenes.dart';
 import '../../data/repository_provider.dart';
 
 class IncidentsScreen extends ConsumerStatefulWidget {
@@ -192,34 +193,50 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
                     final cardContent = Row(
                       children: [
                         // Evidence Thumbnail
-                        Container(
-                          width: 80,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: ArgusTokens.borderSubtle),
-                          ),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              const Icon(Icons.image_outlined, size: 24, color: ArgusTokens.textTertiary),
-                              Positioned(
-                                bottom: 2,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.8),
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                  child: Text(
-                                    'BLURRED',
-                                    style: GoogleFonts.jetBrainsMono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
+                        Builder(
+                          builder: (context) {
+                            final evidenceMap = ref.watch(incidentEvidenceProvider);
+                            final staticFrames = ref.watch(cameraStaticFrameProvider);
+                            final thumbUrl = evidenceMap[inc.id] ?? staticFrames[inc.cameraId] ?? getPreloadedSceneFrame(null);
+
+                            return Container(
+                              width: 80,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: ArgusTokens.borderSubtle),
                               ),
-                            ],
-                          ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.network(
+                                    thumbUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Center(
+                                      child: Icon(Icons.image_outlined, size: 24, color: ArgusTokens.textTertiary),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 2,
+                                    right: 2,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.8),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                      child: Text(
+                                        'BLURRED',
+                                        style: GoogleFonts.jetBrainsMono(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(width: 16),
 
