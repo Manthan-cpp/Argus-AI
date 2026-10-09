@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:serverpod/serverpod.dart';
+import 'env_config.dart';
 
 class TelegramService {
   static Future<bool> sendMessage(
@@ -8,9 +9,10 @@ class TelegramService {
     required String chatId,
     required String message,
   }) async {
-    final botToken = Platform.environment['TELEGRAM_BOT_TOKEN'];
+    EnvConfig.load();
+    final botToken = EnvConfig.get('TELEGRAM_BOT_TOKEN') ?? Platform.environment['TELEGRAM_BOT_TOKEN'];
     if (botToken == null || botToken.isEmpty) {
-      session.log('Telegram dispatch simulated (no TELEGRAM_BOT_TOKEN set): Chat $chatId -> $message');
+      session.log('Telegram dispatch simulated (no TELEGRAM_BOT_TOKEN set in .env): Chat $chatId -> $message');
       return true;
     }
 

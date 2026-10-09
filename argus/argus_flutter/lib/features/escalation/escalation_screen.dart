@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:argus_client/argus_client.dart';
@@ -47,7 +48,7 @@ class _EscalationScreenState extends ConsumerState<EscalationScreen> {
             const SizedBox(height: 12),
             TextField(controller: roleCtrl, decoration: const InputDecoration(labelText: 'Role', hintText: 'Supervisor')),
             const SizedBox(height: 12),
-            TextField(controller: tgCtrl, decoration: const InputDecoration(labelText: 'Telegram Handle', hintText: '@safety_bot')),
+            TextField(controller: tgCtrl, decoration: const InputDecoration(labelText: 'Telegram Chat ID (Numeric)', hintText: 'e.g. 987654321 (from @userinfobot)')),
           ],
         ),
         actions: [
@@ -67,6 +68,98 @@ class _EscalationScreenState extends ConsumerState<EscalationScreen> {
               if (mounted) _loadContacts();
             },
             child: const Text('Save Contact'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showLinkCodeDialog() async {
+    final repo = ref.read(argusRepositoryProvider);
+    final rawCode = await repo.createTelegramLinkCode();
+    final linkCode = rawCode.startsWith('ARGUS-') ? rawCode : 'ARGUS-$rawCode-TG';
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF229ED9).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send_rounded, color: Color(0xFF229ED9), size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text('Telegram Officer Pairing', style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Share this pairing code or direct instruction with your on-duty security guard or supervisor:',
+              style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: ArgusTokens.bgRaised,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF229ED9).withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    linkCode,
+                    style: GoogleFonts.jetBrainsMono(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF229ED9),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy_rounded, size: 20, color: Colors.white70),
+                    tooltip: 'Copy Code',
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: linkCode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Pairing code copied to clipboard!')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('How to Pair Guard Phone:', style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            Text(
+              '1. Have guard open Telegram and search for: @argus_safety_alert_bot\n'
+              '2. Guard presses "Start" to authorize notifications\n'
+              '3. Guard messages @userinfobot to get their Chat ID (e.g. 5846089356)\n'
+              '4. Admin saves the Chat ID in "Add Contact" below',
+              style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Done'),
           ),
         ],
       ),
@@ -122,11 +215,7 @@ class _EscalationScreenState extends ConsumerState<EscalationScreen> {
                         ),
                       ),
                       ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Telegram link code: ARGUS-7829-TG')),
-                          );
-                        },
+                        onPressed: _showLinkCodeDialog,
                         child: const Text('Generate Link Code'),
                       ),
                     ],

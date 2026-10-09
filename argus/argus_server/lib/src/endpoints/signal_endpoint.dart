@@ -84,13 +84,13 @@ class SignalEndpoint extends Endpoint {
                 if (p.motionlessMs >= requiredFallMs) {
                   conditionMet = true;
                   triggerPerson = p;
-                  triggerDetail = 'Subject fell and remained down for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s (score: ${p.fallScore.toStringAsFixed(2)})';
+                  triggerDetail = 'Subject fell and remained down for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s';
                   break;
                 }
               } else {
                 conditionMet = true;
                 triggerPerson = p;
-                triggerDetail = 'Sudden fall detected (score: ${p.fallScore.toStringAsFixed(2)}, torso: ${p.torsoAngleDeg?.toStringAsFixed(0)}°)';
+                triggerDetail = 'Sudden fall detected';
                 break;
               }
             }

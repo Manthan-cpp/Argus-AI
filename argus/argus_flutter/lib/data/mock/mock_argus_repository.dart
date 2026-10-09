@@ -731,14 +731,14 @@ class MockArgusRepository implements ArgusRepository {
               if (reqFallMs > 0) {
                 if (p.motionlessMs >= reqFallMs) {
                   met = true;
-                  detail = 'Subject fell and remained down for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s (score: ${p.fallScore})';
+                  detail = 'Subject fell and remained down for ${(p.motionlessMs / 1000).toStringAsFixed(0)}s';
                   break;
                 }
               } else {
                 // Require sustained fall confirmation (at least 1s motionless or high confidence)
                 if (p.motionlessMs >= 1000 || p.fallScore >= 0.85) {
                   met = true;
-                  detail = 'Sudden fall detected (score: ${p.fallScore})';
+                  detail = 'Sudden fall detected';
                   break;
                 }
               }

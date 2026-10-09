@@ -45,17 +45,31 @@ class IncidentEscalationCall extends FutureCall<EscalationPayload> {
       where: (t) => t.workspaceId.equals(incident.workspaceId),
     );
 
+    // Fetch Camera for clear human-readable location context
+    final camera = await Camera.db.findById(session, incident.cameraId);
+    final cameraName = camera?.name ?? 'Camera #${incident.cameraId}';
+    final locationHeader = cameraName.toLowerCase().contains('camera')
+        ? cameraName
+        : 'Near $cameraName camera';
+    final areaName = cameraName.toLowerCase().endsWith('area')
+        ? cameraName
+        : '$cameraName area';
+    final cleanSummary = incident.summary
+        .replaceAll(RegExp(r'\s*\(score:\s*[\d.]+[^\)]*\)', caseSensitive: false), '')
+        .trim();
+
+    final telegramMsg = '*ARGUS SAFETY ESCALATION*\n\n'
+        '*Location:* $locationHeader\n'
+        '*Severity:* ${incident.severity.toUpperCase()}\n'
+        '*Summary:* $cleanSummary\n\n'
+        'Guards near the $areaName, please look into the matter immediately.';
+
     for (final contact in contacts) {
       if (contact.telegramChatId != null && contact.telegramChatId!.isNotEmpty) {
         await TelegramService.sendMessage(
           session,
           chatId: contact.telegramChatId!,
-          message: '🚨 *ARGUS SAFETY ESCALATION*\n\n'
-              '*Incident #*${incident.id}\n'
-              '*Severity:* ${incident.severity.toUpperCase()}\n'
-              '*Summary:* ${incident.summary}\n'
-              '*Status:* UNACKNOWLEDGED after timeout\n\n'
-              'Immediate supervisor intervention required.',
+          message: telegramMsg,
         );
       }
     }
