@@ -41,7 +41,8 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
 
   void _showAddCameraDialog() {
     final nameCtrl = TextEditingController();
-    String sourceKind = 'webcam'; // 'webcam' or 'file'
+    final rtspUrlCtrl = TextEditingController(text: 'rtsp://192.168.1.108:554/live/ch0');
+    String sourceKind = 'webcam'; // 'webcam', 'file', or 'rtsp'
     String selectedSceneId = kPreloadedScenes.first.id;
     String? sourceRef;
     String? pickedFileName;
@@ -72,12 +73,12 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
             ],
           ),
           content: SizedBox(
-            width: 480,
+            width: 520,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Source Kind Selector (Webcam vs Preloaded Video)
+                // 1. Source Kind Selector (Webcam vs Preloaded Video vs CCTV IP)
                 Text('Feed Source:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ArgusTokens.textSecondary)),
                 const SizedBox(height: 8),
                 Row(
@@ -89,13 +90,13 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                           setDlgState(() {
                             sourceKind = 'webcam';
                             sourceRef = 'local';
-                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Video') || nameCtrl.text.startsWith('Chemical') || nameCtrl.text.startsWith('Staircase')) {
+                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Video') || nameCtrl.text.startsWith('CCTV') || nameCtrl.text.startsWith('Chemical') || nameCtrl.text.startsWith('Staircase')) {
                               nameCtrl.text = 'Webcam Feed ${_cameras.length + 1}';
                             }
                           });
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                           decoration: BoxDecoration(
                             color: sourceKind == 'webcam' ? ArgusTokens.accent.withValues(alpha: 0.18) : ArgusTokens.bgRaised,
                             borderRadius: BorderRadius.circular(8),
@@ -106,17 +107,17 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.videocam_rounded, color: sourceKind == 'webcam' ? ArgusTokens.accent : Colors.white70, size: 24),
-                              const SizedBox(height: 6),
-                              Text('Webcam', style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                              Icon(Icons.videocam_rounded, color: sourceKind == 'webcam' ? ArgusTokens.accent : Colors.white70, size: 22),
+                              const SizedBox(height: 4),
+                              Text('Webcam', style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               const SizedBox(height: 2),
-                              Text('Live laptop / USB camera', style: GoogleFonts.inter(fontSize: 10, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
+                              Text('USB / Laptop', style: GoogleFonts.inter(fontSize: 9, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
@@ -125,13 +126,13 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                             sourceKind = 'file';
                             sourceRef = selectedSceneId;
                             firstFrameUrl = getPreloadedSceneFrame(selectedSceneId);
-                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Webcam')) {
+                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Webcam') || nameCtrl.text.startsWith('CCTV')) {
                               nameCtrl.text = kPreloadedScenes.first.name;
                             }
                           });
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                           decoration: BoxDecoration(
                             color: sourceKind == 'file' ? ArgusTokens.accent.withValues(alpha: 0.18) : ArgusTokens.bgRaised,
                             borderRadius: BorderRadius.circular(8),
@@ -142,11 +143,46 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.movie_outlined, color: sourceKind == 'file' ? ArgusTokens.accent : Colors.white70, size: 24),
-                              const SizedBox(height: 6),
-                              Text('Preloaded Video', style: GoogleFonts.sora(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                              Icon(Icons.movie_outlined, color: sourceKind == 'file' ? ArgusTokens.accent : Colors.white70, size: 22),
+                              const SizedBox(height: 4),
+                              Text('Video / MP4', style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               const SizedBox(height: 2),
-                              Text('Preloaded scenes or MP4 file', style: GoogleFonts.inter(fontSize: 10, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
+                              Text('Scenes & Files', style: GoogleFonts.inter(fontSize: 9, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          setDlgState(() {
+                            sourceKind = 'rtsp';
+                            sourceRef = rtspUrlCtrl.text.trim();
+                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Webcam') || nameCtrl.text.startsWith('Video') || nameCtrl.text.startsWith('Chemical') || nameCtrl.text.startsWith('Staircase')) {
+                              nameCtrl.text = 'CCTV Sector ${_cameras.length + 1}';
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: sourceKind == 'rtsp' ? ArgusTokens.accent.withValues(alpha: 0.18) : ArgusTokens.bgRaised,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: sourceKind == 'rtsp' ? ArgusTokens.accent : Colors.white12,
+                              width: sourceKind == 'rtsp' ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.settings_input_antenna_rounded, color: sourceKind == 'rtsp' ? ArgusTokens.accent : Colors.white70, size: 22),
+                              const SizedBox(height: 4),
+                              Text('CCTV IP (RTSP)', style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                              const SizedBox(height: 2),
+                              Text('ONVIF Profile S', style: GoogleFonts.inter(fontSize: 9, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
@@ -165,6 +201,41 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                     hintText: 'e.g. Chemical Lab 01, Staircase East, Front Desk',
                   ),
                 ),
+
+                // 2b. RTSP IP CCTV Controls
+                if (sourceKind == 'rtsp') ...[
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: rtspUrlCtrl,
+                    style: GoogleFonts.jetBrainsMono(color: ArgusTokens.textPrimary, fontSize: 13),
+                    decoration: const InputDecoration(
+                      labelText: 'RTSP Stream URL / Substream',
+                      hintText: 'rtsp://admin:pass@192.168.1.108:554/live/ch0',
+                      prefixIcon: Icon(Icons.link_rounded, size: 18),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: ArgusTokens.bgRaised,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded, size: 14, color: ArgusTokens.textSecondary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Supports Hikvision, Dahua, Axis, Hanwha ONVIF Profile S and WebRTC gateways. Substream (640x360 @ 15fps) recommended for ultra-low latency AI inference.',
+                            style: GoogleFonts.inter(fontSize: 10, color: ArgusTokens.textSecondary, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // 3. Preloaded Video Specific Controls
                 if (sourceKind == 'file') ...[
@@ -279,10 +350,10 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
               onPressed: () async {
                 final name = nameCtrl.text.trim().isNotEmpty
                     ? nameCtrl.text.trim()
-                    : (sourceKind == 'webcam' ? 'Webcam #${_cameras.length + 1}' : 'Video Feed #${_cameras.length + 1}');
+                    : (sourceKind == 'webcam' ? 'Webcam #${_cameras.length + 1}' : (sourceKind == 'rtsp' ? 'CCTV Sector #${_cameras.length + 1}' : 'Video Feed #${_cameras.length + 1}'));
 
                 final finalSourceRef = sourceRef ??
-                    (sourceKind == 'webcam' ? 'local' : (isCustomFile ? 'local' : selectedSceneId));
+                    (sourceKind == 'webcam' ? 'local' : (sourceKind == 'rtsp' ? rtspUrlCtrl.text.trim() : (isCustomFile ? 'local' : selectedSceneId)));
 
                 final repo = ref.read(argusRepositoryProvider);
                 final saved = await repo.saveCamera(Camera(
