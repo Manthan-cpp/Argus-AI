@@ -47,4 +47,37 @@ abstract class ArgusRepository {
   Future<void> saveLabReport(DetectorLabReport r);
   Future<List<AuditEntry>> listAudit({int limit = 100});
   Future<HealthInfo> health();
+
+  // User Authentication & Profiles
+  Future<UserProfile> login(String fullName, String role, {String? email});
+  Future<UserProfile> getCurrentUser();
+
+  // In-App Dispatch Rooms & Operations Collaboration
+  Future<DispatchRoom> createRoom(
+    String name, {
+    String? description,
+    List<int>? cameraIds,
+    String? creatorName,
+    String? creatorRole,
+  });
+  Future<DispatchRoom?> joinRoom(
+    String code, {
+    required String userName,
+    required String userRole,
+    String? userEmail,
+  });
+  Future<List<DispatchRoom>> listRooms();
+  Future<DispatchRoom?> getRoomByCode(String code);
+  Future<List<RoomMember>> listRoomMembers(int roomId);
+
+  // Live Dispatch Room Messaging & Alerts
+  Future<RoomMessage> sendRoomMessage(
+    int roomId,
+    String content, {
+    String? senderName,
+    String? senderRole,
+    int? senderId,
+  });
+  Future<List<RoomMessage>> listRoomMessages(int roomId, {int? limit});
+  Stream<RoomMessage> watchRoomMessages(int roomId);
 }

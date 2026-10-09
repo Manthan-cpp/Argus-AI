@@ -1,0 +1,8 @@
+class: RoomMember
+table: room_member
+fields:
+  roomId: int
+  userId: int
+  userName: String
+  userRole: String
+  joinedAt: DateTime

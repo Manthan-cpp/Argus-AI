@@ -9,6 +9,7 @@ import '../../core/widgets/status_badge.dart';
 import '../../data/repository_provider.dart';
 import '../theme/tokens.dart';
 import 'command_palette.dart';
+import '../../features/rooms/room_providers.dart';
 
 class ControlRoomScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -83,6 +84,12 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
   }
 
   Widget _buildTopBar(bool isDesktop, bool isMock) {
+    final user = ref.watch(currentUserProvider).valueOrNull;
+    final role = (user?.role ?? 'organizer').toUpperCase();
+    Color roleBadgeColor = Colors.amberAccent;
+    if (role == 'SUPERVISOR') roleBadgeColor = Colors.cyanAccent;
+    if (role == 'MEMBER') roleBadgeColor = ArgusTokens.success;
+
     return Container(
       height: 54,
       padding: const EdgeInsets.symmetric(horizontal: ArgusTokens.space16),
@@ -192,6 +199,54 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
             const SizedBox(width: 12),
           ],
 
+          // User Identity & Role Badge Chip
+          InkWell(
+            onTap: () => context.go('/auth'),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: ArgusTokens.bgOverlay,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ArgusTokens.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 10,
+                    backgroundColor: ArgusTokens.accent.withValues(alpha: 0.2),
+                    child: Text(
+                      (user?.fullName.isNotEmpty ?? false) ? user!.fullName[0].toUpperCase() : 'O',
+                      style: GoogleFonts.sora(fontSize: 10, fontWeight: FontWeight.w700, color: ArgusTokens.accent),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    user?.fullName ?? 'Operator',
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: roleBadgeColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      role,
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: roleBadgeColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
           // Quick Action / Help Link
           IconButton(
             icon: const Icon(Icons.help_outline_rounded, size: 18, color: ArgusTokens.textSecondary),
@@ -207,6 +262,7 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
     final navItems = [
       _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', route: '/'),
       _NavItem(icon: Icons.radar_outlined, activeIcon: Icons.radar_rounded, label: 'Monitor', route: '/app/monitor'),
+      _NavItem(icon: Icons.hub_outlined, activeIcon: Icons.hub_rounded, label: 'Rooms', route: '/app/rooms'),
       _NavItem(icon: Icons.videocam_outlined, activeIcon: Icons.videocam_rounded, label: 'Cameras', route: '/app/cameras'),
       _NavItem(icon: Icons.rule_outlined, activeIcon: Icons.rule_rounded, label: 'Rules', route: '/app/rules'),
       _NavItem(icon: Icons.shield_outlined, activeIcon: Icons.shield_rounded, label: 'Incidents', route: '/app/incidents'),

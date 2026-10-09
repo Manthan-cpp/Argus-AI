@@ -35,6 +35,17 @@ incident:
   - markFalsePositive:
   - delete:
   - deleteAll:
+room:
+  - createRoom:
+  - joinRoom:
+  - listRooms:
+  - getRoomByCode:
+  - listMembers:
+roomMessage:
+  - watch:
+  - sendMessage:
+  - listMessages:
+  - postAlert:
 rule:
   - list:
   - save:
@@ -43,6 +54,9 @@ rule:
   - dryRun:
 signal:
   - send:
+user:
+  - login:
+  - getCurrentUser:
 workspace:
   - ensure:
   - updateSettings:

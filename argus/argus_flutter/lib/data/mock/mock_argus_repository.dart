@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:argus_client/argus_client.dart';
 import 'package:argus_engine/argus_engine.dart' as engine;
 import '../../core/util/preloaded_scenes.dart';
@@ -8,6 +9,8 @@ import '../argus_repository.dart';
 /// MockArgusRepository implementing full Phase 1 mock scenario pipelines (S1–S4).
 /// All data here is strictly for zero-friction mock evaluation.
 class MockArgusRepository implements ArgusRepository {
+  static final Random _random = Random();
+
   // MOCK: In-memory stores
   Workspace _workspace = Workspace(
     id: 1,
@@ -32,13 +35,103 @@ class MockArgusRepository implements ArgusRepository {
   final List<Contact> _contacts = [];
   final List<AuditEntry> _auditLog = [];
 
+  // In-app user profile & dispatch rooms
+  UserProfile _currentUser = UserProfile(
+    id: 1,
+    workspaceId: 1,
+    fullName: 'Chief Operations Officer',
+    email: 'organizer@argus.ai',
+    role: 'organizer',
+    createdAt: DateTime.now().subtract(const Duration(days: 7)),
+  );
+  final List<DispatchRoom> _rooms = [];
+  final Map<int, List<RoomMember>> _roomMembers = {};
+  final Map<int, List<RoomMessage>> _roomMessages = {};
+  final Map<int, StreamController<RoomMessage>> _roomStreamControllers = {};
+
   final StreamController<IncidentUpdate> _incidentStreamCtrl =
       StreamController<IncidentUpdate>.broadcast();
 
   final engine.GrammarParser _grammarParser = const engine.GrammarParser();
 
   MockArgusRepository() {
-    // Starts completely clean. Cameras, rules, and incidents are created by the user.
+    _initDefaultDispatchRooms();
+  }
+
+  void _initDefaultDispatchRooms() {
+    final defaultRoom = DispatchRoom(
+      id: 1,
+      workspaceId: 1,
+      name: 'Terminal 1 Command Hub',
+      code: 'ARG-7842',
+      description: 'Central operations dispatch and guard deployment hub for Terminal 1.',
+      createdById: 1,
+      createdByName: 'Chief Operations Officer',
+      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      cameraIds: [1, 2, 3],
+      isActive: true,
+    );
+    _rooms.add(defaultRoom);
+
+    _roomMembers[1] = [
+      RoomMember(
+        id: 1,
+        roomId: 1,
+        userId: 1,
+        userName: 'Chief Operations Officer',
+        userRole: 'organizer',
+        joinedAt: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+      RoomMember(
+        id: 2,
+        roomId: 1,
+        userId: 2,
+        userName: 'Officer Sarah Jenkins',
+        userRole: 'supervisor',
+        joinedAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 40)),
+      ),
+      RoomMember(
+        id: 3,
+        roomId: 1,
+        userId: 3,
+        userName: 'Marcus Vance',
+        userRole: 'member',
+        joinedAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 15)),
+      ),
+    ];
+
+    _roomMessages[1] = [
+      RoomMessage(
+        id: 1,
+        roomId: 1,
+        senderId: null,
+        senderName: 'Argus System',
+        senderRole: 'system',
+        kind: 'action_log',
+        content: 'Dispatch Room "Terminal 1 Command Hub" initialized with code ARG-7842.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+      RoomMessage(
+        id: 2,
+        roomId: 1,
+        senderId: 2,
+        senderName: 'Officer Sarah Jenkins',
+        senderRole: 'supervisor',
+        kind: 'chat',
+        content: 'All camera sectors synchronized and calibrated for shift rotation.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 20)),
+      ),
+      RoomMessage(
+        id: 3,
+        roomId: 1,
+        senderId: 3,
+        senderName: 'Marcus Vance',
+        senderRole: 'member',
+        kind: 'chat',
+        content: 'Patrol unit 4 standing by near Sector B. Ready for instructions.',
+        createdAt: DateTime.now().subtract(const Duration(hours: 1, minutes: 5)),
+      ),
+    ];
   }
 
   void _initSeedData() {
@@ -807,6 +900,7 @@ class MockArgusRepository implements ArgusRepository {
             );
             _incidentEvents[newId] = [event];
             _incidentStreamCtrl.add(IncidentUpdate(incident: inc, event: event));
+            _broadcastAlertToRooms(inc);
 
             // Escalation ladder simulation
             final escalationSec = rule.escalation.isNotEmpty ? rule.escalation.first.afterSec : 30;
@@ -1100,5 +1194,215 @@ class MockArgusRepository implements ArgusRepository {
       quotaNote: 'AI Studio Free Tier active. 15 RPM token bucket.',
       queueDepth: 0,
     );
+  }
+
+  void _broadcastAlertToRooms(Incident inc) {
+    final cameraObj = _cameras.where((c) => c.id == inc.cameraId).firstOrNull;
+    final cameraName = cameraObj?.name ?? 'Camera #${inc.cameraId}';
+    final alertContent = 'Guards near the $cameraName area, please look into the matter immediately.';
+
+    for (final room in _rooms) {
+      if (room.isActive && (room.cameraIds.isEmpty || room.cameraIds.contains(inc.cameraId))) {
+        final newMsg = RoomMessage(
+          id: (_roomMessages[room.id!]?.length ?? 0) + 1,
+          roomId: room.id!,
+          senderId: null,
+          senderName: 'Argus System',
+          senderRole: 'system',
+          kind: 'system_alert',
+          content: alertContent,
+          incidentId: inc.id,
+          cameraName: cameraName,
+          severity: inc.severity,
+          createdAt: DateTime.now(),
+        );
+        _roomMessages.putIfAbsent(room.id!, () => []).add(newMsg);
+        _roomStreamControllers[room.id!]?.add(newMsg);
+      }
+    }
+  }
+
+  // User Authentication & Profiles
+  @override
+  Future<UserProfile> login(String fullName, String role, {String? email}) async {
+    final cleanRole = role.trim().toLowerCase();
+    final userEmail = (email != null && email.isNotEmpty)
+        ? email
+        : '${fullName.toLowerCase().replaceAll(' ', '.')}@argus.ai';
+
+    _currentUser = UserProfile(
+      id: _currentUser.id,
+      workspaceId: 1,
+      fullName: fullName.trim(),
+      email: userEmail,
+      role: cleanRole,
+      createdAt: DateTime.now(),
+    );
+    return _currentUser;
+  }
+
+  @override
+  Future<UserProfile> getCurrentUser() async {
+    return _currentUser;
+  }
+
+  // In-App Dispatch Rooms & Operations Collaboration
+  @override
+  Future<DispatchRoom> createRoom(
+    String name, {
+    String? description,
+    List<int>? cameraIds,
+    String? creatorName,
+    String? creatorRole,
+  }) async {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final code = 'ARG-${List.generate(4, (_) => chars[_random.nextInt(chars.length)]).join()}';
+    final newId = _rooms.length + 1;
+    final effectiveCreator = (creatorName != null && creatorName.isNotEmpty)
+        ? creatorName
+        : _currentUser.fullName;
+    final effectiveRole = (creatorRole != null && creatorRole.isNotEmpty)
+        ? creatorRole
+        : _currentUser.role;
+
+    final room = DispatchRoom(
+      id: newId,
+      workspaceId: 1,
+      name: name.trim(),
+      code: code,
+      description: description?.trim(),
+      createdById: _currentUser.id ?? 1,
+      createdByName: effectiveCreator,
+      createdAt: DateTime.now(),
+      cameraIds: cameraIds ?? <int>[],
+      isActive: true,
+    );
+    _rooms.add(room);
+
+    _roomMembers[newId] = [
+      RoomMember(
+        id: 1,
+        roomId: newId,
+        userId: _currentUser.id ?? 1,
+        userName: effectiveCreator,
+        userRole: effectiveRole,
+        joinedAt: DateTime.now(),
+      ),
+    ];
+
+    final initialMsg = RoomMessage(
+      id: 1,
+      roomId: newId,
+      senderId: null,
+      senderName: 'Argus System',
+      senderRole: 'system',
+      kind: 'action_log',
+      content: 'Dispatch Room "${room.name}" created with code $code.',
+      createdAt: DateTime.now(),
+    );
+    _roomMessages[newId] = [initialMsg];
+
+    return room;
+  }
+
+  @override
+  Future<DispatchRoom?> joinRoom(
+    String code, {
+    required String userName,
+    required String userRole,
+    String? userEmail,
+  }) async {
+    final cleanCode = code.trim().toUpperCase();
+    final room = _rooms.where((r) => r.code == cleanCode && r.isActive).firstOrNull;
+    if (room == null) return null;
+
+    final roomId = room.id!;
+    final members = _roomMembers.putIfAbsent(roomId, () => []);
+    final existing = members.where((m) => m.userName == userName).firstOrNull;
+    if (existing == null) {
+      final newMember = RoomMember(
+        id: members.length + 1,
+        roomId: roomId,
+        userId: members.length + 10,
+        userName: userName.trim(),
+        userRole: userRole.trim().toLowerCase(),
+        joinedAt: DateTime.now(),
+      );
+      members.add(newMember);
+
+      final joinMsg = RoomMessage(
+        id: (_roomMessages[roomId]?.length ?? 0) + 1,
+        roomId: roomId,
+        senderId: newMember.userId,
+        senderName: newMember.userName,
+        senderRole: newMember.userRole,
+        kind: 'action_log',
+        content: '$userName joined as ${userRole.toUpperCase()}.',
+        createdAt: DateTime.now(),
+      );
+      _roomMessages.putIfAbsent(roomId, () => []).add(joinMsg);
+      _roomStreamControllers[roomId]?.add(joinMsg);
+    }
+    return room;
+  }
+
+  @override
+  Future<List<DispatchRoom>> listRooms() async {
+    return List.unmodifiable(_rooms.where((r) => r.isActive).toList().reversed);
+  }
+
+  @override
+  Future<DispatchRoom?> getRoomByCode(String code) async {
+    final cleanCode = code.trim().toUpperCase();
+    return _rooms.where((r) => r.code == cleanCode).firstOrNull;
+  }
+
+  @override
+  Future<List<RoomMember>> listRoomMembers(int roomId) async {
+    return List.unmodifiable(_roomMembers[roomId] ?? []);
+  }
+
+  // Live Dispatch Room Messaging & Alerts
+  @override
+  Future<RoomMessage> sendRoomMessage(
+    int roomId,
+    String content, {
+    String? senderName,
+    String? senderRole,
+    int? senderId,
+  }) async {
+    final newId = (_roomMessages[roomId]?.length ?? 0) + 1;
+    final msg = RoomMessage(
+      id: newId,
+      roomId: roomId,
+      senderId: senderId ?? _currentUser.id,
+      senderName: senderName ?? _currentUser.fullName,
+      senderRole: senderRole ?? _currentUser.role,
+      kind: 'chat',
+      content: content.trim(),
+      createdAt: DateTime.now(),
+    );
+
+    _roomMessages.putIfAbsent(roomId, () => []).add(msg);
+    _roomStreamControllers[roomId]?.add(msg);
+    return msg;
+  }
+
+  @override
+  Future<List<RoomMessage>> listRoomMessages(int roomId, {int? limit}) async {
+    final list = _roomMessages[roomId] ?? [];
+    if (limit != null && list.length > limit) {
+      return List.unmodifiable(list.sublist(list.length - limit));
+    }
+    return List.unmodifiable(list);
+  }
+
+  @override
+  Stream<RoomMessage> watchRoomMessages(int roomId) {
+    final ctrl = _roomStreamControllers.putIfAbsent(
+      roomId,
+      () => StreamController<RoomMessage>.broadcast(),
+    );
+    return ctrl.stream;
   }
 }

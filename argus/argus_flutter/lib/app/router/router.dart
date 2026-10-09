@@ -14,6 +14,8 @@ import '../../features/lab/detector_lab_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/about/about_screen.dart';
 import '../../features/dev/kitchen_sink_screen.dart';
+import '../../features/rooms/room_directory_screen.dart';
+import '../../features/rooms/dispatch_room_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
 final GlobalKey<NavigatorState> _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -65,6 +67,19 @@ final GoRouter argusRouter = GoRouter(
               builder: (context, state) {
                 final id = int.tryParse(state.pathParameters['id'] ?? '1') ?? 1;
                 return IncidentDetailScreen(incidentId: id);
+              },
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/app/rooms',
+          builder: (context, state) => const RoomDirectoryScreen(),
+          routes: [
+            GoRoute(
+              path: ':code',
+              builder: (context, state) {
+                final code = state.pathParameters['code'] ?? 'ARG-7842';
+                return DispatchRoomScreen(code: code);
               },
             ),
           ],

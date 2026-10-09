@@ -1,0 +1,12 @@
+class: DispatchRoom
+table: dispatch_room
+fields:
+  workspaceId: int
+  name: String
+  code: String
+  description: String?
+  createdById: int
+  createdByName: String
+  createdAt: DateTime
+  cameraIds: List<int>
+  isActive: bool

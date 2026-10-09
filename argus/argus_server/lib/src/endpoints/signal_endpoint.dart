@@ -217,6 +217,36 @@ class SignalEndpoint extends Endpoint {
             session.log('FutureCall schedule note: $e');
           }
 
+          // Broadcast to active dispatch rooms
+          try {
+            final camera = await Camera.db.findById(session, batch.cameraId);
+            final cameraName = camera?.name ?? 'Camera #${batch.cameraId}';
+            final activeRooms = await DispatchRoom.db.find(
+              session,
+              where: (t) => t.workspaceId.equals(ws.id!) & t.isActive.equals(true),
+            );
+            for (final room in activeRooms) {
+              if (room.cameraIds.isEmpty || room.cameraIds.contains(batch.cameraId)) {
+                final alertMsg = RoomMessage(
+                  roomId: room.id!,
+                  senderId: null,
+                  senderName: 'Argus System',
+                  senderRole: 'system',
+                  kind: 'system_alert',
+                  content: 'Guards near the $cameraName area, please look into the matter immediately.',
+                  incidentId: savedIncident.id!,
+                  cameraName: cameraName,
+                  severity: savedIncident.severity,
+                  createdAt: DateTime.now(),
+                );
+                final savedAlert = await RoomMessage.db.insertRow(session, alertMsg);
+                await session.messages.postMessage('dispatch_room_${room.id}', savedAlert);
+              }
+            }
+          } catch (e) {
+            session.log('Room broadcast notice: $e');
+          }
+
           // Audit log
           await AuditEntry.db.insertRow(
             session,

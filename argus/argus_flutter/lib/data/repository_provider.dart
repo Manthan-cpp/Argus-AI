@@ -14,11 +14,13 @@ final serverpodClientProvider = Provider<Client>((ref) {
 /// Toggle between Production Live Serverpod Backend and Local Mock
 final useMockOverrideProvider = StateProvider<bool>((ref) => false);
 
+final _singletonMockRepository = MockArgusRepository();
+
 /// Production ArgusRepository provider
 final argusRepositoryProvider = Provider<ArgusRepository>((ref) {
   final useMock = ref.watch(useMockOverrideProvider);
   if (useMock) {
-    return MockArgusRepository();
+    return _singletonMockRepository;
   }
   final client = ref.watch(serverpodClientProvider);
   return RemoteArgusRepository(client);

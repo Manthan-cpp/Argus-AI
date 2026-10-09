@@ -1103,3 +1103,202 @@ class IncidentFilter {
     this.ruleId,
   });
 }
+
+// ============================================================================
+// RBAC & DISPATCH ROOM MODELS
+// ============================================================================
+
+enum UserRole { organizer, supervisor, member }
+
+class UserProfile {
+  final int id;
+  final String fullName;
+  final String email;
+  final UserRole role;
+  final String? avatarUrl;
+  final DateTime createdAt;
+
+  const UserProfile({
+    required this.id,
+    required this.fullName,
+    required this.email,
+    required this.role,
+    this.avatarUrl,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'fullName': fullName,
+        'email': email,
+        'role': role.name,
+        'avatarUrl': avatarUrl,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
+        id: json['id'] as int,
+        fullName: json['fullName'] as String,
+        email: json['email'] as String,
+        role: UserRole.values.firstWhere(
+          (r) => r.name.toLowerCase() == (json['role'] as String).toLowerCase(),
+          orElse: () => UserRole.member,
+        ),
+        avatarUrl: json['avatarUrl'] as String?,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
+}
+
+class DispatchRoom {
+  final int id;
+  final int workspaceId;
+  final String name;
+  final String code; // e.g. ARG-7842
+  final String? description;
+  final int createdById;
+  final String createdByName;
+  final DateTime createdAt;
+  final List<int> cameraIds;
+  final bool isActive;
+
+  const DispatchRoom({
+    required this.id,
+    this.workspaceId = 1,
+    required this.name,
+    required this.code,
+    this.description,
+    required this.createdById,
+    required this.createdByName,
+    required this.createdAt,
+    this.cameraIds = const [],
+    this.isActive = true,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'workspaceId': workspaceId,
+        'name': name,
+        'code': code,
+        'description': description,
+        'createdById': createdById,
+        'createdByName': createdByName,
+        'createdAt': createdAt.toIso8601String(),
+        'cameraIds': cameraIds,
+        'isActive': isActive,
+      };
+
+  factory DispatchRoom.fromJson(Map<String, dynamic> json) => DispatchRoom(
+        id: json['id'] as int,
+        workspaceId: json['workspaceId'] as int? ?? 1,
+        name: json['name'] as String,
+        code: json['code'] as String,
+        description: json['description'] as String?,
+        createdById: json['createdById'] as int,
+        createdByName: json['createdByName'] as String? ?? 'Admin',
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        cameraIds: (json['cameraIds'] as List? ?? []).map((e) => (e as num).toInt()).toList(),
+        isActive: json['isActive'] as bool? ?? true,
+      );
+}
+
+class RoomMember {
+  final int roomId;
+  final int userId;
+  final String userName;
+  final UserRole userRole;
+  final DateTime joinedAt;
+
+  const RoomMember({
+    required this.roomId,
+    required this.userId,
+    required this.userName,
+    required this.userRole,
+    required this.joinedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'roomId': roomId,
+        'userId': userId,
+        'userName': userName,
+        'userRole': userRole.name,
+        'joinedAt': joinedAt.toIso8601String(),
+      };
+
+  factory RoomMember.fromJson(Map<String, dynamic> json) => RoomMember(
+        roomId: json['roomId'] as int,
+        userId: json['userId'] as int,
+        userName: json['userName'] as String,
+        userRole: UserRole.values.firstWhere(
+          (r) => r.name.toLowerCase() == (json['userRole'] as String).toLowerCase(),
+          orElse: () => UserRole.member,
+        ),
+        joinedAt: DateTime.parse(json['joinedAt'] as String),
+      );
+}
+
+enum RoomMessageKind { chat, system_alert, action_log }
+
+class RoomMessage {
+  final int id;
+  final int roomId;
+  final int? senderId;
+  final String senderName;
+  final UserRole? senderRole;
+  final RoomMessageKind kind;
+  final String content;
+  final int? incidentId;
+  final String? cameraName;
+  final String? severity;
+  final DateTime createdAt;
+
+  const RoomMessage({
+    required this.id,
+    required this.roomId,
+    this.senderId,
+    required this.senderName,
+    this.senderRole,
+    this.kind = RoomMessageKind.chat,
+    required this.content,
+    this.incidentId,
+    this.cameraName,
+    this.severity,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'roomId': roomId,
+        'senderId': senderId,
+        'senderName': senderName,
+        'senderRole': senderRole?.name,
+        'kind': kind.name,
+        'content': content,
+        'incidentId': incidentId,
+        'cameraName': cameraName,
+        'severity': severity,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory RoomMessage.fromJson(Map<String, dynamic> json) => RoomMessage(
+        id: json['id'] as int,
+        roomId: json['roomId'] as int,
+        senderId: json['senderId'] as int?,
+        senderName: json['senderName'] as String,
+        senderRole: json['senderRole'] != null
+            ? UserRole.values.firstWhere(
+                (r) => r.name.toLowerCase() == (json['senderRole'] as String).toLowerCase(),
+                orElse: () => UserRole.member,
+              )
+            : null,
+        kind: RoomMessageKind.values.firstWhere(
+          (k) => k.name.toLowerCase() == (json['kind'] as String).toLowerCase(),
+          orElse: () => RoomMessageKind.chat,
+        ),
+        content: json['content'] as String,
+        incidentId: json['incidentId'] as int?,
+        cameraName: json['cameraName'] as String?,
+        severity: json['severity'] as String?,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
+}
+

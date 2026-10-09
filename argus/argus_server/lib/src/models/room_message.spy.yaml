@@ -1,0 +1,13 @@
+class: RoomMessage
+table: room_message
+fields:
+  roomId: int
+  senderId: int?
+  senderName: String
+  senderRole: String?
+  kind: String
+  content: String
+  incidentId: int?
+  cameraName: String?
+  severity: String?
+  createdAt: DateTime

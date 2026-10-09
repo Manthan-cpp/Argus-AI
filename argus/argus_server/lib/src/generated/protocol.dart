@@ -14,7 +14,10 @@
 import 'package:argus_server/src/generated/audit_entry.dart' as _ix6hgqpa;
 import 'package:argus_server/src/generated/camera.dart' as _irrewps0;
 import 'package:argus_server/src/generated/contact.dart' as _ikdntdes;
+import 'package:argus_server/src/generated/dispatch_room.dart' as _i6m69ikf;
 import 'package:argus_server/src/generated/incident.dart' as _iyz089d3;
+import 'package:argus_server/src/generated/room_member.dart' as _icqxjjtk;
+import 'package:argus_server/src/generated/room_message.dart' as _ii0sf679;
 import 'package:argus_server/src/generated/rule_spec.dart' as _ihw84zwb;
 import 'package:argus_server/src/generated/zone.dart' as _i8tshavy;
 import 'package:serverpod/protocol.dart' as _isp;
@@ -30,6 +33,7 @@ import 'client_config.dart' as _iz7lq8go;
 import 'contact.dart' as _id7ivncr;
 import 'demo_seed_result.dart' as _ie4ytcen;
 import 'detector_lab_report.dart' as _iai3zb4w;
+import 'dispatch_room.dart' as _ip18i18x;
 import 'dry_run_result.dart' as _i89uufof;
 import 'escalation_payload.dart' as _iqlp7fhc;
 import 'evidence_upload.dart' as _iuxz12ty;
@@ -44,6 +48,8 @@ import 'parse_result.dart' as _i717k81t;
 import 'person_signal.dart' as _izlx5iyl;
 import 'point_n.dart' as _ixjrd72v;
 import 'retention_payload.dart' as _i1ksi047;
+import 'room_member.dart' as _ii94tgib;
+import 'room_message.dart' as _i2z40emo;
 import 'rule_action.dart' as _ie2yorw3;
 import 'rule_conditions.dart' as _ibwozmvt;
 import 'rule_escalation.dart' as _ig7l9g0k;
@@ -54,6 +60,7 @@ import 'signal_ack.dart' as _izylj8v7;
 import 'signal_batch.dart' as _iboycj1l;
 import 'signal_event.dart' as _ixpqzu9p;
 import 'time_window.dart' as _idjbqmwg;
+import 'user_profile.dart' as _ir2mn8w1;
 import 'verification_info.dart' as _iv8f4ltc;
 import 'workspace.dart' as _io6eoug6;
 import 'workspace_settings.dart' as _i88empjm;
@@ -65,6 +72,7 @@ export 'client_config.dart';
 export 'contact.dart';
 export 'demo_seed_result.dart';
 export 'detector_lab_report.dart';
+export 'dispatch_room.dart';
 export 'dry_run_result.dart';
 export 'escalation_payload.dart';
 export 'evidence_upload.dart';
@@ -79,6 +87,8 @@ export 'parse_result.dart';
 export 'person_signal.dart';
 export 'point_n.dart';
 export 'retention_payload.dart';
+export 'room_member.dart';
+export 'room_message.dart';
 export 'rule_action.dart';
 export 'rule_conditions.dart';
 export 'rule_escalation.dart';
@@ -89,6 +99,7 @@ export 'signal_ack.dart';
 export 'signal_batch.dart';
 export 'signal_event.dart';
 export 'time_window.dart';
+export 'user_profile.dart';
 export 'verification_info.dart';
 export 'workspace.dart';
 export 'workspace_settings.dart';
@@ -642,6 +653,258 @@ class Protocol extends _is.DatabaseSerializationManager {
       indexes: [],
       managed: true,
     ),
+    _isp.TableDefinition(
+      name: 'dispatch_room',
+      dartName: 'DispatchRoom',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'name',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'code',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'description',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdById',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdByName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cameraIds',
+          columnType: _isp.ColumnType.json,
+          isNullable: false,
+          dartType: 'List<int>',
+        ),
+        _isp.ColumnDefinition(
+          name: 'isActive',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'room_member',
+      dartName: 'RoomMember',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'roomId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userRole',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'joinedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'room_message',
+      dartName: 'RoomMessage',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'roomId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'senderId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'senderName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'senderRole',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'kind',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'content',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'incidentId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'cameraName',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'severity',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'user_profile',
+      dartName: 'UserProfile',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'fullName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'email',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'role',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'avatarUrl',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
     ..._iais.Protocol.targetTableDefinitions,
     ..._iacs.Protocol.targetTableDefinitions,
     ..._isp.Protocol.targetTableDefinitions,
@@ -695,6 +958,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _iai3zb4w.DetectorLabReport) {
       return _iai3zb4w.DetectorLabReport.fromJson(data) as T;
     }
+    if (t == _ip18i18x.DispatchRoom) {
+      return _ip18i18x.DispatchRoom.fromJson(data) as T;
+    }
     if (t == _i89uufof.DryRunResult) {
       return _i89uufof.DryRunResult.fromJson(data) as T;
     }
@@ -737,6 +1003,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _i1ksi047.RetentionPayload) {
       return _i1ksi047.RetentionPayload.fromJson(data) as T;
     }
+    if (t == _ii94tgib.RoomMember) {
+      return _ii94tgib.RoomMember.fromJson(data) as T;
+    }
+    if (t == _i2z40emo.RoomMessage) {
+      return _i2z40emo.RoomMessage.fromJson(data) as T;
+    }
     if (t == _ie2yorw3.RuleAction) {
       return _ie2yorw3.RuleAction.fromJson(data) as T;
     }
@@ -766,6 +1038,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _idjbqmwg.TimeWindow) {
       return _idjbqmwg.TimeWindow.fromJson(data) as T;
+    }
+    if (t == _ir2mn8w1.UserProfile) {
+      return _ir2mn8w1.UserProfile.fromJson(data) as T;
     }
     if (t == _iv8f4ltc.VerificationInfo) {
       return _iv8f4ltc.VerificationInfo.fromJson(data) as T;
@@ -801,6 +1076,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_iai3zb4w.DetectorLabReport?>()) {
       return (data != null ? _iai3zb4w.DetectorLabReport.fromJson(data) : null)
           as T;
+    }
+    if (t == _is.getType<_ip18i18x.DispatchRoom?>()) {
+      return (data != null ? _ip18i18x.DispatchRoom.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_i89uufof.DryRunResult?>()) {
       return (data != null ? _i89uufof.DryRunResult.fromJson(data) : null) as T;
@@ -851,6 +1129,12 @@ class Protocol extends _is.DatabaseSerializationManager {
       return (data != null ? _i1ksi047.RetentionPayload.fromJson(data) : null)
           as T;
     }
+    if (t == _is.getType<_ii94tgib.RoomMember?>()) {
+      return (data != null ? _ii94tgib.RoomMember.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_i2z40emo.RoomMessage?>()) {
+      return (data != null ? _i2z40emo.RoomMessage.fromJson(data) : null) as T;
+    }
     if (t == _is.getType<_ie2yorw3.RuleAction?>()) {
       return (data != null ? _ie2yorw3.RuleAction.fromJson(data) : null) as T;
     }
@@ -882,6 +1166,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_idjbqmwg.TimeWindow?>()) {
       return (data != null ? _idjbqmwg.TimeWindow.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ir2mn8w1.UserProfile?>()) {
+      return (data != null ? _ir2mn8w1.UserProfile.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_iv8f4ltc.VerificationInfo?>()) {
       return (data != null ? _iv8f4ltc.VerificationInfo.fromJson(data) : null)
@@ -975,6 +1262,33 @@ class Protocol extends _is.DatabaseSerializationManager {
               .toList()
           as T;
     }
+    if (t == List<int>) {
+      return (data as List).map((e) => deserialize<int>(e)).toList() as T;
+    }
+    if (t == _is.getType<List<int>?>()) {
+      return (data != null
+              ? (data as List).map((e) => deserialize<int>(e)).toList()
+              : null)
+          as T;
+    }
+    if (t == List<_i6m69ikf.DispatchRoom>) {
+      return (data as List)
+              .map((e) => deserialize<_i6m69ikf.DispatchRoom>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_icqxjjtk.RoomMember>) {
+      return (data as List)
+              .map((e) => deserialize<_icqxjjtk.RoomMember>(e))
+              .toList()
+          as T;
+    }
+    if (t == List<_ii0sf679.RoomMessage>) {
+      return (data as List)
+              .map((e) => deserialize<_ii0sf679.RoomMessage>(e))
+              .toList()
+          as T;
+    }
     if (t == List<_ihw84zwb.RuleSpec>) {
       return (data as List)
               .map((e) => deserialize<_ihw84zwb.RuleSpec>(e))
@@ -1006,6 +1320,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _id7ivncr.Contact => 'Contact',
       _ie4ytcen.DemoSeedResult => 'DemoSeedResult',
       _iai3zb4w.DetectorLabReport => 'DetectorLabReport',
+      _ip18i18x.DispatchRoom => 'DispatchRoom',
       _i89uufof.DryRunResult => 'DryRunResult',
       _iqlp7fhc.EscalationPayload => 'EscalationPayload',
       _iuxz12ty.EvidenceUpload => 'EvidenceUpload',
@@ -1020,6 +1335,8 @@ class Protocol extends _is.DatabaseSerializationManager {
       _izlx5iyl.PersonSignal => 'PersonSignal',
       _ixjrd72v.PointN => 'PointN',
       _i1ksi047.RetentionPayload => 'RetentionPayload',
+      _ii94tgib.RoomMember => 'RoomMember',
+      _i2z40emo.RoomMessage => 'RoomMessage',
       _ie2yorw3.RuleAction => 'RuleAction',
       _ibwozmvt.RuleConditions => 'RuleConditions',
       _ig7l9g0k.RuleEscalation => 'RuleEscalation',
@@ -1030,6 +1347,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _iboycj1l.SignalBatch => 'SignalBatch',
       _ixpqzu9p.SignalEvent => 'SignalEvent',
       _idjbqmwg.TimeWindow => 'TimeWindow',
+      _ir2mn8w1.UserProfile => 'UserProfile',
       _iv8f4ltc.VerificationInfo => 'VerificationInfo',
       _io6eoug6.Workspace => 'Workspace',
       _i88empjm.WorkspaceSettings => 'WorkspaceSettings',
@@ -1062,6 +1380,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'DemoSeedResult';
       case _iai3zb4w.DetectorLabReport():
         return 'DetectorLabReport';
+      case _ip18i18x.DispatchRoom():
+        return 'DispatchRoom';
       case _i89uufof.DryRunResult():
         return 'DryRunResult';
       case _iqlp7fhc.EscalationPayload():
@@ -1090,6 +1410,10 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'PointN';
       case _i1ksi047.RetentionPayload():
         return 'RetentionPayload';
+      case _ii94tgib.RoomMember():
+        return 'RoomMember';
+      case _i2z40emo.RoomMessage():
+        return 'RoomMessage';
       case _ie2yorw3.RuleAction():
         return 'RuleAction';
       case _ibwozmvt.RuleConditions():
@@ -1110,6 +1434,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'SignalEvent';
       case _idjbqmwg.TimeWindow():
         return 'TimeWindow';
+      case _ir2mn8w1.UserProfile():
+        return 'UserProfile';
       case _iv8f4ltc.VerificationInfo():
         return 'VerificationInfo';
       case _io6eoug6.Workspace():
@@ -1165,6 +1491,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (dataClassName == 'DetectorLabReport') {
       return deserialize<_iai3zb4w.DetectorLabReport>(data['data']);
     }
+    if (dataClassName == 'DispatchRoom') {
+      return deserialize<_ip18i18x.DispatchRoom>(data['data']);
+    }
     if (dataClassName == 'DryRunResult') {
       return deserialize<_i89uufof.DryRunResult>(data['data']);
     }
@@ -1207,6 +1536,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (dataClassName == 'RetentionPayload') {
       return deserialize<_i1ksi047.RetentionPayload>(data['data']);
     }
+    if (dataClassName == 'RoomMember') {
+      return deserialize<_ii94tgib.RoomMember>(data['data']);
+    }
+    if (dataClassName == 'RoomMessage') {
+      return deserialize<_i2z40emo.RoomMessage>(data['data']);
+    }
     if (dataClassName == 'RuleAction') {
       return deserialize<_ie2yorw3.RuleAction>(data['data']);
     }
@@ -1236,6 +1571,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'TimeWindow') {
       return deserialize<_idjbqmwg.TimeWindow>(data['data']);
+    }
+    if (dataClassName == 'UserProfile') {
+      return deserialize<_ir2mn8w1.UserProfile>(data['data']);
     }
     if (dataClassName == 'VerificationInfo') {
       return deserialize<_iv8f4ltc.VerificationInfo>(data['data']);
@@ -1296,12 +1634,20 @@ class Protocol extends _is.DatabaseSerializationManager {
         return _imwagalw.Camera.t;
       case _id7ivncr.Contact:
         return _id7ivncr.Contact.t;
+      case _ip18i18x.DispatchRoom:
+        return _ip18i18x.DispatchRoom.t;
       case _iy4wsyyx.Incident:
         return _iy4wsyyx.Incident.t;
       case _icglyrab.IncidentEvent:
         return _icglyrab.IncidentEvent.t;
+      case _ii94tgib.RoomMember:
+        return _ii94tgib.RoomMember.t;
+      case _i2z40emo.RoomMessage:
+        return _i2z40emo.RoomMessage.t;
       case _ixr8yfub.RuleSpec:
         return _ixr8yfub.RuleSpec.t;
+      case _ir2mn8w1.UserProfile:
+        return _ir2mn8w1.UserProfile.t;
       case _io6eoug6.Workspace:
         return _io6eoug6.Workspace.t;
       case _ixcxr4o1.Zone:

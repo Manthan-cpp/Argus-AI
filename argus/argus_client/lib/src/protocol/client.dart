@@ -15,6 +15,7 @@ import 'package:argus_client/src/protocol/audit_entry.dart' as _ikvg5xfi;
 import 'package:argus_client/src/protocol/camera.dart' as _i20qtz6o;
 import 'package:argus_client/src/protocol/contact.dart' as _is7rcw5z;
 import 'package:argus_client/src/protocol/demo_seed_result.dart' as _imfiludm;
+import 'package:argus_client/src/protocol/dispatch_room.dart' as _ic2gvio8;
 import 'package:argus_client/src/protocol/dry_run_result.dart' as _i6u54chj;
 import 'package:argus_client/src/protocol/evidence_upload.dart' as _i09kivnj;
 import 'package:argus_client/src/protocol/greetings/greeting.dart' as _ij1oemww;
@@ -23,9 +24,12 @@ import 'package:argus_client/src/protocol/incident.dart' as _i1aq5e6k;
 import 'package:argus_client/src/protocol/incident_detail.dart' as _iibtzi3y;
 import 'package:argus_client/src/protocol/incident_update.dart' as _iy5lsfoy;
 import 'package:argus_client/src/protocol/parse_result.dart' as _itpxon2j;
+import 'package:argus_client/src/protocol/room_member.dart' as _is3b1078;
+import 'package:argus_client/src/protocol/room_message.dart' as _iy4hi5ej;
 import 'package:argus_client/src/protocol/rule_spec.dart' as _iu4sgp9a;
 import 'package:argus_client/src/protocol/signal_ack.dart' as _idevjgfk;
 import 'package:argus_client/src/protocol/signal_batch.dart' as _if0pbfo6;
+import 'package:argus_client/src/protocol/user_profile.dart' as _i7qokifa;
 import 'package:argus_client/src/protocol/workspace.dart' as _ijok4rmj;
 import 'package:argus_client/src/protocol/workspace_settings.dart' as _igkec3gh;
 import 'package:argus_client/src/protocol/zone.dart' as _igytwnus;
@@ -474,6 +478,136 @@ class EndpointIncident extends _isc.EndpointRef {
 }
 
 /// {@category Endpoint}
+class EndpointRoom extends _isc.EndpointRef {
+  EndpointRoom(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'room';
+
+  _ida.Future<_ic2gvio8.DispatchRoom> createRoom(
+    String name, {
+    String? description,
+    List<int>? cameraIds,
+    String? creatorName,
+    String? creatorRole,
+  }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom>(
+    'room',
+    'createRoom',
+    {
+      'name': name,
+      'description': description,
+      'cameraIds': cameraIds,
+      'creatorName': creatorName,
+      'creatorRole': creatorRole,
+    },
+  );
+
+  _ida.Future<_ic2gvio8.DispatchRoom?> joinRoom(
+    String code, {
+    required String userName,
+    required String userRole,
+    String? userEmail,
+  }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom?>(
+    'room',
+    'joinRoom',
+    {
+      'code': code,
+      'userName': userName,
+      'userRole': userRole,
+      'userEmail': userEmail,
+    },
+  );
+
+  _ida.Future<List<_ic2gvio8.DispatchRoom>> listRooms() =>
+      caller.callServerEndpoint<List<_ic2gvio8.DispatchRoom>>(
+        'room',
+        'listRooms',
+        {},
+      );
+
+  _ida.Future<_ic2gvio8.DispatchRoom?> getRoomByCode(String code) =>
+      caller.callServerEndpoint<_ic2gvio8.DispatchRoom?>(
+        'room',
+        'getRoomByCode',
+        {'code': code},
+      );
+
+  _ida.Future<List<_is3b1078.RoomMember>> listMembers(int roomId) =>
+      caller.callServerEndpoint<List<_is3b1078.RoomMember>>(
+        'room',
+        'listMembers',
+        {'roomId': roomId},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointRoomMessage extends _isc.EndpointRef {
+  EndpointRoomMessage(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'roomMessage';
+
+  _ida.Stream<_iy4hi5ej.RoomMessage> watch(int roomId) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_iy4hi5ej.RoomMessage>,
+        _iy4hi5ej.RoomMessage
+      >(
+        'roomMessage',
+        'watch',
+        {'roomId': roomId},
+        {},
+      );
+
+  _ida.Future<_iy4hi5ej.RoomMessage> sendMessage(
+    int roomId,
+    String content, {
+    String? senderName,
+    String? senderRole,
+    int? senderId,
+  }) => caller.callServerEndpoint<_iy4hi5ej.RoomMessage>(
+    'roomMessage',
+    'sendMessage',
+    {
+      'roomId': roomId,
+      'content': content,
+      'senderName': senderName,
+      'senderRole': senderRole,
+      'senderId': senderId,
+    },
+  );
+
+  _ida.Future<List<_iy4hi5ej.RoomMessage>> listMessages(
+    int roomId, {
+    int? limit,
+  }) => caller.callServerEndpoint<List<_iy4hi5ej.RoomMessage>>(
+    'roomMessage',
+    'listMessages',
+    {
+      'roomId': roomId,
+      'limit': limit,
+    },
+  );
+
+  _ida.Future<_iy4hi5ej.RoomMessage> postAlert(
+    int roomId, {
+    required String content,
+    required String cameraName,
+    required String severity,
+    int? incidentId,
+  }) => caller.callServerEndpoint<_iy4hi5ej.RoomMessage>(
+    'roomMessage',
+    'postAlert',
+    {
+      'roomId': roomId,
+      'content': content,
+      'cameraName': cameraName,
+      'severity': severity,
+      'incidentId': incidentId,
+    },
+  );
+}
+
+/// {@category Endpoint}
 class EndpointRule extends _isc.EndpointRef {
   EndpointRule(_isc.EndpointCaller caller) : super(caller);
 
@@ -537,6 +671,35 @@ class EndpointSignal extends _isc.EndpointRef {
         'signal',
         'send',
         {'batch': batch},
+      );
+}
+
+/// {@category Endpoint}
+class EndpointUser extends _isc.EndpointRef {
+  EndpointUser(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'user';
+
+  _ida.Future<_i7qokifa.UserProfile> login(
+    String fullName,
+    String role, {
+    String? email,
+  }) => caller.callServerEndpoint<_i7qokifa.UserProfile>(
+    'user',
+    'login',
+    {
+      'fullName': fullName,
+      'role': role,
+      'email': email,
+    },
+  );
+
+  _ida.Future<_i7qokifa.UserProfile> getCurrentUser() =>
+      caller.callServerEndpoint<_i7qokifa.UserProfile>(
+        'user',
+        'getCurrentUser',
+        {},
       );
 }
 
@@ -662,8 +825,11 @@ class Client extends _isc.ServerpodClientShared {
     evidence = EndpointEvidence(this);
     health = EndpointHealth(this);
     incident = EndpointIncident(this);
+    room = EndpointRoom(this);
+    roomMessage = EndpointRoomMessage(this);
     rule = EndpointRule(this);
     signal = EndpointSignal(this);
+    user = EndpointUser(this);
     workspace = EndpointWorkspace(this);
     zone = EndpointZone(this);
     greeting = EndpointGreeting(this);
@@ -688,9 +854,15 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointIncident incident;
 
+  late final EndpointRoom room;
+
+  late final EndpointRoomMessage roomMessage;
+
   late final EndpointRule rule;
 
   late final EndpointSignal signal;
+
+  late final EndpointUser user;
 
   late final EndpointWorkspace workspace;
 
@@ -711,8 +883,11 @@ class Client extends _isc.ServerpodClientShared {
     'evidence': evidence,
     'health': health,
     'incident': incident,
+    'room': room,
+    'roomMessage': roomMessage,
     'rule': rule,
     'signal': signal,
+    'user': user,
     'workspace': workspace,
     'zone': zone,
     'greeting': greeting,

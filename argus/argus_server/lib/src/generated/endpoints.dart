@@ -33,8 +33,11 @@ import '../endpoints/demo_endpoint.dart' as _irow5ity;
 import '../endpoints/evidence_endpoint.dart' as _i2cvsm7u;
 import '../endpoints/health_endpoint.dart' as _ica9y4w0;
 import '../endpoints/incident_endpoint.dart' as _idvfe0v9;
+import '../endpoints/room_endpoint.dart' as _io7erjyw;
+import '../endpoints/room_message_endpoint.dart' as _i9gmt7br;
 import '../endpoints/rule_endpoint.dart' as _i1yhvvjn;
 import '../endpoints/signal_endpoint.dart' as _iirj0uqq;
+import '../endpoints/user_endpoint.dart' as _iymy5306;
 import '../endpoints/workspace_endpoint.dart' as _i9dwb32i;
 import '../endpoints/zone_endpoint.dart' as _ieltocmn;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
@@ -98,6 +101,18 @@ class Endpoints extends _is.EndpointDispatch {
           'incident',
           null,
         ),
+      'room': _io7erjyw.RoomEndpoint()
+        ..initialize(
+          server,
+          'room',
+          null,
+        ),
+      'roomMessage': _i9gmt7br.RoomMessageEndpoint()
+        ..initialize(
+          server,
+          'roomMessage',
+          null,
+        ),
       'rule': _i1yhvvjn.RuleEndpoint()
         ..initialize(
           server,
@@ -108,6 +123,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'signal',
+          null,
+        ),
+      'user': _iymy5306.UserEndpoint()
+        ..initialize(
+          server,
+          'user',
           null,
         ),
       'workspace': _i9dwb32i.WorkspaceEndpoint()
@@ -716,6 +737,281 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
+    connectors['room'] = _is.EndpointConnector(
+      name: 'room',
+      endpoint: endpoints['room']!,
+      methodConnectors: {
+        'createRoom': _is.MethodConnector(
+          name: 'createRoom',
+          params: {
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'description': _is.ParameterDescription(
+              name: 'description',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'cameraIds': _is.ParameterDescription(
+              name: 'cameraIds',
+              type: _is.getType<List<int>?>(),
+              nullable: true,
+            ),
+            'creatorName': _is.ParameterDescription(
+              name: 'creatorName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'creatorRole': _is.ParameterDescription(
+              name: 'creatorRole',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _io7erjyw.RoomEndpoint).createRoom(
+                    session,
+                    params['name'],
+                    description: params['description'],
+                    cameraIds: params['cameraIds'],
+                    creatorName: params['creatorName'],
+                    creatorRole: params['creatorRole'],
+                  ),
+        ),
+        'joinRoom': _is.MethodConnector(
+          name: 'joinRoom',
+          params: {
+            'code': _is.ParameterDescription(
+              name: 'code',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'userRole': _is.ParameterDescription(
+              name: 'userRole',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'userEmail': _is.ParameterDescription(
+              name: 'userEmail',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _io7erjyw.RoomEndpoint).joinRoom(
+                session,
+                params['code'],
+                userName: params['userName'],
+                userRole: params['userRole'],
+                userEmail: params['userEmail'],
+              ),
+        ),
+        'listRooms': _is.MethodConnector(
+          name: 'listRooms',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _io7erjyw.RoomEndpoint)
+                  .listRooms(session),
+        ),
+        'getRoomByCode': _is.MethodConnector(
+          name: 'getRoomByCode',
+          params: {
+            'code': _is.ParameterDescription(
+              name: 'code',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _io7erjyw.RoomEndpoint).getRoomByCode(
+                    session,
+                    params['code'],
+                  ),
+        ),
+        'listMembers': _is.MethodConnector(
+          name: 'listMembers',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _io7erjyw.RoomEndpoint).listMembers(
+                    session,
+                    params['roomId'],
+                  ),
+        ),
+      },
+    );
+    connectors['roomMessage'] = _is.EndpointConnector(
+      name: 'roomMessage',
+      endpoint: endpoints['roomMessage']!,
+      methodConnectors: {
+        'sendMessage': _is.MethodConnector(
+          name: 'sendMessage',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'content': _is.ParameterDescription(
+              name: 'content',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'senderName': _is.ParameterDescription(
+              name: 'senderName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'senderRole': _is.ParameterDescription(
+              name: 'senderRole',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'senderId': _is.ParameterDescription(
+              name: 'senderId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['roomMessage'] as _i9gmt7br.RoomMessageEndpoint)
+                      .sendMessage(
+                        session,
+                        params['roomId'],
+                        params['content'],
+                        senderName: params['senderName'],
+                        senderRole: params['senderRole'],
+                        senderId: params['senderId'],
+                      ),
+        ),
+        'listMessages': _is.MethodConnector(
+          name: 'listMessages',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'limit': _is.ParameterDescription(
+              name: 'limit',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['roomMessage'] as _i9gmt7br.RoomMessageEndpoint)
+                      .listMessages(
+                        session,
+                        params['roomId'],
+                        limit: params['limit'],
+                      ),
+        ),
+        'postAlert': _is.MethodConnector(
+          name: 'postAlert',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'content': _is.ParameterDescription(
+              name: 'content',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'cameraName': _is.ParameterDescription(
+              name: 'cameraName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'severity': _is.ParameterDescription(
+              name: 'severity',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'incidentId': _is.ParameterDescription(
+              name: 'incidentId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['roomMessage'] as _i9gmt7br.RoomMessageEndpoint)
+                      .postAlert(
+                        session,
+                        params['roomId'],
+                        content: params['content'],
+                        cameraName: params['cameraName'],
+                        severity: params['severity'],
+                        incidentId: params['incidentId'],
+                      ),
+        ),
+        'watch': _is.MethodStreamConnector(
+          name: 'watch',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {},
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['roomMessage'] as _i9gmt7br.RoomMessageEndpoint)
+                  .watch(
+                    session,
+                    params['roomId'],
+                  ),
+        ),
+      },
+    );
     connectors['rule'] = _is.EndpointConnector(
       name: 'rule',
       endpoint: endpoints['rule']!,
@@ -838,6 +1134,52 @@ class Endpoints extends _is.EndpointDispatch {
                 session,
                 params['batch'],
               ),
+        ),
+      },
+    );
+    connectors['user'] = _is.EndpointConnector(
+      name: 'user',
+      endpoint: endpoints['user']!,
+      methodConnectors: {
+        'login': _is.MethodConnector(
+          name: 'login',
+          params: {
+            'fullName': _is.ParameterDescription(
+              name: 'fullName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'role': _is.ParameterDescription(
+              name: 'role',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'email': _is.ParameterDescription(
+              name: 'email',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['user'] as _iymy5306.UserEndpoint).login(
+                session,
+                params['fullName'],
+                params['role'],
+                email: params['email'],
+              ),
+        ),
+        'getCurrentUser': _is.MethodConnector(
+          name: 'getCurrentUser',
+          params: {},
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['user'] as _iymy5306.UserEndpoint)
+                  .getCurrentUser(session),
         ),
       },
     );

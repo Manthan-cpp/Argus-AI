@@ -233,4 +233,91 @@ class RemoteArgusRepository implements ArgusRepository {
   Future<HealthInfo> health() async {
     return await client.health.ping();
   }
+
+  // User Authentication & Profiles
+  @override
+  Future<UserProfile> login(String fullName, String role, {String? email}) async {
+    return await client.user.login(fullName, role, email: email);
+  }
+
+  @override
+  Future<UserProfile> getCurrentUser() async {
+    return await client.user.getCurrentUser();
+  }
+
+  // In-App Dispatch Rooms & Operations Collaboration
+  @override
+  Future<DispatchRoom> createRoom(
+    String name, {
+    String? description,
+    List<int>? cameraIds,
+    String? creatorName,
+    String? creatorRole,
+  }) async {
+    return await client.room.createRoom(
+      name,
+      description: description,
+      cameraIds: cameraIds,
+      creatorName: creatorName,
+      creatorRole: creatorRole,
+    );
+  }
+
+  @override
+  Future<DispatchRoom?> joinRoom(
+    String code, {
+    required String userName,
+    required String userRole,
+    String? userEmail,
+  }) async {
+    return await client.room.joinRoom(
+      code,
+      userName: userName,
+      userRole: userRole,
+      userEmail: userEmail,
+    );
+  }
+
+  @override
+  Future<List<DispatchRoom>> listRooms() async {
+    return await client.room.listRooms();
+  }
+
+  @override
+  Future<DispatchRoom?> getRoomByCode(String code) async {
+    return await client.room.getRoomByCode(code);
+  }
+
+  @override
+  Future<List<RoomMember>> listRoomMembers(int roomId) async {
+    return await client.room.listMembers(roomId);
+  }
+
+  // Live Dispatch Room Messaging & Alerts
+  @override
+  Future<RoomMessage> sendRoomMessage(
+    int roomId,
+    String content, {
+    String? senderName,
+    String? senderRole,
+    int? senderId,
+  }) async {
+    return await client.roomMessage.sendMessage(
+      roomId,
+      content,
+      senderName: senderName,
+      senderRole: senderRole,
+      senderId: senderId,
+    );
+  }
+
+  @override
+  Future<List<RoomMessage>> listRoomMessages(int roomId, {int? limit}) async {
+    return await client.roomMessage.listMessages(roomId, limit: limit);
+  }
+
+  @override
+  Stream<RoomMessage> watchRoomMessages(int roomId) {
+    return client.roomMessage.watch(roomId);
+  }
 }
