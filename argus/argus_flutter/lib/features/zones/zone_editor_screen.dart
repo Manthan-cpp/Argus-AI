@@ -6,6 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
+import '../../core/util/preloaded_scenes.dart';
+import '../../core/util/video_picker.dart';
+import '../../core/vision/vision_controller.dart';
+import '../../core/widgets/zone_webcam_preview.dart';
 import '../../data/repository_provider.dart';
 
 enum EditorTool {
@@ -25,6 +29,10 @@ class ZoneEditorScreen extends ConsumerStatefulWidget {
 
 class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
     with SingleTickerProviderStateMixin {
+  Camera? _camera;
+  String? _staticFrameUrl;
+  bool _isExtractingFrame = false;
+
   List<Zone> _zones = [];
   Zone? _activeZone;
   bool _isLoading = true;
@@ -61,6 +69,13 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     )..repeat();
+
+    // Release any running vision engine from monitor screen to free webcam
+    final vision = ref.read(visionControllerProvider);
+    if (vision.isRunning) {
+      vision.stop();
+    }
+
     _loadZones();
   }
 
@@ -72,9 +87,34 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
 
   Future<void> _loadZones() async {
     final repo = ref.read(argusRepositoryProvider);
+    final cameras = await repo.listCameras();
+    final cam = cameras.where((c) => c.id == widget.cameraId).firstOrNull;
     final list = await repo.listZones(widget.cameraId);
+
+    String? frameUrl;
+    if (cam != null && cam.sourceKind != 'webcam') {
+      final cache = ref.read(cameraStaticFrameProvider);
+      if (cache.containsKey(cam.id)) {
+        frameUrl = cache[cam.id];
+      } else if (cam.sourceRef.startsWith('blob:') || cam.sourceRef.startsWith('http') || cam.sourceRef.endsWith('.mp4')) {
+        try {
+          frameUrl = await extractVideoFirstFrame(cam.sourceRef);
+          if (frameUrl != null && cam.id != null) {
+            ref.read(cameraStaticFrameProvider.notifier).update((m) => {...m, cam.id!: frameUrl!});
+          }
+        } catch (_) {}
+      }
+
+      frameUrl ??= getPreloadedSceneFrame(cam.sourceRef);
+      if (cam.id != null) {
+        ref.read(cameraStaticFrameProvider.notifier).update((m) => {...m, cam.id!: frameUrl!});
+      }
+    }
+
     if (mounted) {
       setState(() {
+        _camera = cam;
+        _staticFrameUrl = frameUrl;
         _zones = list;
         if (list.isNotEmpty && _activeZone == null) {
           _activeZone = list.first;
@@ -84,6 +124,53 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
         }
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _pickVideoForCamera() async {
+    final file = await pickVideoFile();
+    if (file != null) {
+      setState(() => _isExtractingFrame = true);
+      String? frame = file.firstFrameDataUrl;
+      frame ??= await extractVideoFirstFrame(file.url);
+      frame ??= getPreloadedSceneFrame(null);
+
+      final current = _camera ?? Camera(
+        id: widget.cameraId,
+        workspaceId: 1,
+        name: file.name.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), ''),
+        sourceKind: 'file',
+        sourceRef: file.url,
+        enabled: true,
+        createdAt: DateTime.now(),
+        status: 'online',
+      );
+      final updatedCam = current.copyWith(
+        sourceRef: file.url,
+        sourceKind: 'file',
+      );
+      final repo = ref.read(argusRepositoryProvider);
+      await repo.saveCamera(updatedCam);
+
+      if (updatedCam.id != null) {
+        ref.read(cameraStaticFrameProvider.notifier).update(
+          (m) => {...m, updatedCam.id!: frame!},
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _camera = updatedCam;
+          _staticFrameUrl = frame;
+          _isExtractingFrame = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF1E293B),
+            content: Text('Loaded "${file.name}". Static first frame updated for zone drawing.'),
+          ),
+        );
+      }
     }
   }
 
@@ -802,12 +889,68 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Zone Drawing Studio · Camera #${widget.cameraId}',
-                            style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700),
+                          Row(
+                            children: [
+                              Text(
+                                _camera?.name ?? 'Camera #${widget.cameraId}',
+                                style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(width: 12),
+                              if (_camera?.sourceKind == 'webcam')
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.greenAccent.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.4)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.fiber_manual_record_rounded, size: 8, color: Colors.greenAccent),
+                                      const SizedBox(width: 5),
+                                      Text('LIVE WEBCAM', style: GoogleFonts.jetBrainsMono(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent)),
+                                    ],
+                                  ),
+                                )
+                              else
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amberAccent.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.pause_circle_outline_rounded, size: 10, color: Colors.amberAccent),
+                                          const SizedBox(width: 5),
+                                          Text('STATIC FIRST FRAME', style: GoogleFonts.jetBrainsMono(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amberAccent)),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                      onPressed: _pickVideoForCamera,
+                                      icon: const Icon(Icons.upload_file_rounded, size: 14),
+                                      label: const Text('Change MP4 / Scene', style: TextStyle(fontSize: 11)),
+                                    ),
+                                  ],
+                                ),
+                            ],
                           ),
                           Text(
-                            'Freehand drawing, precision polygon pen, and whole-area repositioning',
+                            _camera?.sourceKind == 'webcam'
+                                ? 'Live webcam active in background · Draw detection zones over physical space'
+                                : 'Static video first frame frozen in background · Draw detection zones over scene structures',
                             style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary),
                           ),
                         ],
@@ -962,12 +1105,61 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
-                              // 1. Camera FOV Grid & Aspect-Ratio Guides
-                              CustomPaint(
-                                painter: _CameraGridPainter(),
+                              // 1. Background Feed Layer: Webcam (Live) OR Video (Static First Frame)
+                              if (_camera?.sourceKind == 'webcam')
+                                const Positioned.fill(
+                                  child: ZoneWebcamPreview(),
+                                )
+                              else if (_staticFrameUrl != null)
+                                Positioned.fill(
+                                  child: Image.network(
+                                    _staticFrameUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      color: const Color(0xFF070A0F),
+                                      child: const Center(
+                                        child: Icon(Icons.movie_outlined, size: 48, color: Colors.white24),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // Loading indicator when extracting new video frame
+                              if (_isExtractingFrame)
+                                Positioned.fill(
+                                  child: Container(
+                                    color: Colors.black87,
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const CircularProgressIndicator(color: ArgusTokens.accent),
+                                          const SizedBox(height: 12),
+                                          Text('Extracting static first frame...', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                              // 2. High-contrast tint overlay so neon drawing lines pop sharply
+                              if (_camera?.sourceKind == 'webcam' || _staticFrameUrl != null)
+                                Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: Container(
+                                      color: Colors.black.withValues(alpha: 0.22),
+                                    ),
+                                  ),
+                                ),
+
+                              // 3. Camera FOV Grid & Aspect-Ratio Guides
+                              IgnorePointer(
+                                child: CustomPaint(
+                                  painter: _CameraGridPainter(),
+                                ),
                               ),
 
-                              // 2. Interactive Gesture Layer & Zone Editor Painter
+                              // 4. Interactive Gesture Layer & Zone Editor Painter
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   final size = Size(constraints.maxWidth, constraints.maxHeight);

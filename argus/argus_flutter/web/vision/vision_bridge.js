@@ -1436,4 +1436,34 @@
   // Expose global instance on window
   window.argusVision = new ArgusVisionEngine();
 
+  // Dedicated Zone Editor Webcam Preview Helpers
+  window.argusStartWebcamPreview = async function (elementId) {
+    try {
+      const el = document.getElementById(elementId);
+      if (!el) return false;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+        audio: false
+      });
+      el.srcObject = stream;
+      await el.play();
+      return true;
+    } catch (err) {
+      console.warn('[Argus] Zone webcam preview error:', err);
+      return false;
+    }
+  };
+
+  window.argusStopWebcamPreview = function (elementId) {
+    try {
+      const el = document.getElementById(elementId);
+      if (el && el.srcObject) {
+        el.srcObject.getTracks().forEach(t => t.stop());
+        el.srcObject = null;
+      }
+    } catch (err) {
+      console.warn('[Argus] Zone webcam preview stop error:', err);
+    }
+  };
+
 })(window);
