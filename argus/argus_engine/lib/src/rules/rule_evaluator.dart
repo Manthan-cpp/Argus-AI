@@ -215,8 +215,16 @@ class RuleEvaluator {
   bool _isTriggerConditionSatisfied(RuleTrigger trigger, SignalBatch batch) {
     for (final event in batch.signals) {
       if (trigger.signal == TriggerSignal.person_count) {
-        if (event.personCount >= (trigger.minCount ?? 1)) {
-          return true;
+        if (trigger.zoneId != null && trigger.zoneId! > 0) {
+          final countInZone = event.persons.where((p) =>
+              p.confidence >= trigger.minConfidence && p.zoneIds.contains(trigger.zoneId)).length;
+          if (countInZone >= (trigger.minCount ?? 1)) {
+            return true;
+          }
+        } else {
+          if (event.personCount >= (trigger.minCount ?? 1)) {
+            return true;
+          }
         }
       }
 
@@ -224,8 +232,10 @@ class RuleEvaluator {
         if (person.confidence < trigger.minConfidence) continue;
 
         // Check Zone Constraint
-        if (trigger.zoneId != null) {
+        if (trigger.zoneId != null && trigger.zoneId! > 0) {
           if (!person.zoneIds.contains(trigger.zoneId)) continue;
+        } else if (trigger.signal == TriggerSignal.person_in_zone) {
+          if (person.zoneIds.isEmpty) continue;
         }
 
         switch (trigger.signal) {
