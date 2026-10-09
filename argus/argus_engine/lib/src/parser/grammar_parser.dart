@@ -31,13 +31,23 @@ class GrammarParser {
     int? matchedZoneId;
     String? matchedZoneName;
 
-    // Search for zone in sentence
+    // Search for zone in sentence (full name or distinctive keywords)
     for (final zone in knownZones) {
-      if (lower.contains(zone.name.toLowerCase())) {
+      final zNameLower = zone.name.toLowerCase();
+      if (lower.contains(zNameLower)) {
         matchedZoneId = zone.id;
         matchedZoneName = zone.name;
         break;
       }
+      final tokens = zNameLower.split(RegExp(r'\s+')).where((t) => t.length >= 4 && t != 'zone' && t != 'area');
+      for (final tok in tokens) {
+        if (lower.contains(tok)) {
+          matchedZoneId = zone.id;
+          matchedZoneName = zone.name;
+          break;
+        }
+      }
+      if (matchedZoneId != null) break;
     }
 
     // Signal pattern 1: PPE / Helmet check
