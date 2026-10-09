@@ -735,9 +735,12 @@ class MockArgusRepository implements ArgusRepository {
                   break;
                 }
               } else {
-                met = true;
-                detail = 'Sudden fall detected (score: ${p.fallScore})';
-                break;
+                // Require sustained fall confirmation (at least 1s motionless or high confidence)
+                if (p.motionlessMs >= 1000 || p.fallScore >= 0.85) {
+                  met = true;
+                  detail = 'Sudden fall detected (score: ${p.fallScore})';
+                  break;
+                }
               }
             }
           }

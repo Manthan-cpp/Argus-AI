@@ -17,3 +17,7 @@ pubspec_overrides.yaml
 
 # Serverpod Cloud CLI
 .scloud/
+
+# Environment
+.env
+.env.*

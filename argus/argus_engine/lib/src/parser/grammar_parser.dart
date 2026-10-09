@@ -56,29 +56,44 @@ class GrammarParser {
       ppe = 'helmet';
     }
     // Signal pattern 2: Fall suspected
-    else if (lower.contains('fall') || lower.contains('falls') || lower.contains('fallen') || lower.contains('stays down') || lower.contains('collapsed')) {
+    else if (lower.contains('fall') || lower.contains('falls') || lower.contains('fallen') || lower.contains('stays down') || lower.contains('collapsed') || lower.contains('trips') || lower.contains('tumble') || lower.contains('lies down')) {
       signal = TriggerSignal.fall_suspected;
-      final staysDownMatch = RegExp(r"(?:stays down|does not get up|doesn't get up|remains down|unresponsive|within|for)\s*(?:for\s*)?(?:more than\s*|over\s*|within\s*)?(\d+)\s*(?:s|sec|seconds?)").firstMatch(lower);
+      const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)';
+      final staysDownMatch = RegExp(
+        r"(?:stays down|does not get up|doesn't get up|doesn't gets up|fails to get up|fails to stand|doesn't stand|unable to get up|remains down|unresponsive|within|for)\s*(?:for\s*)?(?:more than\s*|over\s*|within\s*)?" + numPattern + r"\s*(?:s|sec|seconds?)",
+      ).firstMatch(lower);
       if (staysDownMatch != null) {
-        minDurationSec = int.parse(staysDownMatch.group(1)!);
+        minDurationSec = _parseNumber(staysDownMatch.group(1)) ?? 0;
+      } else {
+        // Check for general "within/for X seconds" anywhere
+        final generalSecMatch = RegExp(r'(?:within|for|after)\s+' + numPattern + r'\s*(?:s|sec|seconds?)').firstMatch(lower);
+        if (generalSecMatch != null) {
+          minDurationSec = _parseNumber(generalSecMatch.group(1)) ?? 0;
+        }
+      }
+      // Safe default: if user explicitly expressed non-recovery ("doesn't gets up", "stays down") without number, default to 3s
+      if (minDurationSec == 0 && (lower.contains('get up') || lower.contains('gets up') || lower.contains('stays down') || lower.contains('remains down'))) {
+        minDurationSec = 3;
       }
     }
     // Signal pattern 3: Motionless / No one moves
     else if (lower.contains('no one moves') || lower.contains('motionless') || lower.contains('unmoving') || lower.contains('stationary')) {
       signal = TriggerSignal.motionless;
-      final motionMatch = RegExp(r'(?:for|over) (?:more than )?(\d+)\s*(?:s|sec|seconds?)').firstMatch(lower);
+      const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)';
+      final motionMatch = RegExp(r'(?:for|over)\s+(?:more than\s*)?' + numPattern + r'\s*(?:s|sec|seconds?)').firstMatch(lower);
       if (motionMatch != null) {
-        minDurationSec = int.parse(motionMatch.group(1)!);
+        minDurationSec = _parseNumber(motionMatch.group(1)) ?? 10;
       } else {
         minDurationSec = 10;
       }
     }
     // Signal pattern 4: Person count / Crowd
-    else if (RegExp(r'(?:more than|over|exceeds)\s+(\d+)\s+(?:people|persons)').hasMatch(lower) || lower.contains('crowd')) {
+    else if (RegExp(r'(?:more than|over|exceeds|at least)\s+(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:people|persons)').hasMatch(lower) || lower.contains('crowd')) {
       signal = TriggerSignal.person_count;
-      final countMatch = RegExp(r'(?:more than|over|exceeds)\s+(\d+)').firstMatch(lower);
+      const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten)';
+      final countMatch = RegExp(r'(?:more than|over|exceeds|at least)\s+' + numPattern).firstMatch(lower);
       if (countMatch != null) {
-        minCount = int.parse(countMatch.group(1)!);
+        minCount = _parseNumber(countMatch.group(1)) ?? 3;
       } else {
         minCount = 3;
       }
@@ -86,9 +101,10 @@ class GrammarParser {
     // Signal pattern 5: Zone dwell (stays in zone for N seconds)
     else if (lower.contains('stays in') || lower.contains('dwells in') || lower.contains('remains in') || lower.contains('loiter')) {
       signal = TriggerSignal.person_in_zone;
-      final dwellMatch = RegExp(r'(?:for|over) (?:more than )?(\d+)\s*(?:s|sec|seconds?)').firstMatch(lower);
+      const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)';
+      final dwellMatch = RegExp(r'(?:for|over|after)\s+(?:more than\s*)?' + numPattern + r'\s*(?:s|sec|seconds?)').firstMatch(lower);
       if (dwellMatch != null) {
-        minDurationSec = int.parse(dwellMatch.group(1)!);
+        minDurationSec = _parseNumber(dwellMatch.group(1)) ?? 0;
       }
     }
     // Signal pattern 6: Zone entry / intrusion
@@ -287,4 +303,21 @@ class GrammarParser {
         return '$prefix: PPE Non-compliance Check';
     }
   }
+
+  static int? _parseNumber(String? str) {
+    if (str == null) return null;
+    final s = str.trim().toLowerCase();
+    final asInt = int.tryParse(s);
+    if (asInt != null) return asInt;
+    const wordMap = {
+      'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+      'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9,
+      'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
+      'fourteen': 14, 'fifteen': 15, 'sixteen': 16, 'seventeen': 17,
+      'eighteen': 18, 'nineteen': 19, 'twenty': 20, 'thirty': 30,
+      'forty': 40, 'fifty': 50, 'sixty': 60,
+    };
+    return wordMap[s];
+  }
 }
+
