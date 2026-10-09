@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
 import '../../app/theme/severity_scale.dart';
@@ -28,16 +29,27 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
   List<RuleSpec> _savedRules = [];
   List<Camera> _cameras = [];
   Camera? _selectedCamera;
+  List<Zone> _cameraZones = [];
+  Zone? _selectedZone;
+  Map<int, Zone> _allZones = {};
   bool _isLoading = true;
 
   final List<String> _sampleChips = [
     'If a person enters Restricted Zone, trigger a critical alert immediately.',
+    'If more than 3 people gather in Staircase, raise a crowd density alert.',
     'If a person lingers in Cash Desk for more than 10 seconds, raise a loitering warning.',
-    'If more than 3 people gather in Emergency Exit, raise a crowd density alert.',
-    'If human activity is detected after 8 PM, take a snapshot and alert security.',
     'If someone falls and stays down for 10 seconds, dispatch medical response.',
+    'If human activity is detected after 8 PM, take a snapshot and alert security.',
     'If a worker enters Machinery Bay, dispatch an urgent perimeter warning.',
   ];
+
+  Color _parseZoneColor(String? colorStr) {
+    if (colorStr == null || colorStr.isEmpty) return ArgusTokens.accent;
+    var hex = colorStr.replaceAll('#', '');
+    if (hex.length == 6) hex = 'FF$hex';
+    final val = int.tryParse(hex, radix: 16);
+    return val != null ? Color(val) : ArgusTokens.accent;
+  }
 
   @override
   void initState() {
@@ -50,13 +62,36 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
     final rules = await repo.listRules();
     final cams = await repo.listCameras();
 
+    // Map all zones across all cameras for displaying labels on existing rules
+    final allZonesMap = <int, Zone>{};
+    for (final c in cams) {
+      if (c.id != null) {
+        final zList = await repo.listZones(c.id!);
+        for (final z in zList) {
+          if (z.id != null) allZonesMap[z.id!] = z;
+        }
+      }
+    }
+
+    Camera? initialCamera;
+    List<Zone> initialCameraZones = [];
+    if (cams.isNotEmpty && _selectedCamera == null) {
+      initialCamera = cams.first;
+      if (initialCamera.id != null) {
+        initialCameraZones = await repo.listZones(initialCamera.id!);
+      }
+    } else if (_selectedCamera != null && _selectedCamera!.id != null) {
+      initialCamera = _selectedCamera;
+      initialCameraZones = await repo.listZones(initialCamera!.id!);
+    }
+
     if (mounted) {
       setState(() {
         _savedRules = rules;
         _cameras = cams;
-        if (cams.isNotEmpty && _selectedCamera == null) {
-          _selectedCamera = cams.first;
-        }
+        _allZones = allZonesMap;
+        _selectedCamera = initialCamera;
+        _cameraZones = initialCameraZones;
         _isLoading = false;
       });
       _interpretInitial();
@@ -67,13 +102,99 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
     await _handleInterpret(_sentenceCtrl.text);
   }
 
+  Future<void> _handleCameraChanged(Camera? newCam) async {
+    setState(() {
+      _selectedCamera = newCam;
+      _selectedZone = null;
+    });
+
+    if (newCam != null && newCam.id != null) {
+      final repo = ref.read(argusRepositoryProvider);
+      final zList = await repo.listZones(newCam.id!);
+      if (mounted) {
+        setState(() {
+          _cameraZones = zList;
+          for (final z in zList) {
+            if (z.id != null) _allZones[z.id!] = z;
+          }
+        });
+      }
+    } else {
+      if (mounted) {
+        setState(() {
+          _cameraZones = [];
+        });
+      }
+    }
+
+    await _handleInterpret(_sentenceCtrl.text);
+  }
+
+  void _handleZoneChanged(Zone? newZone) {
+    setState(() {
+      _selectedZone = newZone;
+      if (_currentParsed?.spec != null) {
+        _currentParsed = _withUpdatedZone(_currentParsed!, newZone?.id);
+      }
+    });
+  }
+
+  ParseResult _withUpdatedZone(ParseResult original, int? zoneId) {
+    if (original.spec == null) return original;
+    final s = original.spec!;
+    final updatedTrigger = s.trigger.copyWith(zoneId: zoneId);
+    final updatedSpec = RuleSpec(
+      id: s.id,
+      workspaceId: s.workspaceId,
+      name: s.name,
+      enabled: s.enabled,
+      cameraIds: s.cameraIds,
+      trigger: updatedTrigger,
+      conditions: s.conditions,
+      severity: s.severity,
+      verify: s.verify,
+      actions: s.actions,
+      cooldownSec: s.cooldownSec,
+      escalation: s.escalation,
+      sourceText: s.sourceText,
+      parsedBy: s.parsedBy,
+      createdAt: s.createdAt,
+      version: s.version,
+    );
+    return ParseResult(
+      spec: updatedSpec,
+      parsedBy: original.parsedBy,
+      confidence: original.confidence,
+      warnings: original.warnings,
+      unsupportedReason: original.unsupportedReason,
+      alternatives: original.alternatives,
+    );
+  }
+
   Future<void> _handleInterpret(String sentence) async {
     setState(() => _isInterpreting = true);
     final repo = ref.read(argusRepositoryProvider);
     final result = await repo.interpretRule(sentence, cameraId: _selectedCamera?.id);
     if (mounted) {
+      final parsedZoneId = result.spec?.trigger.zoneId;
+      Zone? matchedZone;
+      if (parsedZoneId != null && _cameraZones.isNotEmpty) {
+        matchedZone = _cameraZones.where((z) => z.id == parsedZoneId).firstOrNull;
+      }
+
       setState(() {
-        _currentParsed = result;
+        if (matchedZone != null) {
+          _selectedZone = matchedZone;
+        } else if (_selectedZone != null && !_cameraZones.any((z) => z.id == _selectedZone!.id)) {
+          _selectedZone = null;
+        }
+
+        if (_selectedZone != null && result.spec != null) {
+          _currentParsed = _withUpdatedZone(result, _selectedZone!.id);
+        } else {
+          _currentParsed = result;
+        }
+
         _isInterpreting = false;
       });
     }
@@ -85,6 +206,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
 
     final raw = _currentParsed!.spec!;
     final targetCameraIds = _selectedCamera != null ? [_selectedCamera!.id!] : <int>[];
+    final targetZoneId = _selectedZone?.id;
 
     final ruleToSave = RuleSpec(
       id: raw.id,
@@ -92,7 +214,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
       name: raw.name,
       enabled: true,
       cameraIds: targetCameraIds,
-      trigger: raw.trigger,
+      trigger: raw.trigger.copyWith(zoneId: targetZoneId),
       conditions: raw.conditions,
       severity: raw.severity,
       verify: raw.verify,
@@ -112,9 +234,10 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
         _savedRules.insert(0, saved);
       });
       final camLabel = _selectedCamera != null ? 'attached to ${_selectedCamera!.name}' : 'attached to all cameras';
+      final zoneLabel = _selectedZone != null ? ' (Zone: ${_selectedZone!.name})' : ' (All Zones)';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Rule "${saved.name}" deployed and $camLabel.'),
+          content: Text('Rule "${saved.name}" deployed and $camLabel$zoneLabel.'),
           backgroundColor: ArgusTokens.bgRaised,
         ),
       );
@@ -299,54 +422,255 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Target Camera Selector Row
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: ArgusTokens.bgRaised,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: ArgusTokens.borderSubtle),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.videocam_outlined, size: 18, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Attach Rule To:',
-                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white, fontWeight: FontWeight.w600),
+            // Camera & Zone Attachment Selectors
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth > 720;
+
+                Widget cameraSelector = Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: ArgusTokens.bgRaised,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: ArgusTokens.borderSubtle),
                   ),
-                  const SizedBox(width: 14),
-                  if (_cameras.isEmpty)
-                    Text(
-                      'No cameras created yet (Will apply to all cameras)',
-                      style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
-                    )
-                  else
-                    Expanded(
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<Camera?>(
-                          value: _selectedCamera,
-                          dropdownColor: ArgusTokens.bgOverlay,
-                          style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
-                          items: [
-                            const DropdownMenuItem<Camera?>(
-                              value: null,
-                              child: Text('All Cameras (Global Rule)'),
-                            ),
-                            ..._cameras.map((c) => DropdownMenuItem<Camera?>(
-                              value: c,
-                              child: Text('${c.name} (${c.sourceKind.toUpperCase()})'),
-                            )),
-                          ],
-                          onChanged: (c) {
-                            setState(() => _selectedCamera = c);
-                            _handleInterpret(_sentenceCtrl.text);
-                          },
-                        ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.videocam_outlined, size: 18, color: Colors.white),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Camera:',
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
                       ),
+                      const SizedBox(width: 10),
+                      if (_cameras.isEmpty)
+                        Expanded(
+                          child: Text(
+                            'No cameras created yet',
+                            style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<Camera?>(
+                              value: _selectedCamera,
+                              isExpanded: true,
+                              dropdownColor: ArgusTokens.bgOverlay,
+                              style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                              items: [
+                                const DropdownMenuItem<Camera?>(
+                                  value: null,
+                                  child: Text('All Cameras (Global Rule)'),
+                                ),
+                                ..._cameras.map((c) => DropdownMenuItem<Camera?>(
+                                  value: c,
+                                  child: Text(
+                                    '${c.name} (${c.sourceKind.toUpperCase()})',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                )),
+                              ],
+                              onChanged: _handleCameraChanged,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+
+                Widget zoneSelector = Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: ArgusTokens.bgRaised,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _selectedZone != null
+                          ? _parseZoneColor(_selectedZone!.color).withValues(alpha: 0.5)
+                          : ArgusTokens.borderSubtle,
                     ),
-                ],
-              ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _selectedZone != null ? Icons.polyline_rounded : Icons.crop_free_rounded,
+                        size: 18,
+                        color: _selectedZone != null ? _parseZoneColor(_selectedZone!.color) : Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Target Zone / Area:',
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(width: 10),
+                      if (_selectedCamera == null)
+                        Expanded(
+                          child: Text(
+                            'Applies to all zones (Global Rule)',
+                            style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )
+                      else if (_cameraZones.isEmpty)
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Full Camera View (No drawn zones yet)',
+                                  style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (_selectedCamera?.id != null)
+                                InkWell(
+                                  onTap: () => context.go('/app/cameras/${_selectedCamera!.id}/zones'),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.brush_outlined, size: 12, color: ArgusTokens.accent),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Draw Area',
+                                          style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.accent, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<Zone?>(
+                                    value: _selectedZone,
+                                    isExpanded: true,
+                                    dropdownColor: ArgusTokens.bgOverlay,
+                                    style: GoogleFonts.inter(fontSize: 13, color: Colors.white),
+                                    items: [
+                                      DropdownMenuItem<Zone?>(
+                                        value: null,
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.public_rounded, size: 14, color: Colors.white70),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'All Zones / Any Configured Area (${_cameraZones.length} available)',
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      ..._cameraZones.map((z) {
+                                        final zColor = _parseZoneColor(z.color);
+                                        return DropdownMenuItem<Zone?>(
+                                          value: z,
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: BoxDecoration(
+                                                  color: zColor,
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(color: zColor.withValues(alpha: 0.6), blurRadius: 4),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  z.name,
+                                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.white),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                decoration: BoxDecoration(
+                                                  color: zColor.withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(3),
+                                                  border: Border.all(color: zColor.withValues(alpha: 0.5), width: 0.8),
+                                                ),
+                                                child: Text(
+                                                  z.kind.toUpperCase(),
+                                                  style: GoogleFonts.jetBrainsMono(
+                                                    fontSize: 9,
+                                                    color: zColor,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                '${z.polygon.length} pts',
+                                                style: GoogleFonts.jetBrainsMono(fontSize: 10, color: ArgusTokens.textTertiary),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                    ],
+                                    onChanged: _handleZoneChanged,
+                                  ),
+                                ),
+                              ),
+                              if (_selectedCamera?.id != null) ...[
+                                const SizedBox(width: 6),
+                                Tooltip(
+                                  message: 'Open Zone Editor to draw or edit polygons for this camera',
+                                  child: InkWell(
+                                    onTap: () => context.go('/app/cameras/${_selectedCamera!.id}/zones'),
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white10,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Icon(Icons.edit_road_rounded, size: 16, color: Colors.white70),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+
+                if (isWide) {
+                  return Row(
+                    children: [
+                      Expanded(child: cameraSelector),
+                      const SizedBox(width: 12),
+                      Expanded(child: zoneSelector),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      cameraSelector,
+                      const SizedBox(height: 10),
+                      zoneSelector,
+                    ],
+                  );
+                }
+              },
             ),
             const SizedBox(height: 14),
 
@@ -443,6 +767,32 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                             style: GoogleFonts.jetBrainsMono(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
+                        if (_selectedZone != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: _parseZoneColor(_selectedZone!.color).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: _parseZoneColor(_selectedZone!.color).withValues(alpha: 0.7)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.crop_square_rounded, size: 10, color: _parseZoneColor(_selectedZone!.color)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'ZONE: ${_selectedZone!.name.toUpperCase()}',
+                                  style: GoogleFonts.jetBrainsMono(
+                                    fontSize: 10,
+                                    color: _parseZoneColor(_selectedZone!.color),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -474,7 +824,10 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
             const SizedBox(height: 12),
 
             // Visual Workflow Graph
-            WorkflowGraphView(rule: spec),
+            WorkflowGraphView(
+              rule: spec,
+              zoneName: _selectedZone?.name ?? (_allZones[spec.trigger.zoneId]?.name),
+            ),
           ],
         ),
       ),
@@ -555,6 +908,37 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                                   style: GoogleFonts.jetBrainsMono(fontSize: 10, color: Colors.white70),
                                 ),
                               ),
+                              if (rule.trigger.zoneId != null) ...[
+                                const SizedBox(width: 6),
+                                () {
+                                  final zone = _allZones[rule.trigger.zoneId];
+                                  final zoneLabel = zone?.name ?? 'Zone #${rule.trigger.zoneId}';
+                                  final zoneColor = _parseZoneColor(zone?.color);
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: zoneColor.withValues(alpha: 0.18),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: zoneColor.withValues(alpha: 0.6), width: 1),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.crop_free_rounded, size: 10, color: zoneColor),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'ZONE: $zoneLabel',
+                                          style: GoogleFonts.jetBrainsMono(
+                                            fontSize: 10,
+                                            color: zoneColor,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }(),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 4),
