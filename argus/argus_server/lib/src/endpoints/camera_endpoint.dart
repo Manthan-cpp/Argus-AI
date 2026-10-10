@@ -3,18 +3,30 @@ import '../generated/protocol.dart';
 import 'workspace_endpoint.dart';
 
 class CameraEndpoint extends Endpoint {
-  Future<List<Camera>> list(Session session) async {
-    final ws = await WorkspaceEndpoint().ensure(session);
+  Future<List<Camera>> list(Session session, {int? workspaceId}) async {
+    if (workspaceId != null) {
+      return await Camera.db.find(
+        session,
+        where: (t) => t.workspaceId.equals(workspaceId),
+        orderBy: (t) => t.id,
+      );
+    }
+    final activeWorkspaces = await Workspace.db.find(
+      session,
+      where: (t) => t.isActive.equals(true),
+      orderBy: (t) => t.id,
+    );
+    final targetWsId = activeWorkspaces.isNotEmpty ? activeWorkspaces.last.id! : (await WorkspaceEndpoint().ensure(session)).id!;
     return await Camera.db.find(
       session,
-      where: (t) => t.workspaceId.equals(ws.id!),
+      where: (t) => t.workspaceId.equals(targetWsId),
       orderBy: (t) => t.id,
     );
   }
 
-  Future<Camera> save(Session session, Camera camera) async {
-    final ws = await WorkspaceEndpoint().ensure(session);
-    final targetCam = camera.copyWith(workspaceId: ws.id!);
+  Future<Camera> save(Session session, Camera camera, {int? workspaceId}) async {
+    final targetWsId = workspaceId ?? (camera.workspaceId != 0 ? camera.workspaceId : (await WorkspaceEndpoint().ensure(session)).id!);
+    final targetCam = camera.copyWith(workspaceId: targetWsId);
 
     if (targetCam.id == null || targetCam.id == 0) {
       final toInsert = targetCam.copyWith(
@@ -22,11 +34,11 @@ class CameraEndpoint extends Endpoint {
         createdAt: DateTime.now(),
       );
       final inserted = await Camera.db.insertRow(session, toInsert);
-      
+
       await AuditEntry.db.insertRow(
         session,
         AuditEntry(
-          workspaceId: ws.id!,
+          workspaceId: targetWsId,
           at: DateTime.now(),
           actor: 'Operator',
           action: 'CAMERA_CREATED',
@@ -41,7 +53,7 @@ class CameraEndpoint extends Endpoint {
       await AuditEntry.db.insertRow(
         session,
         AuditEntry(
-          workspaceId: ws.id!,
+          workspaceId: targetWsId,
           at: DateTime.now(),
           actor: 'Operator',
           action: 'CAMERA_UPDATED',
@@ -55,8 +67,9 @@ class CameraEndpoint extends Endpoint {
   }
 
   Future<void> delete(Session session, int id) async {
-    final ws = await WorkspaceEndpoint().ensure(session);
-    
+    final cam = await Camera.db.findById(session, id);
+    final wsId = cam?.workspaceId ?? (await WorkspaceEndpoint().ensure(session)).id!;
+
     // Delete attached zones
     await Zone.db.deleteWhere(
       session,
@@ -66,13 +79,13 @@ class CameraEndpoint extends Endpoint {
     // Delete camera
     await Camera.db.deleteWhere(
       session,
-      where: (t) => t.id.equals(id) & t.workspaceId.equals(ws.id!),
+      where: (t) => t.id.equals(id),
     );
 
     await AuditEntry.db.insertRow(
       session,
       AuditEntry(
-        workspaceId: ws.id!,
+        workspaceId: wsId,
         at: DateTime.now(),
         actor: 'Operator',
         action: 'CAMERA_DELETED',
