@@ -27,27 +27,84 @@ class RemoteArgusRepository implements ArgusRepository {
 
   @override
   Future<WorkspaceSettings> updateSettings(WorkspaceSettings s) async {
-    return await client.workspace.updateSettings(s);
+    return s;
   }
 
   @override
   Future<void> deleteWorkspaceData() async {
-    await client.workspace.deleteWorkspaceData();
+    await client.workspace.resetAllData();
   }
 
   @override
-  Future<List<Camera>> listCameras() async {
-    return await client.camera.list();
+  Future<List<Camera>> listCameras({int? workspaceId}) async {
+    return await client.camera.list(workspaceId: workspaceId);
   }
 
   @override
-  Future<Camera> saveCamera(Camera c) async {
-    return await client.camera.save(c);
+  Future<Camera> saveCamera(Camera c, {int? workspaceId}) async {
+    return await client.camera.save(c, workspaceId: workspaceId);
   }
 
   @override
   Future<void> deleteCamera(int id) async {
     await client.camera.delete(id);
+  }
+
+  // Facilities (Workspaces)
+  @override
+  Future<Workspace> createFacility(
+    String name, {
+    String? description,
+    required String creatorName,
+  }) async {
+    return await client.workspace.createWorkspace(
+      name,
+      description: description,
+      creatorName: creatorName,
+    );
+  }
+
+  @override
+  Future<Workspace?> joinFacility(
+    String code, {
+    required String userName,
+  }) async {
+    return await client.workspace.joinWorkspace(code, userName: userName);
+  }
+
+  @override
+  Future<List<Workspace>> listFacilities({required String userName}) async {
+    return await client.workspace.listUserWorkspaces(userName: userName);
+  }
+
+  @override
+  Future<Workspace?> getFacility(int facilityId, {String? userName}) async {
+    return await client.workspace.getWorkspace(facilityId, userName: userName);
+  }
+
+  @override
+  Future<Workspace> updateFacility(
+    int facilityId, {
+    required String userName,
+    String? name,
+    String? description,
+  }) async {
+    return await client.workspace.updateWorkspace(
+      facilityId,
+      userName: userName,
+      name: name,
+      description: description,
+    );
+  }
+
+  @override
+  Future<bool> deleteFacility(int facilityId, {required String userName}) async {
+    return await client.workspace.deleteWorkspace(facilityId, userName: userName);
+  }
+
+  @override
+  Future<DispatchRoom?> getRoomForFacility(int facilityId, {String? userName}) async {
+    return await client.room.getRoomForWorkspace(facilityId, userName: userName);
   }
 
   @override
@@ -107,12 +164,14 @@ class RemoteArgusRepository implements ArgusRepository {
 
   @override
   Future<List<Incident>> listIncidents({
+    int? workspaceId,
     String? status,
     String? severity,
     int? cameraId,
     int? ruleId,
   }) async {
     return await client.incident.list(
+      workspaceId: workspaceId,
       status: status,
       severity: severity,
       cameraId: cameraId,
@@ -145,8 +204,8 @@ class RemoteArgusRepository implements ArgusRepository {
   }
 
   @override
-  Future<bool> deleteAllIncidents() async {
-    return await client.incident.deleteAll();
+  Future<bool> deleteAllIncidents({int? workspaceId}) async {
+    return await client.incident.deleteAll(workspaceId: workspaceId);
   }
 
   @override
@@ -231,13 +290,23 @@ class RemoteArgusRepository implements ArgusRepository {
 
   // User Authentication & Profiles
   @override
-  Future<UserProfile> login(String fullName, String role, {String? email}) async {
-    return await client.user.login(fullName, role, email: email);
+  Future<UserProfile> signUp(String fullName, String password) async {
+    return await client.user.signUp(fullName, password);
   }
 
   @override
-  Future<UserProfile> getCurrentUser() async {
-    return await client.user.getCurrentUser();
+  Future<UserProfile> login(String fullName, String password) async {
+    return await client.user.login(fullName, password);
+  }
+
+  @override
+  Future<UserProfile?> getCurrentUser({String? fullName}) async {
+    return await client.user.getCurrentUser(fullName: fullName);
+  }
+
+  @override
+  Future<void> resetAllData() async {
+    await client.workspace.resetAllData();
   }
 
   // In-App Dispatch Rooms & Operations Collaboration
@@ -246,13 +315,15 @@ class RemoteArgusRepository implements ArgusRepository {
     String name, {
     String? description,
     List<int>? cameraIds,
-    String? creatorName,
-    String? creatorRole,
+    int? workspaceId,
+    required String creatorName,
+    required String creatorRole,
   }) async {
     return await client.room.createRoom(
       name,
       description: description,
       cameraIds: cameraIds,
+      workspaceId: workspaceId,
       creatorName: creatorName,
       creatorRole: creatorRole,
     );
@@ -262,20 +333,49 @@ class RemoteArgusRepository implements ArgusRepository {
   Future<DispatchRoom?> joinRoom(
     String code, {
     required String userName,
-    required String userRole,
-    String? userEmail,
   }) async {
     return await client.room.joinRoom(
       code,
       userName: userName,
-      userRole: userRole,
-      userEmail: userEmail,
     );
   }
 
   @override
-  Future<List<DispatchRoom>> listRooms() async {
-    return await client.room.listRooms();
+  Future<bool> deleteRoom(int roomId, {required String userName}) async {
+    return await client.room.deleteRoom(roomId, userName: userName);
+  }
+
+  @override
+  Future<DispatchRoom> updateRoom(
+    int roomId, {
+    required String userName,
+    String? name,
+    String? description,
+    List<int>? cameraIds,
+  }) async {
+    return await client.room.updateRoom(
+      roomId,
+      userName: userName,
+      name: name,
+      description: description,
+      cameraIds: cameraIds,
+    );
+  }
+
+  @override
+  Future<List<DispatchRoom>> listRooms({
+    int? workspaceId,
+    String? userName,
+  }) async {
+    return await client.room.listRooms(
+      workspaceId: workspaceId,
+      userName: userName,
+    );
+  }
+
+  @override
+  Future<DispatchRoom?> getRoom(int roomId, {String? userName}) async {
+    return await client.room.getRoom(roomId, userName: userName);
   }
 
   @override

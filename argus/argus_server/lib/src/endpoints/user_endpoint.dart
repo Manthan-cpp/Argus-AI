@@ -1,56 +1,125 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:serverpod/serverpod.dart';
 import '../generated/protocol.dart';
 import 'workspace_endpoint.dart';
 
 class UserEndpoint extends Endpoint {
-  Future<UserProfile> login(
+  String _hashPassword(String password) {
+    final bytes = utf8.encode(password.trim());
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<UserProfile> signUp(
     Session session,
     String fullName,
-    String role, {
-    String? email,
-  }) async {
-    final ws = await WorkspaceEndpoint().ensure(session);
-    final userEmail = (email != null && email.isNotEmpty)
-        ? email
-        : '${fullName.toLowerCase().replaceAll(' ', '.')}@argus.ai';
+    String password,
+  ) async {
+    final cleanName = fullName.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError('Full name cannot be empty.');
+    }
+    if (password.trim().isEmpty) {
+      throw ArgumentError('Password cannot be empty.');
+    }
 
-    var user = await UserProfile.db.findFirstRow(
+    final existingUsers = await UserProfile.db.find(
       session,
-      where: (t) => t.email.equals(userEmail) & t.workspaceId.equals(ws.id!),
+      where: (t) => t.fullName.ilike(cleanName),
     );
 
-    if (user != null) {
-      final updated = user.copyWith(fullName: fullName, role: role);
+    final hasPassword = existingUsers.any(
+      (u) => u.passwordHash != null && u.passwordHash!.isNotEmpty,
+    );
+    if (hasPassword) {
+      throw StateError(
+        'An account named "$cleanName" already exists. Please switch to "Sign In" to access your account.',
+      );
+    }
+
+    final hash = _hashPassword(password);
+    final ws = await WorkspaceEndpoint().ensure(session);
+
+    if (existingUsers.isNotEmpty) {
+      final user = existingUsers.first;
+      final updated = user.copyWith(passwordHash: hash);
       return await UserProfile.db.updateRow(session, updated);
     }
 
     final newUser = UserProfile(
       workspaceId: ws.id!,
-      fullName: fullName,
-      email: userEmail,
-      role: role,
+      fullName: cleanName,
+      passwordHash: hash,
+      role: 'member',
       createdAt: DateTime.now(),
     );
     return await UserProfile.db.insertRow(session, newUser);
   }
 
-  Future<UserProfile> getCurrentUser(Session session) async {
-    final ws = await WorkspaceEndpoint().ensure(session);
-    var user = await UserProfile.db.findFirstRow(
+  Future<UserProfile> login(
+    Session session,
+    String fullName,
+    String password,
+  ) async {
+    final cleanName = fullName.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError('Full name cannot be empty.');
+    }
+    if (password.trim().isEmpty) {
+      throw ArgumentError('Password cannot be empty.');
+    }
+
+    final users = await UserProfile.db.find(
       session,
-      where: (t) => t.workspaceId.equals(ws.id!),
-      orderBy: (t) => t.id,
+      where: (t) => t.fullName.ilike(cleanName),
     );
 
-    if (user != null) return user;
+    if (users.isEmpty) {
+      throw StateError('Account "$cleanName" was not found. Please check your spelling or create a new account.');
+    }
 
-    final defaultAdmin = UserProfile(
-      workspaceId: ws.id!,
-      fullName: 'Head Organizer',
-      email: 'organizer@argus.ai',
-      role: 'organizer',
-      createdAt: DateTime.now(),
+    final targetUser = users.firstWhere(
+      (u) => u.passwordHash != null && u.passwordHash!.isNotEmpty,
+      orElse: () => users.first,
     );
-    return await UserProfile.db.insertRow(session, defaultAdmin);
+
+    final hash = _hashPassword(password);
+    if (targetUser.passwordHash != null && targetUser.passwordHash!.isNotEmpty) {
+      if (targetUser.passwordHash != hash) {
+        throw StateError('Incorrect password for "$cleanName". Please check your password and try again.');
+      }
+    } else {
+      targetUser.passwordHash = hash;
+      await UserProfile.db.updateRow(session, targetUser);
+    }
+
+    return targetUser;
+  }
+
+  Future<UserProfile?> getCurrentUser(
+    Session session, {
+    String? fullName,
+  }) async {
+    if (fullName != null && fullName.trim().isNotEmpty) {
+      final cleanName = fullName.trim();
+      final users = await UserProfile.db.find(
+        session,
+        where: (t) => t.fullName.ilike(cleanName),
+      );
+      if (users.isEmpty) return null;
+      return users.firstWhere(
+        (u) => u.passwordHash != null && u.passwordHash!.isNotEmpty,
+        orElse: () => users.first,
+      );
+    }
+    return null;
+  }
+
+  Future<bool> resetData(Session session) async {
+    // Purges all mock/test records cleanly
+    await session.db.unsafeExecute(
+      'TRUNCATE TABLE room_message, room_member, dispatch_room, user_profile RESTART IDENTITY CASCADE;',
+    );
+    return true;
   }
 }

@@ -16,7 +16,11 @@ class MockArgusRepository implements ArgusRepository {
     id: 1,
     ownerUserId: 'guest-user-001',
     name: 'Main Facility (Demo)',
+    organizerCode: 'ORG-DEMO',
+    supervisorCode: 'SUP-DEMO',
+    guardCode: 'GRD-DEMO',
     createdAt: DateTime.now().subtract(const Duration(days: 3)),
+    isActive: true,
     settings: WorkspaceSettings(
       cloudVerification: false,
       blurEvidence: true,
@@ -27,6 +31,9 @@ class MockArgusRepository implements ArgusRepository {
     ),
   );
 
+  final List<Workspace> _workspaces = [];
+  final Map<int, List<WorkspaceMember>> _workspaceMembers = {};
+
   final List<Camera> _cameras = [];
   final List<Zone> _zones = [];
   final List<RuleSpec> _rules = [];
@@ -36,14 +43,9 @@ class MockArgusRepository implements ArgusRepository {
   final List<AuditEntry> _auditLog = [];
 
   // In-app user profile & dispatch rooms
-  UserProfile _currentUser = UserProfile(
-    id: 1,
-    workspaceId: 1,
-    fullName: 'Chief Operations Officer',
-    email: 'organizer@argus.ai',
-    role: 'organizer',
-    createdAt: DateTime.now().subtract(const Duration(days: 7)),
-  );
+  UserProfile? _currentUser;
+  final Map<String, UserProfile> _registeredUsers = {};
+  final Map<String, String> _userPasswords = {};
   final List<DispatchRoom> _rooms = [];
   final Map<int, List<RoomMember>> _roomMembers = {};
   final Map<int, List<RoomMessage>> _roomMessages = {};
@@ -82,13 +84,7 @@ class MockArgusRepository implements ArgusRepository {
 
   @override
   Future<WorkspaceSettings> updateSettings(WorkspaceSettings s) async {
-    _workspace = Workspace(
-      id: _workspace.id,
-      ownerUserId: _workspace.ownerUserId,
-      name: _workspace.name,
-      createdAt: _workspace.createdAt,
-      settings: s,
-    );
+    _workspace = _workspace.copyWith(settings: s);
     return s;
   }
 
@@ -103,18 +99,25 @@ class MockArgusRepository implements ArgusRepository {
 
   // --- CAMERAS & ZONES ---
   @override
-  Future<List<Camera>> listCameras() async => List.unmodifiable(_cameras);
+  Future<List<Camera>> listCameras({int? workspaceId}) async {
+    if (workspaceId != null) {
+      return List.unmodifiable(_cameras.where((c) => c.workspaceId == workspaceId));
+    }
+    return List.unmodifiable(_cameras);
+  }
 
   @override
-  Future<Camera> saveCamera(Camera c) async {
+  Future<Camera> saveCamera(Camera c, {int? workspaceId}) async {
+    final targetWsId = workspaceId ?? (c.workspaceId != 0 ? c.workspaceId : 1);
     final idx = _cameras.indexWhere((x) => x.id == c.id);
     if (idx >= 0) {
-      _cameras[idx] = c;
-      return c;
+      final updated = c.copyWith(workspaceId: targetWsId);
+      _cameras[idx] = updated;
+      return updated;
     } else {
       final newCam = Camera(
         id: _cameras.length + 1,
-        workspaceId: 1,
+        workspaceId: targetWsId,
         name: c.name,
         sourceKind: c.sourceKind,
         sourceRef: c.sourceRef,
@@ -131,6 +134,224 @@ class MockArgusRepository implements ArgusRepository {
   Future<void> deleteCamera(int id) async {
     _cameras.removeWhere((c) => c.id == id);
     _zones.removeWhere((z) => z.cameraId == id);
+  }
+
+  // --- FACILITIES (WORKSPACES) ---
+  @override
+  Future<Workspace> createFacility(
+    String name, {
+    String? description,
+    required String creatorName,
+  }) async {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    String genCode(String p) =>
+        '$p-${List.generate(4, (_) => chars[_random.nextInt(chars.length)]).join()}';
+    final orgCode = genCode('ORG');
+    final supCode = genCode('SUP');
+    final grdCode = genCode('GRD');
+
+    final cleanName = name.trim();
+    final cleanCreator = creatorName.trim().isNotEmpty ? creatorName.trim() : 'Organizer';
+    final newId = _workspaces.length + 1;
+
+    final ws = Workspace(
+      id: newId,
+      ownerUserId: cleanCreator,
+      name: cleanName,
+      description: description?.trim(),
+      organizerCode: orgCode,
+      supervisorCode: supCode,
+      guardCode: grdCode,
+      createdAt: DateTime.now(),
+      isActive: true,
+      settings: WorkspaceSettings(
+        cloudVerification: false,
+        blurEvidence: true,
+        retentionDays: 7,
+        browserNotifications: true,
+        telegramLinked: false,
+        timezone: 'UTC',
+      ),
+    );
+    _workspaces.add(ws);
+
+    _workspaceMembers[newId] = [
+      WorkspaceMember(
+        id: 1,
+        workspaceId: newId,
+        userId: _currentUser?.id ?? 1,
+        userName: cleanCreator,
+        userRole: 'organizer',
+        joinedAt: DateTime.now(),
+      ),
+    ];
+
+    // Auto-provision 1:1 Dispatch Room
+    return ws;
+  }
+
+  @override
+  Future<Workspace?> joinFacility(
+    String code, {
+    required String userName,
+  }) async {
+    final cleanCode = code.trim().toUpperCase();
+    final ws = _workspaces.where((w) =>
+        w.isActive &&
+        (w.organizerCode == cleanCode ||
+            w.supervisorCode == cleanCode ||
+            w.guardCode == cleanCode)).firstOrNull;
+
+    if (ws == null) return null;
+
+    String assignedRole = 'guard';
+    if (cleanCode == ws.organizerCode || cleanCode.startsWith('ORG-')) {
+      assignedRole = 'organizer';
+    } else if (cleanCode == ws.supervisorCode || cleanCode.startsWith('SUP-')) {
+      assignedRole = 'supervisor';
+    } else if (cleanCode == ws.guardCode || cleanCode.startsWith('GRD-')) {
+      assignedRole = 'guard';
+    }
+
+    final members = _workspaceMembers.putIfAbsent(ws.id!, () => []);
+    final existing = members.where((m) => m.userName.toLowerCase() == userName.trim().toLowerCase()).firstOrNull;
+    if (existing == null) {
+      members.add(WorkspaceMember(
+        id: members.length + 1,
+        workspaceId: ws.id!,
+        userId: _currentUser?.id ?? (members.length + 10),
+        userName: userName.trim(),
+        userRole: assignedRole,
+        joinedAt: DateTime.now(),
+      ));
+    }
+
+    // Auto-join 1:1 Dispatch Room
+    final room = _rooms.where((r) => r.workspaceId == ws.id && r.isActive).firstOrNull;
+    if (room != null) {
+      final rMembers = _roomMembers.putIfAbsent(room.id!, () => []);
+      final rExisting = rMembers.where((m) => m.userName.toLowerCase() == userName.trim().toLowerCase()).firstOrNull;
+      if (rExisting == null) {
+        rMembers.add(RoomMember(
+          id: rMembers.length + 1,
+          roomId: room.id!,
+          userId: _currentUser?.id ?? (rMembers.length + 10),
+          userName: userName.trim(),
+          userRole: assignedRole,
+          joinedAt: DateTime.now(),
+        ));
+      }
+    }
+
+    if (assignedRole == 'guard') {
+      return ws.copyWith(
+        organizerCode: '',
+        supervisorCode: '',
+        guardCode: '',
+      );
+    }
+    if (assignedRole == 'supervisor') {
+      return ws.copyWith(
+        organizerCode: '',
+      );
+    }
+    return ws;
+  }
+
+  @override
+  Future<List<Workspace>> listFacilities({required String userName}) async {
+    final cleanName = userName.trim();
+    if (cleanName.isEmpty) return const [];
+
+    final list = _workspaces.where((w) {
+      if (!w.isActive) return false;
+      if (w.ownerUserId.toLowerCase() == cleanName.toLowerCase()) return true;
+      final members = _workspaceMembers[w.id!] ?? [];
+      return members.any((m) => m.userName.toLowerCase() == cleanName.toLowerCase());
+    }).map((w) {
+      final members = _workspaceMembers[w.id!] ?? [];
+      final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
+      final isOwner = w.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+      final myRole = myMember?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
+
+      if (myRole == 'guard') {
+        return w.copyWith(
+          organizerCode: '',
+          supervisorCode: '',
+          guardCode: '',
+        );
+      } else if (myRole == 'supervisor') {
+        return w.copyWith(
+          organizerCode: '',
+        );
+      }
+      return w;
+    }).toList();
+
+    return List.unmodifiable(list.reversed);
+  }
+
+  @override
+  Future<Workspace?> getFacility(int facilityId, {String? userName}) async {
+    final ws = _workspaces.where((w) => w.id == facilityId && w.isActive).firstOrNull;
+    if (ws == null) return null;
+
+    if (userName != null && userName.trim().isNotEmpty) {
+      final cleanName = userName.trim();
+      final members = _workspaceMembers[facilityId] ?? [];
+      final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
+      final isOwner = ws.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+      final myRole = myMember?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
+
+      if (myRole == 'guard') {
+        return ws.copyWith(organizerCode: '', supervisorCode: '', guardCode: '');
+      } else if (myRole == 'supervisor') {
+        return ws.copyWith(organizerCode: '');
+      }
+    }
+    return ws;
+  }
+
+  @override
+  Future<Workspace> updateFacility(
+    int facilityId, {
+    required String userName,
+    String? name,
+    String? description,
+  }) async {
+    final idx = _workspaces.indexWhere((w) => w.id == facilityId);
+    if (idx < 0) throw StateError('Facility not found');
+    final existing = _workspaces[idx];
+    final updated = existing.copyWith(
+      name: (name != null && name.trim().isNotEmpty) ? name.trim() : existing.name,
+      description: description?.trim() ?? existing.description,
+    );
+    _workspaces[idx] = updated;
+
+    if (name != null && name.trim().isNotEmpty) {
+      final rIdx = _rooms.indexWhere((r) => r.workspaceId == facilityId);
+      if (rIdx >= 0) {
+        _rooms[rIdx] = _rooms[rIdx].copyWith(name: '${name.trim()} Operations Room');
+      }
+    }
+    return updated;
+  }
+
+  @override
+  Future<bool> deleteFacility(int facilityId, {required String userName}) async {
+    _workspaces.removeWhere((w) => w.id == facilityId);
+    _workspaceMembers.remove(facilityId);
+    _cameras.removeWhere((c) => c.workspaceId == facilityId);
+    _zones.clear();
+    _rooms.removeWhere((r) => r.workspaceId == facilityId);
+    return true;
+  }
+
+  @override
+  Future<DispatchRoom?> getRoomForFacility(int facilityId, {String? userName}) async {
+    final room = _rooms.where((r) => r.workspaceId == facilityId && r.isActive).firstOrNull;
+    if (room == null) return null;
+    return getRoom(room.id!, userName: userName);
   }
 
   @override
@@ -375,7 +596,7 @@ class MockArgusRepository implements ArgusRepository {
           Incident? existing;
           try {
             existing = _incidents.firstWhere(
-              (i) => i.ruleId == rule.id && i.cameraId == batch.cameraId && (i.status == 'open' || i.status == 'acknowledged'),
+              (i) => i.ruleId == rule.id && i.cameraId == batch.cameraId,
             );
           } catch (_) {
             existing = null;
@@ -385,9 +606,9 @@ class MockArgusRepository implements ArgusRepository {
           if (existing != null) {
             if (existing.status == 'open') {
               isSuppressed = true;
-            } else if (existing.status == 'acknowledged') {
-              final cooldownSeconds = rule.cooldownSec > 0 ? rule.cooldownSec : 60;
-              final lastActionTime = existing.ackedAt ?? existing.openedAt;
+            } else {
+              final cooldownSeconds = rule.cooldownSec > 0 ? rule.cooldownSec : 30;
+              final lastActionTime = existing.ackedAt ?? existing.resolvedAt ?? existing.openedAt;
               final elapsed = DateTime.now().difference(lastActionTime).inSeconds;
               if (elapsed < cooldownSeconds) {
                 isSuppressed = true;
@@ -396,10 +617,12 @@ class MockArgusRepository implements ArgusRepository {
           }
 
           if (!isSuppressed) {
+            final camObj = _cameras.where((c) => c.id == batch.cameraId).firstOrNull;
+            final targetWsId = camObj?.workspaceId ?? 1;
             final newId = _incidents.length + 101;
             final inc = Incident(
               id: newId,
-              workspaceId: 1,
+              workspaceId: targetWsId,
               cameraId: batch.cameraId,
               ruleId: rule.id!,
               ruleSnapshotJson: json.encode(rule.toJson()),
@@ -468,8 +691,9 @@ class MockArgusRepository implements ArgusRepository {
 
   // --- INCIDENTS ---
   @override
-  Future<List<Incident>> listIncidents({String? status, String? severity, int? cameraId, int? ruleId}) async {
+  Future<List<Incident>> listIncidents({int? workspaceId, String? status, String? severity, int? cameraId, int? ruleId}) async {
     return _incidents.where((i) {
+      if (workspaceId != null && i.workspaceId != workspaceId) return false;
       if (status != null && i.status.toLowerCase() != status.toLowerCase()) return false;
       if (severity != null && i.severity.toLowerCase() != severity.toLowerCase()) return false;
       if (cameraId != null && i.cameraId != cameraId) return false;
@@ -616,9 +840,17 @@ class MockArgusRepository implements ArgusRepository {
   }
 
   @override
-  Future<bool> deleteAllIncidents() async {
-    _incidents.clear();
-    _incidentEvents.clear();
+  Future<bool> deleteAllIncidents({int? workspaceId}) async {
+    if (workspaceId != null) {
+      final idsToRemove = _incidents.where((i) => i.workspaceId == workspaceId).map((i) => i.id).toSet();
+      _incidents.removeWhere((i) => i.workspaceId == workspaceId);
+      for (final id in idsToRemove) {
+        if (id != null) _incidentEvents.remove(id);
+      }
+    } else {
+      _incidents.clear();
+      _incidentEvents.clear();
+    }
     return true;
   }
 
@@ -717,8 +949,10 @@ class MockArgusRepository implements ArgusRepository {
     final cameraName = cameraObj?.name ?? 'Camera #${inc.cameraId}';
     final alertContent = 'Guards near the $cameraName area, please look into the matter immediately.';
 
+    final targetWsId = cameraObj?.workspaceId ?? 1;
     for (final room in _rooms) {
-      if (room.isActive && (room.cameraIds.isEmpty || room.cameraIds.contains(inc.cameraId))) {
+      if (room.isActive && (room.workspaceId == targetWsId || room.workspaceId == 1)) {
+        if (room.cameraIds.isEmpty || room.cameraIds.contains(inc.cameraId)) {
         final newMsg = RoomMessage(
           id: (_roomMessages[room.id!]?.length ?? 0) + 1,
           roomId: room.id!,
@@ -734,32 +968,99 @@ class MockArgusRepository implements ArgusRepository {
         );
         _roomMessages.putIfAbsent(room.id!, () => []).add(newMsg);
         _roomStreamControllers[room.id!]?.add(newMsg);
+        }
       }
     }
   }
 
   // User Authentication & Profiles
   @override
-  Future<UserProfile> login(String fullName, String role, {String? email}) async {
-    final cleanRole = role.trim().toLowerCase();
-    final userEmail = (email != null && email.isNotEmpty)
-        ? email
-        : '${fullName.toLowerCase().replaceAll(' ', '.')}@argus.ai';
+  Future<UserProfile> signUp(String fullName, String password) async {
+    final cleanName = fullName.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError('Full name cannot be empty.');
+    }
+    if (password.trim().isEmpty) {
+      throw ArgumentError('Password cannot be empty.');
+    }
 
-    _currentUser = UserProfile(
-      id: _currentUser.id,
+    final lower = cleanName.toLowerCase();
+    if (_registeredUsers.containsKey(lower)) {
+      throw StateError(
+        'An account named "$cleanName" already exists. Please switch to "Sign In" to access your account.',
+      );
+    }
+
+    final user = UserProfile(
+      id: _registeredUsers.length + 1,
       workspaceId: 1,
-      fullName: fullName.trim(),
-      email: userEmail,
-      role: cleanRole,
+      fullName: cleanName,
+      role: 'member',
       createdAt: DateTime.now(),
     );
+    _registeredUsers[lower] = user;
+    _userPasswords[lower] = password.trim();
+    _currentUser = user;
+    return user;
+  }
+
+  @override
+  Future<UserProfile> login(String fullName, String password) async {
+    final cleanName = fullName.trim();
+    if (cleanName.isEmpty) {
+      throw ArgumentError('Full name cannot be empty.');
+    }
+    if (password.trim().isEmpty) {
+      throw ArgumentError('Password cannot be empty.');
+    }
+
+    final lower = cleanName.toLowerCase();
+    final user = _registeredUsers[lower];
+    if (user == null) {
+      throw StateError(
+        'Account "$cleanName" was not found. Please check your spelling or create a new account.',
+      );
+    }
+
+    final expectedPassword = _userPasswords[lower];
+    if (expectedPassword != null && expectedPassword != password.trim()) {
+      throw StateError(
+        'Incorrect password for "$cleanName". Please check your password and try again.',
+      );
+    }
+
+    _currentUser = user;
+    return user;
+  }
+
+  @override
+  Future<UserProfile?> getCurrentUser({String? fullName}) async {
+    if (fullName != null && fullName.isNotEmpty) {
+      final user = _registeredUsers[fullName.trim().toLowerCase()];
+      if (user != null) return user;
+      if (_currentUser?.fullName.toLowerCase() == fullName.trim().toLowerCase()) {
+        return _currentUser;
+      }
+      return null;
+    }
     return _currentUser;
   }
 
   @override
-  Future<UserProfile> getCurrentUser() async {
-    return _currentUser;
+  Future<void> resetAllData() async {
+    _workspaces.clear();
+    _workspaceMembers.clear();
+    _cameras.clear();
+    _zones.clear();
+    _rules.clear();
+    _incidents.clear();
+    _incidentEvents.clear();
+    _rooms.clear();
+    _roomMembers.clear();
+    _roomMessages.clear();
+    _registeredUsers.clear();
+    _userPasswords.clear();
+    _currentUser = null;
   }
 
   // In-App Dispatch Rooms & Operations Collaboration
@@ -768,26 +1069,32 @@ class MockArgusRepository implements ArgusRepository {
     String name, {
     String? description,
     List<int>? cameraIds,
-    String? creatorName,
-    String? creatorRole,
+    int? workspaceId,
+    required String creatorName,
+    required String creatorRole,
   }) async {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final code = 'ARG-${List.generate(4, (_) => chars[_random.nextInt(chars.length)]).join()}';
+    String genCode(String p) =>
+        '$p-${List.generate(4, (_) => chars[_random.nextInt(chars.length)]).join()}';
+    final orgCode = genCode('ORG');
+    final supCode = genCode('SUP');
+    final grdCode = genCode('GRD');
     final newId = _rooms.length + 1;
-    final effectiveCreator = (creatorName != null && creatorName.isNotEmpty)
-        ? creatorName
-        : _currentUser.fullName;
-    final effectiveRole = (creatorRole != null && creatorRole.isNotEmpty)
-        ? creatorRole
-        : _currentUser.role;
+    final effectiveCreator = creatorName.trim().isNotEmpty
+        ? creatorName.trim()
+        : (_currentUser?.fullName ?? 'Organizer');
+    final effectiveRole = creatorRole.trim().toLowerCase();
 
     final room = DispatchRoom(
       id: newId,
-      workspaceId: 1,
+      workspaceId: workspaceId ?? 1,
       name: name.trim(),
-      code: code,
+      code: orgCode,
+      organizerCode: orgCode,
+      supervisorCode: supCode,
+      guardCode: grdCode,
       description: description?.trim(),
-      createdById: _currentUser.id ?? 1,
+      createdById: _currentUser?.id ?? 1,
       createdByName: effectiveCreator,
       createdAt: DateTime.now(),
       cameraIds: cameraIds ?? <int>[],
@@ -799,7 +1106,7 @@ class MockArgusRepository implements ArgusRepository {
       RoomMember(
         id: 1,
         roomId: newId,
-        userId: _currentUser.id ?? 1,
+        userId: _currentUser?.id ?? 1,
         userName: effectiveCreator,
         userRole: effectiveRole,
         joinedAt: DateTime.now(),
@@ -813,7 +1120,7 @@ class MockArgusRepository implements ArgusRepository {
       senderName: 'Argus System',
       senderRole: 'system',
       kind: 'action_log',
-      content: 'Dispatch Room "${room.name}" created with code $code.',
+      content: 'Dispatch Room "${room.name}" created with code $orgCode.',
       createdAt: DateTime.now(),
     );
     _roomMessages[newId] = [initialMsg];
@@ -825,12 +1132,24 @@ class MockArgusRepository implements ArgusRepository {
   Future<DispatchRoom?> joinRoom(
     String code, {
     required String userName,
-    required String userRole,
-    String? userEmail,
   }) async {
     final cleanCode = code.trim().toUpperCase();
-    final room = _rooms.where((r) => r.code == cleanCode && r.isActive).firstOrNull;
+    final room = _rooms.where((r) =>
+        r.isActive &&
+        (r.code == cleanCode ||
+            r.organizerCode == cleanCode ||
+            r.supervisorCode == cleanCode ||
+            r.guardCode == cleanCode)).firstOrNull;
     if (room == null) return null;
+
+    String assignedRole = 'guard';
+    if (cleanCode == room.organizerCode || cleanCode.startsWith('ORG-')) {
+      assignedRole = 'organizer';
+    } else if (cleanCode == room.supervisorCode || cleanCode.startsWith('SUP-')) {
+      assignedRole = 'supervisor';
+    } else if (cleanCode == room.guardCode || cleanCode.startsWith('GRD-')) {
+      assignedRole = 'guard';
+    }
 
     final roomId = room.id!;
     final members = _roomMembers.putIfAbsent(roomId, () => []);
@@ -841,7 +1160,7 @@ class MockArgusRepository implements ArgusRepository {
         roomId: roomId,
         userId: members.length + 10,
         userName: userName.trim(),
-        userRole: userRole.trim().toLowerCase(),
+        userRole: assignedRole,
         joinedAt: DateTime.now(),
       );
       members.add(newMember);
@@ -853,7 +1172,7 @@ class MockArgusRepository implements ArgusRepository {
         senderName: newMember.userName,
         senderRole: newMember.userRole,
         kind: 'action_log',
-        content: '$userName joined as ${userRole.toUpperCase()}.',
+        content: '$userName joined as ${assignedRole.toUpperCase()}.',
         createdAt: DateTime.now(),
       );
       _roomMessages.putIfAbsent(roomId, () => []).add(joinMsg);
@@ -863,14 +1182,152 @@ class MockArgusRepository implements ArgusRepository {
   }
 
   @override
-  Future<List<DispatchRoom>> listRooms() async {
-    return List.unmodifiable(_rooms.where((r) => r.isActive).toList().reversed);
+  Future<bool> deleteRoom(int roomId, {required String userName}) async {
+    _rooms.removeWhere((r) => r.id == roomId);
+    _roomMembers.remove(roomId);
+    _roomMessages.remove(roomId);
+    return true;
+  }
+
+  @override
+  Future<DispatchRoom> updateRoom(
+    int roomId, {
+    required String userName,
+    String? name,
+    String? description,
+    List<int>? cameraIds,
+  }) async {
+    final idx = _rooms.indexWhere((r) => r.id == roomId);
+    if (idx < 0) {
+      throw StateError('Room not found');
+    }
+    final existing = _rooms[idx];
+
+    final members = _roomMembers[roomId] ?? [];
+    final member = members.where((m) => m.userName.toLowerCase() == userName.trim().toLowerCase()).firstOrNull;
+    final isCreator = existing.createdByName.toLowerCase() == userName.trim().toLowerCase();
+    final role = member?.userRole.toLowerCase() ?? (isCreator ? 'organizer' : 'guard');
+    if (role != 'organizer' && role != 'supervisor') {
+      throw StateError('Permission denied: Guards cannot edit room settings.');
+    }
+
+    final updated = existing.copyWith(
+      name: (name != null && name.trim().isNotEmpty) ? name.trim() : existing.name,
+      description: description?.trim() ?? existing.description,
+      cameraIds: cameraIds ?? existing.cameraIds,
+    );
+    _rooms[idx] = updated;
+
+    final sysMsg = RoomMessage(
+      id: (_roomMessages[roomId]?.length ?? 0) + 1,
+      roomId: roomId,
+      senderId: null,
+      senderName: 'Argus System',
+      senderRole: 'system',
+      kind: 'action_log',
+      content: 'Dispatch Room configuration updated by $userName.',
+      createdAt: DateTime.now(),
+    );
+    _roomMessages.putIfAbsent(roomId, () => []).add(sysMsg);
+    _roomStreamControllers[roomId]?.add(sysMsg);
+
+    return updated;
+  }
+
+  @override
+  Future<List<DispatchRoom>> listRooms({
+    int? workspaceId,
+    String? userName,
+  }) async {
+    final cleanName = userName?.trim();
+    if (cleanName == null || cleanName.isEmpty) {
+      return const <DispatchRoom>[];
+    }
+    final targetWsId = workspaceId ?? 1;
+
+    final ws = _workspaces.where((w) => w.id == targetWsId && w.isActive).firstOrNull;
+    final wsMembers = _workspaceMembers[targetWsId] ?? [];
+    final wsMember = wsMembers.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
+    final isWsOwner = ws != null && ws.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+    final isPartOfFacility = wsMember != null || isWsOwner;
+
+    final filtered = _rooms.where((r) {
+      if (!r.isActive) return false;
+      final members = _roomMembers[r.id!] ?? [];
+      final inRoom = members.any((m) => m.userName.toLowerCase() == cleanName.toLowerCase());
+      final isCreator = r.createdByName.toLowerCase() == cleanName.toLowerCase();
+
+      if (workspaceId != null) {
+        if (r.workspaceId != targetWsId) return false;
+        return isPartOfFacility || inRoom || isCreator;
+      } else {
+        return inRoom || isCreator;
+      }
+    }).map((r) {
+      final members = _roomMembers[r.id!] ?? [];
+      final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
+      final isCreator = r.createdByName.toLowerCase() == cleanName.toLowerCase();
+      final facilityRole = wsMember?.userRole.toLowerCase() ?? (isWsOwner ? 'organizer' : 'guard');
+      final myRole = myMember?.userRole.toLowerCase() ?? (isCreator || isWsOwner ? 'organizer' : facilityRole);
+      if (myRole == 'guard') {
+        return r.copyWith(
+          organizerCode: null,
+          supervisorCode: null,
+          guardCode: null,
+          code: r.id.toString(),
+        );
+      }
+      if (myRole == 'supervisor') {
+        return r.copyWith(
+          organizerCode: null,
+        );
+      }
+      return r;
+    }).toList();
+    return List.unmodifiable(filtered.reversed);
+  }
+
+  @override
+  Future<DispatchRoom?> getRoom(int roomId, {String? userName}) async {
+    final room = _rooms.where((r) => r.id == roomId && r.isActive).firstOrNull;
+    if (room == null) return null;
+    final effectiveUser = userName ?? _currentUser?.fullName;
+    if (effectiveUser != null && effectiveUser.trim().isNotEmpty) {
+      final members = _roomMembers[roomId] ?? [];
+      final myMember = members.where((m) => m.userName.toLowerCase() == effectiveUser.trim().toLowerCase()).firstOrNull;
+      final isCreator = room.createdByName.toLowerCase() == effectiveUser.trim().toLowerCase();
+      final myRole = myMember?.userRole.toLowerCase() ?? (isCreator ? 'organizer' : 'guard');
+      if (myRole == 'guard') {
+        return room.copyWith(
+          organizerCode: null,
+          supervisorCode: null,
+          guardCode: null,
+          code: room.id.toString(),
+        );
+      }
+      if (myRole == 'supervisor') {
+        return room.copyWith(
+          organizerCode: null,
+        );
+      }
+    }
+    return room;
   }
 
   @override
   Future<DispatchRoom?> getRoomByCode(String code) async {
     final cleanCode = code.trim().toUpperCase();
-    return _rooms.where((r) => r.code == cleanCode).firstOrNull;
+    final asId = int.tryParse(cleanCode);
+    if (asId != null) {
+      final byId = _rooms.where((r) => r.id == asId && r.isActive).firstOrNull;
+      if (byId != null) return byId;
+    }
+    return _rooms.where((r) =>
+        r.isActive &&
+        (r.code == cleanCode ||
+            r.organizerCode == cleanCode ||
+            r.supervisorCode == cleanCode ||
+            r.guardCode == cleanCode)).firstOrNull;
   }
 
   @override
@@ -891,9 +1348,9 @@ class MockArgusRepository implements ArgusRepository {
     final msg = RoomMessage(
       id: newId,
       roomId: roomId,
-      senderId: senderId ?? _currentUser.id,
-      senderName: senderName ?? _currentUser.fullName,
-      senderRole: senderRole ?? _currentUser.role,
+      senderId: senderId ?? _currentUser?.id,
+      senderName: senderName ?? (_currentUser?.fullName ?? 'Operator'),
+      senderRole: senderRole ?? (_currentUser?.role ?? 'member'),
       kind: 'chat',
       content: content.trim(),
       createdAt: DateTime.now(),

@@ -13,29 +13,61 @@ class AuthScreen extends ConsumerStatefulWidget {
 }
 
 class _AuthScreenState extends ConsumerState<AuthScreen> {
-  final TextEditingController _nameCtrl = TextEditingController(text: 'Chief Operations Officer');
-  String _selectedRole = 'organizer';
-
-  @override
-  void initState() {
-    super.initState();
-    final user = ref.read(currentUserProvider).valueOrNull;
-    if (user != null) {
-      _nameCtrl.text = user.fullName;
-      _selectedRole = user.role;
-    }
-  }
+  bool _isSignUp = false;
+  final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _passwordCtrl = TextEditingController();
+  bool _obscurePassword = true;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _passwordCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submit(String name, String role) async {
-    await ref.read(currentUserProvider.notifier).login(name, role);
-    if (mounted) {
-      context.go('/app/rooms');
+  Future<void> _submit() async {
+    final name = _nameCtrl.text.trim();
+    final password = _passwordCtrl.text;
+
+    if (name.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your name.');
+      return;
+    }
+    if (password.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your password.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      if (_isSignUp) {
+        await ref.read(currentUserProvider.notifier).signUp(name, password);
+      } else {
+        await ref.read(currentUserProvider.notifier).login(name, password);
+      }
+
+      if (mounted) {
+        context.go('/');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          final raw = e.toString();
+          _errorMessage = raw
+              .replaceFirst(RegExp(r'^(Exception|Bad state|ArgumentError):\s*'), '')
+              .trim();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -47,7 +79,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(ArgusTokens.space24),
           child: Container(
-            width: 520,
+            width: 440,
             padding: const EdgeInsets.all(ArgusTokens.space32),
             decoration: BoxDecoration(
               color: ArgusTokens.bgRaised,
@@ -58,186 +90,206 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Brand Header
                 Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 40,
+                      height: 40,
                       decoration: BoxDecoration(
                         color: ArgusTokens.accent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: ArgusTokens.accent.withValues(alpha: 0.4)),
                       ),
-                      child: const Icon(Icons.security_rounded, size: 20, color: ArgusTokens.accent),
+                      child: const Icon(Icons.shield_rounded, size: 22, color: ArgusTokens.accent),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Argus Sovereign Access',
-                            style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
-                        Text('Role-Based Identity & Operations Dispatch',
-                            style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary)),
+                        Text(
+                          'Argus Sovereign Access',
+                          style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          'Secure Edge Vision & Live Operations',
+                          style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary),
+                        ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  'Select your operational tier to join war rooms, manage live camera polygons, or coordinate emergency guard dispatches.',
-                  style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary, height: 1.4),
+                const SizedBox(height: 24),
+
+                // Mode Selector (Sign In vs Create Account)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: ArgusTokens.bgOverlay,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: ArgusTokens.borderSubtle),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _isSignUp = false;
+                            _errorMessage = null;
+                          }),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: !_isSignUp ? ArgusTokens.bgRaised : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Sign In',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: !_isSignUp ? FontWeight.w700 : FontWeight.w500,
+                                color: !_isSignUp ? ArgusTokens.textPrimary : ArgusTokens.textTertiary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() {
+                            _isSignUp = true;
+                            _errorMessage = null;
+                          }),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _isSignUp ? ArgusTokens.bgRaised : Colors.transparent,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Create Account',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: _isSignUp ? FontWeight.w700 : FontWeight.w500,
+                                color: _isSignUp ? ArgusTokens.textPrimary : ArgusTokens.textTertiary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 20),
 
+                // Error Message Banner
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: ArgusTokens.severityCritical.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: ArgusTokens.severityCritical.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, size: 16, color: ArgusTokens.severityCritical),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.severityCritical),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
                 // Name input
-                Text('Operator Full Name', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text('Full Name', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(
                     hintText: 'e.g. Officer Marcus',
+                    hintStyle: GoogleFonts.inter(color: ArgusTokens.textTertiary),
                     filled: true,
                     fillColor: ArgusTokens.bgOverlay,
+                    prefixIcon: const Icon(Icons.person_outline_rounded, size: 18),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
-                // 3 Role Cards
-                Text('Operational Role', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-
-                _buildRoleOption(
-                  roleKey: 'organizer',
-                  title: 'Organizer (Full Authority)',
-                  desc: 'Creates rooms, provisions cameras, selects restricted zones, configures rules & issues invite codes.',
-                  icon: Icons.admin_panel_settings_rounded,
-                  color: Colors.amberAccent,
-                ),
-                const SizedBox(height: 8),
-
-                _buildRoleOption(
-                  roleKey: 'supervisor',
-                  title: 'Supervisor (Command & Control)',
-                  desc: 'Monitors vision telemetry, acknowledges/resolves alerts, and directs responder units in real time.',
-                  icon: Icons.security_rounded,
-                  color: Colors.cyanAccent,
-                ),
-                const SizedBox(height: 8),
-
-                _buildRoleOption(
-                  roleKey: 'member',
-                  title: 'Member / Guard (Tactical Field)',
-                  desc: 'Joins via room invite code, receives live automated alert cards, and reports ground status.',
-                  icon: Icons.shield_rounded,
-                  color: ArgusTokens.success,
+                // Password input
+                Text('Password', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _passwordCtrl,
+                  obscureText: _obscurePassword,
+                  onSubmitted: (_) => _submit(),
+                  decoration: InputDecoration(
+                    hintText: 'Enter your password',
+                    hintStyle: GoogleFonts.inter(color: ArgusTokens.textTertiary),
+                    filled: true,
+                    fillColor: ArgusTokens.bgOverlay,
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        size: 18,
+                        color: ArgusTokens.textTertiary,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
                 const SizedBox(height: 24),
 
-                // Continue Button
-                ElevatedButton.icon(
-                  onPressed: () => _submit(_nameCtrl.text.trim(), _selectedRole),
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                  label: const Text('Enter Argus Command'),
+                // Submit Button
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ArgusTokens.accent,
                     foregroundColor: Colors.black,
-                    minimumSize: const Size.fromHeight(48),
+                    minimumSize: const Size.fromHeight(46),
                     textStyle: GoogleFonts.inter(fontWeight: FontWeight.w700),
                   ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                        )
+                      : Text(_isSignUp ? 'Create Sovereign Account' : 'Sign In to Argus'),
                 ),
+                const SizedBox(height: 14),
 
-                const SizedBox(height: 18),
-                const Divider(color: ArgusTokens.borderSubtle),
-                const SizedBox(height: 12),
-
-                // Quick presets
-                Text('Or Quick Switch Demo Identity:',
-                    style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ActionChip(
-                      avatar: const Icon(Icons.admin_panel_settings_rounded, size: 14, color: Colors.amberAccent),
-                      label: const Text('Admin Organizer'),
-                      onPressed: () => _submit('Chief Operations Officer', 'organizer'),
+                // Switch prompt
+                Center(
+                  child: TextButton(
+                    onPressed: () => setState(() {
+                      _isSignUp = !_isSignUp;
+                      _errorMessage = null;
+                    }),
+                    child: Text(
+                      _isSignUp
+                          ? 'Already have an account? Sign In'
+                          : "Don't have an account? Create Account",
+                      style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary),
                     ),
-                    ActionChip(
-                      avatar: const Icon(Icons.security_rounded, size: 14, color: Colors.cyanAccent),
-                      label: const Text('Shift Supervisor'),
-                      onPressed: () => _submit('Officer Sarah Jenkins', 'supervisor'),
-                    ),
-                    ActionChip(
-                      avatar: const Icon(Icons.shield_rounded, size: 14, color: ArgusTokens.success),
-                      label: const Text('Tactical Guard'),
-                      onPressed: () => _submit('Marcus Vance', 'member'),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoleOption({
-    required String roleKey,
-    required String title,
-    required String desc,
-    required IconData icon,
-    required Color color,
-  }) {
-    final isSelected = _selectedRole == roleKey;
-
-    return InkWell(
-      onTap: () => setState(() => _selectedRole = roleKey),
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withValues(alpha: 0.12) : ArgusTokens.bgOverlay,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? color : ArgusTokens.borderSubtle,
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 20, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? ArgusTokens.textPrimary : ArgusTokens.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    desc,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: ArgusTokens.textTertiary,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle_rounded, size: 18, color: color),
-          ],
         ),
       ),
     );
