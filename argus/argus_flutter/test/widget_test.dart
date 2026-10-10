@@ -9,8 +9,11 @@ import 'package:argus_client/argus_client.dart';
 
 import 'package:argus_flutter/data/repository_provider.dart';
 
+import 'package:argus_flutter/data/mock/mock_argus_repository.dart';
+import 'package:argus_flutter/features/rooms/room_providers.dart';
+
 void main() {
-  testWidgets('App renders Home screen with Hero headline and Open Demo CTA', (WidgetTester tester) async {
+  testWidgets('App renders Home screen with Facility Operations Hub auth barrier', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1280, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -31,14 +34,53 @@ void main() {
     // Verify Brand Logo
     expect(find.text('Argus'), findsWidgets);
 
-    // Verify Headline
-    expect(find.textContaining('Argus watches, documents, and escalates'), findsOneWidget);
+    // Verify Facility Hub Auth barrier
+    expect(
+      find.textContaining('Sign in or register an account to manage your security facilities'),
+      findsOneWidget,
+    );
 
-    // Verify Open Live Demo CTA button
-    expect(find.text('Open the Live Demo'), findsOneWidget);
+    // Verify Sign In CTA
+    expect(find.text('Sign In or Create Account'), findsOneWidget);
+  });
 
-    // Verify Mock Data Badge
-    expect(find.text('MOCK DATA'), findsOneWidget);
+  testWidgets('App renders Home screen with facilities hub and operational guide when signed in', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1280, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final mockRepo = MockArgusRepository();
+    await mockRepo.signUp('Test User', 'testpass123');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          useMockOverrideProvider.overrideWith((ref) => true),
+          argusRepositoryProvider.overrideWithValue(mockRepo),
+          currentUserProvider.overrideWith((ref) {
+            final notifier = CurrentUserNotifier(ref);
+            notifier.state = AsyncValue.data(
+              UserProfile(
+                id: 1,
+                workspaceId: 1,
+                fullName: 'Test User',
+                role: 'member',
+                createdAt: DateTime.now(),
+              ),
+            );
+            return notifier;
+          }),
+        ],
+        child: const ArgusApp(),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home — Facility Operations Command'), findsOneWidget);
+    expect(find.text('Operational Architecture & Getting Started'), findsOneWidget);
+    expect(find.text('Deploy or Join Facility'), findsOneWidget);
+    expect(find.text('Connect CCTV & Video Feeds'), findsOneWidget);
   });
 
   testWidgets('StatusBadge renders severity icons and labels accurately', (WidgetTester tester) async {
