@@ -7,7 +7,7 @@ class ArgusTokens {
   static const Color bgBase = Color(0xFF000000);
   static const Color bgRaised = Color(0xFF0A0A0A);
   static const Color bgOverlay = Color(0xFF141414);
-  static const Color borderSubtle = Color(0x33FFFFFF); // 20% white
+  static const Color borderSubtle = Color(0x4DFFFFFF); // 30% crisp white for solid visibility
   static const Color borderStrong = Color(0x80FFFFFF); // 50% white
   static const Color borderWhite = Color(0xFFFFFFFF);  // 100% crisp pure white
 
@@ -21,18 +21,13 @@ class ArgusTokens {
   static const Color accentGlow = Color(0x33FFFFFF);
   static const Color focusRing = Color(0xFFFFFFFF);
 
-  // Ethereal Thin Rainbow Spectral Beam (For live moving borders)
+  // Moonlit Luminous Lunar Beam (Pure monochrome/silver-white moonlight)
   static const List<Color> rainbowSpectrum = [
-    Color(0x00FFFFFF),
-    Color(0xAA38BDF8), // Light Cyan
-    Color(0xAA818CF8), // Light Indigo
-    Color(0xAAC084FC), // Light Violet
-    Color(0xAAF472B6), // Light Pink
-    Color(0xAAFB923C), // Light Orange
-    Color(0xAAFACC15), // Light Amber
-    Color(0xAA4ADE80), // Light Emerald
-    Color(0xAA2DD4BF), // Light Teal
-    Color(0x00FFFFFF),
+    Color(0xFFE2E8F0), // Pure moonlight silver
+    Color(0xFFFFFFFF), // Crisp lunar pearl
+    Color(0xFFCBD5E1), // Soft moonlight slate
+    Color(0xFF94A3B8), // Deep lunar haze
+    Color(0xFFE2E8F0), // Seamless loop
   ];
 
   // States

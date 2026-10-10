@@ -76,7 +76,7 @@ class _RainbowMovingBorderState extends State<RainbowMovingBorder>
       animation: _controller,
       builder: (context, _) {
         return CustomPaint(
-          painter: _RainbowBorderPainter(
+          foregroundPainter: _RainbowBorderPainter(
             progress: _controller.value,
             borderRadius: widget.borderRadius,
             borderWidth: widget.borderWidth,
@@ -86,6 +86,7 @@ class _RainbowMovingBorderState extends State<RainbowMovingBorder>
           ),
           child: ClipRRect(
             borderRadius: widget.borderRadius,
+            clipBehavior: Clip.antiAliasWithSaveLayer,
             child: Container(
               decoration: BoxDecoration(
                 color: widget.backgroundColor,
@@ -120,13 +121,8 @@ class _RainbowBorderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = Rect.fromLTWH(
-      borderWidth / 2,
-      borderWidth / 2,
-      size.width - borderWidth,
-      size.height - borderWidth,
-    );
-    final rrect = borderRadius.toRRect(rect);
+    final outerRRect = borderRadius.toRRect(Offset.zero & size);
+    final rrect = outerRRect.deflate(borderWidth / 2);
 
     // 1. Draw solid / subtle crisp white base border
     final basePaint = Paint()

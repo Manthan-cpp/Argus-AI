@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/theme/tokens.dart';
-import 'rainbow_moving_border.dart';
 
-/// Elevated interactive card with smooth hover lift, border glow,
-/// and integrated mouse-tracking spotlight.
+/// Elevated interactive card with smooth hover lift and crisp moonlit silver border.
 class HoverCard extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
@@ -35,6 +33,9 @@ class _HoverCardState extends State<HoverCard> {
 
   @override
   Widget build(BuildContext context) {
+    const moonlitBorder = Color(0x99CBD5E1); // Soft lunar silver
+    const moonlitGlow = Color(0x22CBD5E1);
+
     return MouseRegion(
       cursor: widget.onTap != null ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _isHovered = true),
@@ -42,18 +43,30 @@ class _HoverCardState extends State<HoverCard> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 180),
           curve: Curves.easeOutCubic,
           transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
-          child: RainbowMovingBorder(
+          decoration: BoxDecoration(
+            color: widget.backgroundColor ?? ArgusTokens.bgRaised,
             borderRadius: BorderRadius.circular(widget.borderRadius),
-            backgroundColor: widget.backgroundColor ?? ArgusTokens.bgRaised,
-            baseBorderColor: _isHovered ? Colors.white : (widget.borderColor ?? ArgusTokens.borderSubtle),
-            borderWidth: _isHovered ? 1.2 : 1.0,
-            isLive: widget.enableGlow && _isHovered,
-            padding: widget.padding,
-            child: widget.child,
+            border: Border.all(
+              color: _isHovered
+                  ? (widget.hoverBorderColor ?? moonlitBorder)
+                  : (widget.borderColor ?? ArgusTokens.borderSubtle),
+              width: _isHovered ? 1.5 : 1.0,
+            ),
+            boxShadow: _isHovered && widget.enableGlow
+                ? const [
+                    BoxShadow(
+                      color: moonlitGlow,
+                      blurRadius: 16,
+                      spreadRadius: 0,
+                    ),
+                  ]
+                : const [],
           ),
+          padding: widget.padding,
+          child: widget.child,
         ),
       ),
     );

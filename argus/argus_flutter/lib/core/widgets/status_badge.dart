@@ -59,6 +59,14 @@ class StatusBadge extends StatelessWidget {
   }
 
 
+  factory StatusBadge.mock() {
+    return const StatusBadge(
+      label: 'MOCK DATA',
+      icon: Icons.science_outlined,
+      color: ArgusTokens.accent,
+    );
+  }
+
   factory StatusBadge.replay() {
     return const StatusBadge(
       label: 'REPLAY CLIP',

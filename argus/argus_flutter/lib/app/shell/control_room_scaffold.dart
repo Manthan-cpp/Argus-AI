@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/copy/strings.dart';
-import '../../core/widgets/pulsing_beacon.dart';
 import '../theme/tokens.dart';
 import 'command_palette.dart';
 import '../../features/rooms/room_providers.dart';
+import '../../features/facilities/facility_providers.dart';
 
 class ControlRoomScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -82,10 +82,8 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
 
   Widget _buildTopBar(bool isDesktop) {
     final user = ref.watch(currentUserProvider).valueOrNull;
-    final role = (user?.role ?? 'organizer').toUpperCase();
-    Color roleBadgeColor = Colors.amberAccent;
-    if (role == 'SUPERVISOR') roleBadgeColor = Colors.cyanAccent;
-    if (role == 'MEMBER') roleBadgeColor = ArgusTokens.success;
+    final activeFacility = ref.watch(activeFacilityProvider);
+    final facilityRole = ref.watch(activeFacilityRoleProvider).toUpperCase();
 
     return Container(
       height: 54,
@@ -127,26 +125,59 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          const VerticalDivider(width: 1, indent: 14, endIndent: 14, color: ArgusTokens.borderSubtle),
-          const SizedBox(width: 16),
-
-          // Realtime Serverpod Connection Status
-          Row(
-            children: [
-              const PulsingBeacon(color: ArgusTokens.success, size: 8),
-              const SizedBox(width: 8),
-              Text(
-                'STREAMING',
-                style: GoogleFonts.jetBrainsMono(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: ArgusTokens.success,
-                  letterSpacing: 0.6,
-                ),
+          // Active Facility Selector Pill
+          if (activeFacility != null && widget.currentRoute != '/') ...[
+            const SizedBox(width: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: ArgusTokens.bgOverlay,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: ArgusTokens.borderSubtle),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.domain_rounded, size: 14, color: ArgusTokens.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(
+                    activeFacility.name,
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: const Color(0x1AFFFFFF),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      facilityRole,
+                      style: GoogleFonts.jetBrainsMono(fontSize: 9, fontWeight: FontWeight.w700, color: ArgusTokens.textSecondary),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      ref.read(activeFacilityProvider.notifier).state = null;
+                      context.go('/');
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Tooltip(
+                      message: 'Switch Facility',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.swap_horiz_rounded, size: 14, color: ArgusTokens.textSecondary),
+                          const SizedBox(width: 2),
+                          Text('Switch', style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           const Spacer(),
 
@@ -191,10 +222,20 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
           ],
 
           // User Identity & Role Badge Chip
-          InkWell(
-            onTap: () => context.go('/auth'),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
+          if (user == null) ...[
+            OutlinedButton.icon(
+              onPressed: () => context.go('/auth'),
+              icon: const Icon(Icons.login_rounded, size: 14),
+              label: const Text('Sign In'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ArgusTokens.accent,
+                side: BorderSide(color: ArgusTokens.accent.withValues(alpha: 0.4)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ] else ...[
+            Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: ArgusTokens.bgOverlay,
@@ -207,35 +248,40 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
                     radius: 10,
                     backgroundColor: ArgusTokens.accent.withValues(alpha: 0.2),
                     child: Text(
-                      (user?.fullName.isNotEmpty ?? false) ? user!.fullName[0].toUpperCase() : 'O',
-                      style: GoogleFonts.sora(fontSize: 10, fontWeight: FontWeight.w700, color: ArgusTokens.accent),
+                      user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                      style: GoogleFonts.sora(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: ArgusTokens.accent,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    user?.fullName ?? 'Operator',
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ArgusTokens.textPrimary),
+                    user.fullName,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: ArgusTokens.textPrimary,
+                    ),
                   ),
                   const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: roleBadgeColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      role,
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        color: roleBadgeColor,
-                      ),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, size: 14, color: ArgusTokens.textTertiary),
+                    tooltip: 'Log Out',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    onPressed: () async {
+                      await ref.read(currentUserProvider.notifier).logout();
+                      if (mounted) {
+                        context.go('/auth');
+                      }
+                    },
                   ),
                 ],
               ),
             ),
-          ),
+          ],
           const SizedBox(width: 12),
 
           // Quick Action / Help Link
@@ -250,17 +296,34 @@ class _ControlRoomScaffoldState extends ConsumerState<ControlRoomScaffold> {
   }
 
   Widget _buildNavigationRail() {
-    final navItems = [
+    // When on the Home page (Facility Operations Hub), hide the operational rail completely
+    if (widget.currentRoute == '/') {
+      return const SizedBox.shrink();
+    }
+
+    final role = ref.watch(activeFacilityRoleProvider).toLowerCase();
+    final isGuard = role == 'guard';
+
+    final navItems = <_NavItem>[
       _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', route: '/'),
       _NavItem(icon: Icons.radar_outlined, activeIcon: Icons.radar_rounded, label: 'Monitor', route: '/app/monitor'),
-      _NavItem(icon: Icons.hub_outlined, activeIcon: Icons.hub_rounded, label: 'Rooms', route: '/app/rooms'),
-      _NavItem(icon: Icons.videocam_outlined, activeIcon: Icons.videocam_rounded, label: 'Cameras', route: '/app/cameras'),
-      _NavItem(icon: Icons.rule_outlined, activeIcon: Icons.rule_rounded, label: 'Rules', route: '/app/rules'),
-      _NavItem(icon: Icons.shield_outlined, activeIcon: Icons.shield_rounded, label: 'Incidents', route: '/app/incidents'),
-      _NavItem(icon: Icons.science_outlined, activeIcon: Icons.science_rounded, label: 'Lab', route: '/app/lab'),
-      _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Settings', route: '/app/settings'),
-      _NavItem(icon: Icons.info_outline_rounded, activeIcon: Icons.info_rounded, label: 'About', route: '/about'),
+      _NavItem(icon: Icons.hub_outlined, activeIcon: Icons.hub_rounded, label: 'Dispatch', route: '/app/rooms'),
     ];
+
+    if (!isGuard) {
+      navItems.addAll([
+        _NavItem(icon: Icons.videocam_outlined, activeIcon: Icons.videocam_rounded, label: 'Cameras', route: '/app/cameras'),
+        _NavItem(icon: Icons.rule_outlined, activeIcon: Icons.rule_rounded, label: 'Rules', route: '/app/rules'),
+        _NavItem(icon: Icons.shield_outlined, activeIcon: Icons.shield_rounded, label: 'Incidents', route: '/app/incidents'),
+        _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings_rounded, label: 'Settings', route: '/app/settings'),
+      ]);
+    } else {
+      navItems.add(
+        _NavItem(icon: Icons.shield_outlined, activeIcon: Icons.shield_rounded, label: 'Incidents', route: '/app/incidents'),
+      );
+    }
+
+    navItems.add(_NavItem(icon: Icons.info_outline_rounded, activeIcon: Icons.info_rounded, label: 'About', route: '/about'));
 
     return Container(
       width: 72,
