@@ -322,6 +322,17 @@ class MockArgusRepository implements ArgusRepository {
     final idx = _workspaces.indexWhere((w) => w.id == facilityId);
     if (idx < 0) throw StateError('Facility not found');
     final existing = _workspaces[idx];
+
+    final cleanName = userName.trim();
+    final members = _workspaceMembers[facilityId] ?? [];
+    final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
+    final isOwner = existing.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+    final myRole = myMember?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
+
+    if (myRole != 'organizer' && myRole != 'supervisor') {
+      throw StateError('Permission denied: Guards cannot edit facility settings.');
+    }
+
     final updated = existing.copyWith(
       name: (name != null && name.trim().isNotEmpty) ? name.trim() : existing.name,
       description: description?.trim() ?? existing.description,
@@ -339,6 +350,20 @@ class MockArgusRepository implements ArgusRepository {
 
   @override
   Future<bool> deleteFacility(int facilityId, {required String userName}) async {
+    final idx = _workspaces.indexWhere((w) => w.id == facilityId);
+    if (idx < 0) return false;
+    final ws = _workspaces[idx];
+
+    final cleanName = userName.trim();
+    final members = _workspaceMembers[facilityId] ?? [];
+    final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
+    final isOwner = ws.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+    final myRole = myMember?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
+
+    if (myRole != 'organizer') {
+      throw StateError('Permission denied: Only the Organizer can delete a facility.');
+    }
+
     _workspaces.removeWhere((w) => w.id == facilityId);
     _workspaceMembers.remove(facilityId);
     _cameras.removeWhere((c) => c.workspaceId == facilityId);
