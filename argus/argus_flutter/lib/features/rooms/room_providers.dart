@@ -1,41 +1,72 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:argus_client/argus_client.dart';
+import '../../core/storage/web_storage.dart' as storage;
 import '../../data/repository_provider.dart';
 
-class CurrentUserNotifier extends StateNotifier<AsyncValue<UserProfile>> {
+class CurrentUserNotifier extends StateNotifier<AsyncValue<UserProfile?>> {
   final Ref ref;
 
   CurrentUserNotifier(this.ref) : super(const AsyncValue.loading()) {
     load();
   }
 
+  String? _getStoredUserName() {
+    return storage.getStorageItem('argus_user_name');
+  }
+
+  void _setStoredUserName(String? name) {
+    storage.setStorageItem('argus_user_name', name?.trim());
+  }
+
   Future<void> load() async {
     try {
       final repo = ref.read(argusRepositoryProvider);
-      final user = await repo.getCurrentUser();
+      final storedName = _getStoredUserName();
+      final user = await repo.getCurrentUser(fullName: storedName);
       state = AsyncValue.data(user);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+    } catch (_) {
+      state = const AsyncValue.data(null);
     }
   }
 
-  Future<UserProfile> login(String fullName, String role, {String? email}) async {
+  Future<UserProfile> signUp(String fullName, String password) async {
     final repo = ref.read(argusRepositoryProvider);
-    final user = await repo.login(fullName, role, email: email);
+    final user = await repo.signUp(fullName, password);
+    _setStoredUserName(user.fullName);
     state = AsyncValue.data(user);
     return user;
+  }
+
+  Future<UserProfile> login(String fullName, String password) async {
+    final repo = ref.read(argusRepositoryProvider);
+    final user = await repo.login(fullName, password);
+    _setStoredUserName(user.fullName);
+    state = AsyncValue.data(user);
+    return user;
+  }
+
+  Future<void> logout() async {
+    _setStoredUserName(null);
+    state = const AsyncValue.data(null);
+    ref.invalidate(roomsListProvider);
+    ref.invalidate(activeRoomProvider);
   }
 }
 
 final currentUserProvider =
-    StateNotifierProvider<CurrentUserNotifier, AsyncValue<UserProfile>>((ref) {
+    StateNotifierProvider<CurrentUserNotifier, AsyncValue<UserProfile?>>((ref) {
   return CurrentUserNotifier(ref);
 });
 
 final roomsListProvider = FutureProvider<List<DispatchRoom>>((ref) async {
+  final userAsync = ref.watch(currentUserProvider);
+  final user = userAsync.valueOrNull;
+  if (user == null) {
+    return <DispatchRoom>[];
+  }
   final repo = ref.watch(argusRepositoryProvider);
-  return await repo.listRooms();
+  return await repo.listRooms(userName: user.fullName);
 });
 
 final activeRoomProvider = StateProvider<DispatchRoom?>((ref) => null);

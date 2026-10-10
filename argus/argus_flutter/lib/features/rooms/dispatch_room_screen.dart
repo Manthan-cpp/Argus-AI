@@ -5,8 +5,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:argus_client/argus_client.dart';
 import '../../app/theme/tokens.dart';
+import '../../core/widgets/auth_required_barrier.dart';
 import '../../core/widgets/pulsing_beacon.dart';
 import '../../data/repository_provider.dart';
+import '../facilities/facility_providers.dart';
 import 'room_providers.dart';
 
 class DispatchRoomScreen extends ConsumerStatefulWidget {
@@ -41,11 +43,30 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
   Future<void> _loadRoom() async {
     try {
       final repo = ref.read(argusRepositoryProvider);
-      final room = await repo.getRoomByCode(widget.code);
+      final user = ref.read(currentUserProvider).valueOrNull;
+      final numericId = int.tryParse(widget.code);
+      DispatchRoom? room;
+      if (numericId != null) {
+        room = await repo.getRoom(numericId, userName: user?.fullName);
+      }
+      room ??= await repo.getRoomByCode(widget.code);
+      if (room == null) {
+        final activeFacility = ref.read(activeFacilityProvider);
+        if (activeFacility?.id != null) {
+          room = await repo.getRoomForFacility(activeFacility!.id!, userName: user?.fullName);
+        }
+      }
+      if (room == null && user != null) {
+        final userRooms = await repo.listRooms(userName: user.fullName);
+        if (userRooms.isNotEmpty) {
+          room = userRooms.first;
+        }
+      }
+
       if (mounted) {
         if (room == null) {
           setState(() {
-            _error = 'Dispatch room with code "${widget.code}" not found.';
+            _error = 'Dispatch room "${widget.code}" not found.';
             _isLoading = false;
           });
         } else {
@@ -84,7 +105,17 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
 
     final user = ref.read(currentUserProvider).valueOrNull;
     final senderName = user?.fullName ?? 'Operator';
-    final senderRole = user?.role ?? 'member';
+    final members = ref.read(roomMembersProvider(_room!.id!)).valueOrNull ?? [];
+    final currentMember = members
+        .where((m) =>
+            m.userName.toLowerCase() == (user?.fullName.toLowerCase() ?? '') ||
+            (user?.id != null && m.userId == user?.id))
+        .firstOrNull;
+    final isCreator =
+        _room!.createdByName.toLowerCase() == (user?.fullName.toLowerCase() ?? '');
+    final facilityRole = ref.read(activeFacilityRoleProvider).toLowerCase();
+    final senderRole =
+        (currentMember?.userRole ?? (isCreator ? 'organizer' : facilityRole)).toLowerCase();
 
     try {
       await ref.read(roomMessagesProvider(_room!.id!).notifier).sendMessage(
@@ -103,34 +134,217 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     }
   }
 
-  void _triggerSimulatedAlert() async {
+  Future<void> _showEditRoomDialog() async {
     if (_room == null) return;
-    final repo = ref.read(argusRepositoryProvider);
-    final cameras = await repo.listCameras();
-    final cameraName = cameras.isNotEmpty ? cameras.first.name : 'Platform 1';
+    final user = ref.read(currentUserProvider).valueOrNull;
+    if (user == null) return;
 
-    // Send a real-time system alert into this room
-    final alertMessage =
-        'Guards near the $cameraName area, please look into the matter immediately.';
+    final repo = ref.read(argusRepositoryProvider);
+    final cameras = await repo.listCameras(workspaceId: _room!.workspaceId);
+
+    if (!mounted) return;
+
+    final nameCtrl = TextEditingController(text: _room!.name);
+    final descCtrl = TextEditingController(text: _room!.description ?? '');
+    final selectedCamIds = <int>{..._room!.cameraIds};
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          backgroundColor: ArgusTokens.bgOverlay,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+            side: const BorderSide(color: ArgusTokens.borderSubtle),
+          ),
+          title: Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, color: ArgusTokens.accent),
+              const SizedBox(width: 10),
+              Text(
+                'Edit Dispatch Room',
+                style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          content: SizedBox(
+            width: 480,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Modify the configuration and connected camera feeds for this room.',
+                    style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Room Name
+                  Text('Room Name', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: ArgusTokens.bgRaised,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Description
+                  Text('Description', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: descCtrl,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: ArgusTokens.bgRaised,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Attached Cameras
+                  Text('Attached Cameras', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 8),
+                  if (cameras.isEmpty)
+                    Text('No cameras configured.',
+                        style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary))
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: cameras.map((c) {
+                        final isSelected = selectedCamIds.contains(c.id);
+                        return FilterChip(
+                          label: Text(c.name, style: GoogleFonts.inter(fontSize: 12)),
+                          selected: isSelected,
+                          selectedColor: ArgusTokens.accent.withValues(alpha: 0.2),
+                          checkmarkColor: ArgusTokens.accent,
+                          backgroundColor: ArgusTokens.bgRaised,
+                          onSelected: (selected) {
+                            setDlgState(() {
+                              if (selected) {
+                                selectedCamIds.add(c.id!);
+                              } else {
+                                selectedCamIds.remove(c.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final newName = nameCtrl.text.trim();
+                if (newName.isEmpty) return;
+
+                try {
+                  final updated = await repo.updateRoom(
+                    _room!.id!,
+                    userName: user.fullName,
+                    name: newName,
+                    description: descCtrl.text.trim(),
+                    cameraIds: selectedCamIds.toList(),
+                  );
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    setState(() => _room = updated);
+                    ref.invalidate(roomsListProvider);
+                    ref.invalidate(roomMessagesProvider(_room!.id!));
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Room updated successfully.')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Failed to update room: $e')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ArgusTokens.accent,
+                foregroundColor: Colors.black,
+              ),
+              child: const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  Future<void> _deleteRoom() async {
+    if (_room == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_forever_rounded, color: ArgusTokens.severityCritical),
+            const SizedBox(width: 10),
+            Text('Delete Dispatch Room', style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${_room!.name}"? All active message streams and responder sessions will be terminated.',
+          style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ArgusTokens.severityCritical,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete Room'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
 
     try {
-      await repo.sendRoomMessage(
-        _room!.id!,
-        alertMessage,
-        senderName: 'Argus System',
-        senderRole: 'system',
-      );
-      // Also post with kind system_alert in mock
-      _scrollToBottom();
+      final user = ref.read(currentUserProvider).valueOrNull;
+      final repo = ref.read(argusRepositoryProvider);
+      await repo.deleteRoom(_room!.id!, userName: user?.fullName ?? 'Operator');
+      ref.invalidate(roomsListProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Simulated alert dispatched to room ${_room!.code}!')),
+          SnackBar(content: Text('Dispatch Room "${_room!.name}" deleted.')),
         );
+        context.go('/app/rooms');
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to simulate alert: $e')),
+          SnackBar(content: Text('Failed to delete room: $e')),
         );
       }
     }
@@ -182,12 +396,41 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     final userAsync = ref.watch(currentUserProvider);
     final currentUser = userAsync.valueOrNull;
 
+    if (currentUser == null) {
+      return Scaffold(
+        backgroundColor: ArgusTokens.bgBase,
+        appBar: AppBar(
+          backgroundColor: ArgusTokens.bgRaised,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/app/rooms'),
+          ),
+          title: Text(_room?.name ?? 'Dispatch Room'),
+        ),
+        body: const AuthRequiredBarrier(
+          description:
+              'You must be signed in to access this dispatch room and participate in communications.',
+        ),
+      );
+    }
+
+    final members = membersAsync.valueOrNull ?? [];
+    final currentMember = members
+        .where((m) =>
+            m.userName.toLowerCase() == currentUser.fullName.toLowerCase() ||
+            (currentUser.id != null && m.userId == currentUser.id))
+        .firstOrNull;
+    final isCreator =
+        _room!.createdByName.toLowerCase() == currentUser.fullName.toLowerCase();
+    final myRole =
+        (currentMember?.userRole ?? (isCreator ? 'organizer' : 'guard')).toLowerCase();
+
     return Scaffold(
       backgroundColor: ArgusTokens.bgBase,
       body: Column(
         children: [
           // Tactical Header
-          _buildTopBar(context, membersAsync.valueOrNull?.length ?? 1),
+          _buildTopBar(context, members.length, myRole),
 
           // Main Room Area (Live Stream + Side Intel Panel)
           Expanded(
@@ -229,7 +472,7 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
                       ),
 
                       // Input Bar
-                      _buildInputBar(currentUser),
+                      _buildInputBar(currentUser, myRole),
                     ],
                   ),
                 ),
@@ -242,7 +485,7 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
                       color: ArgusTokens.bgRaised,
                       border: Border(left: BorderSide(color: ArgusTokens.borderSubtle)),
                     ),
-                    child: _buildSideIntelPanel(membersAsync.valueOrNull ?? []),
+                    child: _buildSideIntelPanel(members, myRole),
                   ),
               ],
             ),
@@ -252,7 +495,9 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     );
   }
 
-  Widget _buildTopBar(BuildContext context, int membersCount) {
+  Widget _buildTopBar(BuildContext context, int membersCount, String myRole) {
+    final isGuard = myRole == 'guard';
+
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: ArgusTokens.space16),
@@ -264,8 +509,14 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_rounded, size: 20),
-            tooltip: 'Back to Rooms',
-            onPressed: () => context.go('/app/rooms'),
+            tooltip: 'Back to Dispatch Rooms',
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/app/rooms');
+              }
+            },
           ),
           const SizedBox(width: 8),
           Column(
@@ -283,41 +534,61 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Code Chip with 1-click copy
-                  InkWell(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: _room!.code));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Room Code ${_room!.code} copied to clipboard!'),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: ArgusTokens.accent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: ArgusTokens.accent.withValues(alpha: 0.5)),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            _room!.code,
-                            style: GoogleFonts.jetBrainsMono(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: ArgusTokens.accent,
-                            ),
+                  if (!isGuard) ...[
+                    // Code Chip with 1-click copy (Organizers & Supervisors only)
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: _room!.code));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Room Code ${_room!.code} copied to clipboard!'),
+                            duration: const Duration(seconds: 2),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.copy_rounded, size: 10, color: ArgusTokens.accent),
-                        ],
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: ArgusTokens.accent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: ArgusTokens.accent.withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              _room!.code,
+                              style: GoogleFonts.jetBrainsMono(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: ArgusTokens.accent,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.copy_rounded, size: 10, color: ArgusTokens.accent),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
+                  ] else ...[
+                    // Guard status tag (codes are concealed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: ArgusTokens.success.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: ArgusTokens.success.withValues(alpha: 0.5)),
+                      ),
+                      child: Text(
+                        'GUARD POST',
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: ArgusTokens.success,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 2),
@@ -338,18 +609,31 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
             ],
           ),
           const Spacer(),
-          // Quick Simulate Alert action button
-          OutlinedButton.icon(
-            onPressed: _triggerSimulatedAlert,
-            icon: const Icon(Icons.warning_amber_rounded, size: 14, color: ArgusTokens.severityMedium),
-            label: const Text('Simulate Alert'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: ArgusTokens.severityMedium,
-              side: BorderSide(color: ArgusTokens.severityMedium.withValues(alpha: 0.4)),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              textStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+          if (!isGuard) ...[
+            OutlinedButton.icon(
+              onPressed: _showEditRoomDialog,
+              icon: const Icon(Icons.edit_outlined, size: 14, color: ArgusTokens.accent),
+              label: const Text('Edit Room'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ArgusTokens.accent,
+                side: BorderSide(color: ArgusTokens.accent.withValues(alpha: 0.4)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: _deleteRoom,
+              icon: const Icon(Icons.delete_outline_rounded, size: 14, color: ArgusTokens.severityCritical),
+              label: const Text('Delete Room'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ArgusTokens.severityCritical,
+                side: BorderSide(color: ArgusTokens.severityCritical.withValues(alpha: 0.4)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                textStyle: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -412,12 +696,13 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     // 3. Chat Message
     final isMe = currentUser != null &&
         (msg.senderId == currentUser.id || msg.senderName == currentUser.fullName);
-    final role = (msg.senderRole ?? 'member').toUpperCase();
+    final rawRole = (msg.senderRole ?? 'guard').toUpperCase();
+    final role = rawRole == 'MEMBER' ? 'GUARD' : rawRole;
 
     Color roleColor = ArgusTokens.textSecondary;
     if (role == 'ORGANIZER') roleColor = Colors.amberAccent;
     if (role == 'SUPERVISOR') roleColor = Colors.cyanAccent;
-    if (role == 'MEMBER') roleColor = ArgusTokens.success;
+    if (role == 'GUARD') roleColor = ArgusTokens.success;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -678,9 +963,9 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     );
   }
 
-  Widget _buildInputBar(UserProfile? currentUser) {
+  Widget _buildInputBar(UserProfile? currentUser, String myRole) {
     final name = currentUser?.fullName ?? 'Operator';
-    final role = (currentUser?.role ?? 'member').toUpperCase();
+    final role = myRole.toUpperCase();
 
     return Container(
       padding: const EdgeInsets.all(ArgusTokens.space12),
@@ -719,70 +1004,88 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     );
   }
 
-  Widget _buildSideIntelPanel(List<RoomMember> members) {
+  Widget _buildSideIntelPanel(List<RoomMember> members, String myRole) {
+    final isGuard = myRole == 'guard';
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(ArgusTokens.space16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Room Code Card
-          Container(
-            padding: const EdgeInsets.all(ArgusTokens.space12),
-            decoration: BoxDecoration(
-              color: ArgusTokens.bgOverlay,
-              borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
-              border: Border.all(color: ArgusTokens.borderSubtle),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          if (!isGuard) ...[
+            // Role-specific join codes (Only for Organizer & Supervisor)
+            Row(
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.vpn_key_outlined, size: 16, color: ArgusTokens.accent),
-                    const SizedBox(width: 6),
-                    Text(
-                      'ROOM CODE',
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: ArgusTokens.accent,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _room!.code,
-                      style: GoogleFonts.jetBrainsMono(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: ArgusTokens.textPrimary,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded, size: 16, color: ArgusTokens.accent),
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: _room!.code));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Room code ${_room!.code} copied!')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
+                const Icon(Icons.vpn_key_outlined, size: 16, color: ArgusTokens.accent),
+                const SizedBox(width: 6),
                 Text(
-                  'Share this code with guards or supervisors on other devices to join this operations channel.',
-                  style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textSecondary),
+                  'ROLE INVITE CODES',
+                  style: GoogleFonts.jetBrainsMono(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: ArgusTokens.accent,
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 6),
+            Text(
+              'The code sent to a team member dictates their operational role automatically upon joining.',
+              style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary, height: 1.3),
+            ),
+            const SizedBox(height: 12),
+
+            // Organizer Code Card
+            _buildRoleCodeCard(
+              roleTitle: 'Organizer Code',
+              roleDesc: 'Full authority & room administration',
+              code: _room!.organizerCode ?? _room!.code,
+              color: Colors.amberAccent,
+              icon: Icons.admin_panel_settings_rounded,
+            ),
+
+            // Supervisor Code Card
+            _buildRoleCodeCard(
+              roleTitle: 'Supervisor Code',
+              roleDesc: 'Command, live telemetry & alert control',
+              code: _room!.supervisorCode ?? _room!.code,
+              color: Colors.cyanAccent,
+              icon: Icons.security_rounded,
+            ),
+
+            // Guard Code Card
+            _buildRoleCodeCard(
+              roleTitle: 'Guard Code',
+              roleDesc: 'Tactical field responder & ground status',
+              code: _room!.guardCode ?? _room!.code,
+              color: ArgusTokens.success,
+              icon: Icons.shield_rounded,
+            ),
+            const SizedBox(height: 18),
+          ] else ...[
+            // Guard notice (Codes concealed)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: ArgusTokens.bgOverlay,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ArgusTokens.borderSubtle),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.shield_outlined, size: 18, color: ArgusTokens.success),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Guard clearance active. Invite codes and administrative settings are restricted to Supervisors and Organizers.',
+                      style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textSecondary, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
 
           // Connected Responders Header
           Row(
@@ -856,6 +1159,103 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
               ),
             ),
           ],
+
+          if (!isGuard) ...[
+            const SizedBox(height: 24),
+            const Divider(color: ArgusTokens.borderSubtle),
+            const SizedBox(height: 12),
+
+            // Danger Zone: Delete Room inside room (Organizers & Supervisors only)
+            Text(
+              'ROOM MANAGEMENT',
+              style: GoogleFonts.jetBrainsMono(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: ArgusTokens.textTertiary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _deleteRoom,
+              icon: const Icon(Icons.delete_forever_rounded, size: 16, color: ArgusTokens.severityCritical),
+              label: const Text('Delete This Room'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ArgusTokens.severityCritical,
+                side: BorderSide(color: ArgusTokens.severityCritical.withValues(alpha: 0.4)),
+                minimumSize: const Size.fromHeight(40),
+                textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleCodeCard({
+    required String roleTitle,
+    required String roleDesc,
+    required String code,
+    required Color color,
+    required IconData icon,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: ArgusTokens.bgOverlay,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text(
+                roleTitle,
+                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$roleTitle ($code) copied to clipboard!')),
+                  );
+                },
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        code,
+                        style: GoogleFonts.jetBrainsMono(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: ArgusTokens.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.copy_rounded, size: 11, color: color),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            roleDesc,
+            style: GoogleFonts.inter(fontSize: 10, color: ArgusTokens.textTertiary),
+          ),
         ],
       ),
     );
