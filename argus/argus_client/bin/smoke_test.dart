@@ -23,8 +23,8 @@ void main() async {
 
   // 3. Test In-App Dispatch Room Operations Hub
   print('3. Testing Dispatch Room creation...');
-  final room = await client.room.create(
-    name: 'Sector 4 Operations Room',
+  final room = await client.room.createRoom(
+    'Sector 4 Operations Room',
     description: 'Dispatch room for rapid incident response',
     creatorName: 'Duty Commander V. Rao',
     creatorRole: 'organizer',
