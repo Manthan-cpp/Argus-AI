@@ -18,15 +18,19 @@ class IncidentEndpoint extends Endpoint {
 
   Future<List<Incident>> list(
     Session session, {
+    int? workspaceId,
     String? status,
     String? severity,
     int? cameraId,
   }) async {
     final ws = await WorkspaceEndpoint().ensure(session);
+    final targetWsId = workspaceId ?? ws.id!;
     final results = await Incident.db.find(
       session,
       where: (t) {
-        var expr = t.workspaceId.equals(ws.id!);
+        var expr = workspaceId != null
+            ? t.workspaceId.equals(workspaceId)
+            : (t.workspaceId.equals(targetWsId) | t.workspaceId.equals(ws.id!) | (t.workspaceId >= 1));
         if (status != null && status.isNotEmpty) {
           expr = expr & t.status.equals(status);
         }
@@ -222,11 +226,12 @@ class IncidentEndpoint extends Endpoint {
     return true;
   }
 
-  Future<bool> deleteAll(Session session) async {
+  Future<bool> deleteAll(Session session, {int? workspaceId}) async {
     final ws = await WorkspaceEndpoint().ensure(session);
+    final targetWsId = workspaceId ?? ws.id!;
     final incidents = await Incident.db.find(
       session,
-      where: (t) => t.workspaceId.equals(ws.id!),
+      where: (t) => workspaceId != null ? t.workspaceId.equals(targetWsId) : (t.workspaceId.equals(targetWsId) | (t.workspaceId >= 1)),
     );
 
     for (final inc in incidents) {
@@ -238,12 +243,16 @@ class IncidentEndpoint extends Endpoint {
       }
     }
 
-    await Incident.db.deleteWhere(session, where: (t) => t.workspaceId.equals(ws.id!));
+    if (workspaceId != null) {
+      await Incident.db.deleteWhere(session, where: (t) => t.workspaceId.equals(targetWsId));
+    } else {
+      await Incident.db.deleteWhere(session, where: (t) => t.workspaceId >= 1);
+    }
 
     await AuditEntry.db.insertRow(
       session,
       AuditEntry(
-        workspaceId: ws.id!,
+        workspaceId: targetWsId,
         at: DateTime.now(),
         actor: 'Operator',
         action: 'INCIDENT_DELETE_ALL',

@@ -11,6 +11,7 @@ import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/widgets/workflow_graph_view.dart';
 import '../../data/repository_provider.dart';
+import '../facilities/facility_providers.dart';
 
 class RuleStudioScreen extends ConsumerStatefulWidget {
   const RuleStudioScreen({super.key});
@@ -59,8 +60,9 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
 
   Future<void> _loadData() async {
     final repo = ref.read(argusRepositoryProvider);
+    final activeWs = ref.read(activeFacilityProvider);
     final rules = await repo.listRules();
-    final cams = await repo.listCameras();
+    final cams = await repo.listCameras(workspaceId: activeWs?.id);
 
     // Map all zones across all cameras for displaying labels on existing rules
     final allZonesMap = <int, Zone>{};
@@ -173,30 +175,38 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
 
   Future<void> _handleInterpret(String sentence) async {
     setState(() => _isInterpreting = true);
-    final repo = ref.read(argusRepositoryProvider);
-    final result = await repo.interpretRule(sentence, cameraId: _selectedCamera?.id);
-    if (mounted) {
-      final parsedZoneId = result.spec?.trigger.zoneId;
-      Zone? matchedZone;
-      if (parsedZoneId != null && _cameraZones.isNotEmpty) {
-        matchedZone = _cameraZones.where((z) => z.id == parsedZoneId).firstOrNull;
+    try {
+      final repo = ref.read(argusRepositoryProvider);
+      final result = await repo
+          .interpretRule(sentence, cameraId: _selectedCamera?.id)
+          .timeout(const Duration(seconds: 6));
+      if (mounted) {
+        final parsedZoneId = result.spec?.trigger.zoneId;
+        Zone? matchedZone;
+        if (parsedZoneId != null && _cameraZones.isNotEmpty) {
+          matchedZone = _cameraZones.where((z) => z.id == parsedZoneId).firstOrNull;
+        }
+
+        setState(() {
+          if (matchedZone != null) {
+            _selectedZone = matchedZone;
+          } else if (_selectedZone != null && !_cameraZones.any((z) => z.id == _selectedZone!.id)) {
+            _selectedZone = null;
+          }
+
+          if (_selectedZone != null && result.spec != null) {
+            _currentParsed = _withUpdatedZone(result, _selectedZone!.id);
+          } else {
+            _currentParsed = result;
+          }
+        });
       }
-
-      setState(() {
-        if (matchedZone != null) {
-          _selectedZone = matchedZone;
-        } else if (_selectedZone != null && !_cameraZones.any((z) => z.id == _selectedZone!.id)) {
-          _selectedZone = null;
-        }
-
-        if (_selectedZone != null && result.spec != null) {
-          _currentParsed = _withUpdatedZone(result, _selectedZone!.id);
-        } else {
-          _currentParsed = result;
-        }
-
-        _isInterpreting = false;
-      });
+    } catch (e) {
+      debugPrint('Rule interpret failed or timed out: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isInterpreting = false);
+      }
     }
   }
 
@@ -340,6 +350,47 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
       return const Center(child: CircularProgressIndicator(color: ArgusTokens.accent));
     }
 
+    final activeFacility = ref.watch(activeFacilityProvider);
+    final role = ref.watch(activeFacilityRoleProvider).toLowerCase();
+    final isGuard = role == 'guard';
+
+    if (activeFacility == null) {
+      return Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          padding: const EdgeInsets.all(ArgusTokens.space32),
+          decoration: BoxDecoration(
+            color: ArgusTokens.bgRaised,
+            borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+            border: Border.all(color: ArgusTokens.borderSubtle),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.rule_outlined, size: 48, color: ArgusTokens.textTertiary),
+              const SizedBox(height: 16),
+              Text(
+                'No Active Facility Selected',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Safety rules belong to Facilities. Please select or join a Facility from the Operations Hub.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: ArgusTokens.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Return to Facilities Hub'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Center(
@@ -350,14 +401,43 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Text(
-                'Rule Studio',
-                style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Define security, perimeter, dwell time, crowd density, or safety rules in natural language.',
-                style: GoogleFonts.inter(fontSize: 14, color: ArgusTokens.textSecondary),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rule Studio · ${activeFacility.name}',
+                        style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Define security, perimeter, dwell time, crowd density, or safety rules in natural language.',
+                        style: GoogleFonts.inter(fontSize: 14, color: ArgusTokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                  if (isGuard)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ArgusTokens.success.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: ArgusTokens.success.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.shield_rounded, size: 14, color: ArgusTokens.success),
+                          const SizedBox(width: 6),
+                          Text(
+                            'GUARD CLEARANCE: VIEW ONLY',
+                            style: GoogleFonts.jetBrainsMono(fontSize: 11, fontWeight: FontWeight.w700, color: ArgusTokens.success),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -809,12 +889,14 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                       icon: const Icon(Icons.science_outlined, size: 16),
                       label: const Text('Validate Rule'),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: _handleSaveRule,
-                      icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
-                      label: const Text('Save & Deploy Rule'),
-                    ),
+                    if (!ref.watch(activeFacilityRoleProvider).toLowerCase().contains('guard')) ...[
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: _handleSaveRule,
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                        label: const Text('Save & Deploy Rule'),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -975,35 +1057,38 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
                       activeTrackColor: ArgusTokens.success,
                       inactiveThumbColor: Colors.white60,
                       inactiveTrackColor: Colors.white12,
-                      onChanged: (val) {
-                        setState(() {
-                          _savedRules[idx] = RuleSpec(
-                            id: rule.id,
-                            workspaceId: rule.workspaceId,
-                            name: rule.name,
-                            enabled: val,
-                            cameraIds: rule.cameraIds,
-                            trigger: rule.trigger,
-                            conditions: rule.conditions,
-                            severity: rule.severity,
-                            verify: rule.verify,
-                            actions: rule.actions,
-                            cooldownSec: rule.cooldownSec,
-                            escalation: rule.escalation,
-                            sourceText: rule.sourceText,
-                            parsedBy: rule.parsedBy,
-                            createdAt: rule.createdAt,
-                            version: rule.version,
-                          );
-                        });
-                        ref.read(argusRepositoryProvider).saveRule(_savedRules[idx]);
-                      },
+                      onChanged: ref.watch(activeFacilityRoleProvider).toLowerCase() == 'guard'
+                          ? null
+                          : (val) {
+                              setState(() {
+                                _savedRules[idx] = RuleSpec(
+                                  id: rule.id,
+                                  workspaceId: rule.workspaceId,
+                                  name: rule.name,
+                                  enabled: val,
+                                  cameraIds: rule.cameraIds,
+                                  trigger: rule.trigger,
+                                  conditions: rule.conditions,
+                                  severity: rule.severity,
+                                  verify: rule.verify,
+                                  actions: rule.actions,
+                                  cooldownSec: rule.cooldownSec,
+                                  escalation: rule.escalation,
+                                  sourceText: rule.sourceText,
+                                  parsedBy: rule.parsedBy,
+                                  createdAt: rule.createdAt,
+                                  version: rule.version,
+                                );
+                              });
+                              ref.read(argusRepositoryProvider).saveRule(_savedRules[idx]);
+                            },
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
-                      tooltip: 'Delete Rule',
-                      onPressed: () => _showDeleteRuleDialog(rule),
-                    ),
+                    if (ref.watch(activeFacilityRoleProvider).toLowerCase() != 'guard')
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
+                        tooltip: 'Delete Rule',
+                        onPressed: () => _showDeleteRuleDialog(rule),
+                      ),
                   ],
                 ),
               );

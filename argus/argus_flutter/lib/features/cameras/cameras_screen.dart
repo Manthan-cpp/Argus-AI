@@ -10,6 +10,7 @@ import '../../core/widgets/hover_card.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../data/repository_provider.dart';
+import '../facilities/facility_providers.dart';
 
 class CamerasScreen extends ConsumerStatefulWidget {
   const CamerasScreen({super.key});
@@ -30,7 +31,8 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
 
   Future<void> _loadCameras() async {
     final repo = ref.read(argusRepositoryProvider);
-    final cams = await repo.listCameras();
+    final activeWs = ref.read(activeFacilityProvider);
+    final cams = await repo.listCameras(workspaceId: activeWs?.id);
     if (mounted) {
       setState(() {
         _cameras = cams;
@@ -356,8 +358,9 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                     (sourceKind == 'webcam' ? 'local' : (sourceKind == 'rtsp' ? rtspUrlCtrl.text.trim() : (isCustomFile ? 'local' : selectedSceneId)));
 
                 final repo = ref.read(argusRepositoryProvider);
+                final activeWs = ref.read(activeFacilityProvider);
                 final saved = await repo.saveCamera(Camera(
-                  workspaceId: 1,
+                  workspaceId: activeWs?.id ?? 1,
                   name: name,
                   sourceKind: sourceKind,
                   sourceRef: finalSourceRef,
@@ -447,8 +450,55 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Workspace?>(activeFacilityProvider, (prev, next) {
+      if (prev?.id != next?.id) {
+        _loadCameras();
+      }
+    });
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: ArgusTokens.accent));
+    }
+
+    final activeFacility = ref.watch(activeFacilityProvider);
+    final role = ref.watch(activeFacilityRoleProvider).toLowerCase();
+    final isGuard = role == 'guard';
+
+    if (activeFacility == null) {
+      return Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          padding: const EdgeInsets.all(ArgusTokens.space32),
+          decoration: BoxDecoration(
+            color: ArgusTokens.bgRaised,
+            borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+            border: Border.all(color: ArgusTokens.borderSubtle),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.videocam_outlined, size: 48, color: ArgusTokens.textTertiary),
+              const SizedBox(height: 16),
+              Text(
+                'No Active Facility Selected',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Camera feeds belong to Facilities. Please select or join a Facility from the Operations Hub.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: ArgusTokens.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Return to Facilities Hub'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return SingleChildScrollView(
@@ -468,7 +518,7 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Connected Cameras',
+                        'Connected Cameras · ${activeFacility.name}',
                         style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
                       ),
                       const SizedBox(height: 4),
@@ -480,19 +530,40 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                   ),
                   Row(
                     children: [
-                      if (_cameras.isNotEmpty) ...[
-                        OutlinedButton.icon(
-                          onPressed: _showWipeDataDialog,
-                          icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.redAccent),
-                          label: const Text('Wipe All Data', style: TextStyle(color: Colors.redAccent)),
+                      if (isGuard) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: ArgusTokens.success.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: ArgusTokens.success.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.shield_rounded, size: 14, color: ArgusTokens.success),
+                              const SizedBox(width: 6),
+                              Text(
+                                'GUARD CLEARANCE: VIEW ONLY',
+                                style: GoogleFonts.jetBrainsMono(fontSize: 11, fontWeight: FontWeight.w700, color: ArgusTokens.success),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 12),
+                      ] else ...[
+                        if (_cameras.isNotEmpty) ...[
+                          OutlinedButton.icon(
+                            onPressed: _showWipeDataDialog,
+                            icon: const Icon(Icons.delete_sweep_outlined, size: 16, color: Colors.redAccent),
+                            label: const Text('Wipe All Data', style: TextStyle(color: Colors.redAccent)),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        ElevatedButton.icon(
+                          onPressed: _showAddCameraDialog,
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Add Camera'),
+                        ),
                       ],
-                      ElevatedButton.icon(
-                        onPressed: _showAddCameraDialog,
-                        icon: const Icon(Icons.add_rounded, size: 18),
-                        label: const Text('Add Camera'),
-                      ),
                     ],
                   ),
                 ],
@@ -655,14 +726,15 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                                     children: [
                                       OutlinedButton.icon(
                                         onPressed: () => context.go('/app/cameras/${cam.id}/zones'),
-                                        icon: const Icon(Icons.draw_outlined, size: 14),
-                                        label: const Text('Edit Zones (Polygon)'),
+                                        icon: Icon(isGuard ? Icons.visibility_outlined : Icons.draw_outlined, size: 14),
+                                        label: Text(isGuard ? 'View Zones' : 'Edit Zones (Polygon)'),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
-                                        tooltip: 'Delete Camera',
-                                        onPressed: () => _showDeleteCameraDialog(cam),
-                                      ),
+                                      if (!isGuard)
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
+                                          tooltip: 'Delete Camera',
+                                          onPressed: () => _showDeleteCameraDialog(cam),
+                                        ),
                                     ],
                                   ),
                                 ],

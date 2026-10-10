@@ -15,6 +15,7 @@ import '../../core/vision/vision_stage_view.dart';
 import '../../data/repository_provider.dart';
 import '../../core/util/preloaded_scenes.dart';
 import '../../core/util/video_picker.dart';
+import '../facilities/facility_providers.dart';
 
 class MonitorScreen extends ConsumerStatefulWidget {
   const MonitorScreen({super.key});
@@ -241,16 +242,21 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
 
   Future<void> _loadData() async {
     final repo = ref.read(argusRepositoryProvider);
+    final activeWs = ref.read(activeFacilityProvider);
     try {
-      final cams = await repo.listCameras();
+      final cams = await repo.listCameras(workspaceId: activeWs?.id);
       final rules = await repo.listRules();
-      final incs = await repo.listIncidents();
+      final incs = await repo.listIncidents(workspaceId: activeWs?.id);
 
       if (mounted) {
         setState(() {
           _cameras = cams;
           if (cams.isNotEmpty) {
-            _selectedCamera = cams.first;
+            if (_selectedCamera == null || !cams.any((c) => c.id == _selectedCamera!.id)) {
+              _selectedCamera = cams.first;
+            }
+          } else {
+            _selectedCamera = null;
           }
           _rules = rules;
           _incidents = incs;
@@ -271,6 +277,10 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
           _streamSub = repo.watchIncidents().listen(
             (update) {
               if (mounted) {
+                final currentWs = ref.read(activeFacilityProvider);
+                if (currentWs != null && update.incident.workspaceId != currentWs.id) {
+                  return;
+                }
                 final idx = _incidents.indexWhere((i) => i.id == update.incident.id);
                 final isNew = idx < 0;
                 setState(() {
@@ -423,6 +433,12 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Workspace?>(activeFacilityProvider, (prev, next) {
+      if (prev?.id != next?.id) {
+        _loadData();
+      }
+    });
+
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: ArgusTokens.accent),
@@ -1172,7 +1188,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                                       onTap: () async {
                                         if (inc.id != null) {
                                           await ref.read(argusRepositoryProvider).deleteIncident(inc.id!);
-                                          final updated = await ref.read(argusRepositoryProvider).listIncidents();
+                                          final updated = await ref.read(argusRepositoryProvider).listIncidents(workspaceId: ref.read(activeFacilityProvider)?.id);
                                           if (mounted) setState(() => _incidents = updated);
                                         }
                                       },
@@ -1218,7 +1234,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                                     ),
                                     onPressed: () async {
                                       await ref.read(argusRepositoryProvider).acknowledge(inc.id!);
-                                      final updated = await ref.read(argusRepositoryProvider).listIncidents();
+                                      final updated = await ref.read(argusRepositoryProvider).listIncidents(workspaceId: ref.read(activeFacilityProvider)?.id);
                                       if (mounted) setState(() => _incidents = updated);
                                     },
                                     child: Text(

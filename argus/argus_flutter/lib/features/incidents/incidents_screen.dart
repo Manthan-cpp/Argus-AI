@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/util/preloaded_scenes.dart';
 import '../../data/repository_provider.dart';
+import '../facilities/facility_providers.dart';
 
 class IncidentsScreen extends ConsumerStatefulWidget {
   const IncidentsScreen({super.key});
@@ -24,26 +26,112 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
   bool _isLoading = true;
   String _selectedStatusFilter = 'ALL';
   String _selectedSeverityFilter = 'ALL';
+  StreamSubscription<IncidentUpdate>? _streamSub;
 
   @override
   void initState() {
     super.initState();
     _loadIncidents();
+    _subscribeToIncidents();
+  }
+
+  @override
+  void dispose() {
+    _streamSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToIncidents() {
+    final repo = ref.read(argusRepositoryProvider);
+    _streamSub?.cancel();
+    try {
+      _streamSub = repo.watchIncidents().listen(
+        (update) {
+          if (!mounted) return;
+          final activeWs = ref.read(activeFacilityProvider);
+          if (activeWs != null && update.incident.workspaceId != activeWs.id) {
+            return;
+          }
+          setState(() {
+            final idx = _incidents.indexWhere((i) => i.id == update.incident.id);
+            if (idx >= 0) {
+              _incidents[idx] = update.incident;
+            } else {
+              _incidents.insert(0, update.incident);
+            }
+          });
+        },
+        onError: (_) {},
+        cancelOnError: false,
+      );
+    } catch (_) {}
   }
 
   Future<void> _loadIncidents() async {
     final repo = ref.read(argusRepositoryProvider);
-    final list = await repo.listIncidents();
-    if (mounted) {
-      setState(() {
-        _incidents = list;
-        _isLoading = false;
-      });
+    final activeWs = ref.read(activeFacilityProvider);
+    try {
+      final list = await repo.listIncidents(workspaceId: activeWs?.id);
+      if (mounted) {
+        setState(() {
+          _incidents = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Workspace?>(activeFacilityProvider, (prev, next) {
+      if (prev?.id != next?.id) {
+        _loadIncidents();
+      }
+    });
+
+    final activeFacility = ref.watch(activeFacilityProvider);
+
+    if (activeFacility == null) {
+      return Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 480),
+          padding: const EdgeInsets.all(ArgusTokens.space32),
+          decoration: BoxDecoration(
+            color: ArgusTokens.bgRaised,
+            borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+            border: Border.all(color: ArgusTokens.borderSubtle),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.shield_outlined, size: 48, color: ArgusTokens.textTertiary),
+              const SizedBox(height: 16),
+              Text(
+                'No Active Facility Selected',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Safety incidents belong to Facilities. Please select or join a Facility from the Operations Hub.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(color: ArgusTokens.textSecondary, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Return to Facilities Hub'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator(color: ArgusTokens.accent));
     }
@@ -90,7 +178,7 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
             children: [
               // Header
               Text(
-                'Safety Incidents & Audit',
+                'Safety Incidents & Audit · ${activeFacility.name}',
                 style: GoogleFonts.sora(fontSize: 26, fontWeight: FontWeight.w700, color: ArgusTokens.textPrimary),
               ),
               const SizedBox(height: 4),
@@ -477,7 +565,8 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
 
     if (confirmed == true) {
       final repo = ref.read(argusRepositoryProvider);
-      await repo.deleteAllIncidents();
+      final activeWs = ref.read(activeFacilityProvider);
+      await repo.deleteAllIncidents(workspaceId: activeWs?.id);
       _loadIncidents();
     }
   }

@@ -11,6 +11,7 @@ import '../../core/util/video_picker.dart';
 import '../../core/vision/vision_controller.dart';
 import '../../core/widgets/zone_webcam_preview.dart';
 import '../../data/repository_provider.dart';
+import '../facilities/facility_providers.dart';
 
 enum EditorTool {
   select,   // ✋ Grab & move whole zones or reshape corner vertices
@@ -87,27 +88,33 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
 
   Future<void> _loadZones() async {
     final repo = ref.read(argusRepositoryProvider);
-    final cameras = await repo.listCameras();
-    final cam = cameras.where((c) => c.id == widget.cameraId).firstOrNull;
+    final activeWs = ref.read(activeFacilityProvider);
+    var cameras = await repo.listCameras(workspaceId: activeWs?.id);
+    var cam = cameras.where((c) => c.id == widget.cameraId).firstOrNull;
+    if (cam == null) {
+      cameras = await repo.listCameras();
+      cam = cameras.where((c) => c.id == widget.cameraId).firstOrNull;
+    }
     final list = await repo.listZones(widget.cameraId);
 
     String? frameUrl;
-    if (cam != null && cam.sourceKind != 'webcam') {
+    final targetCam = cam;
+    if (targetCam != null && targetCam.sourceKind != 'webcam') {
       final cache = ref.read(cameraStaticFrameProvider);
-      if (cache.containsKey(cam.id)) {
-        frameUrl = cache[cam.id];
-      } else if (cam.sourceRef.startsWith('blob:') || cam.sourceRef.startsWith('http') || cam.sourceRef.endsWith('.mp4')) {
+      if (cache.containsKey(targetCam.id)) {
+        frameUrl = cache[targetCam.id];
+      } else if (targetCam.sourceRef.startsWith('blob:') || targetCam.sourceRef.startsWith('http') || targetCam.sourceRef.endsWith('.mp4')) {
         try {
-          frameUrl = await extractVideoFirstFrame(cam.sourceRef);
-          if (frameUrl != null && cam.id != null) {
-            ref.read(cameraStaticFrameProvider.notifier).update((m) => {...m, cam.id!: frameUrl!});
+          frameUrl = await extractVideoFirstFrame(targetCam.sourceRef);
+          if (frameUrl != null && targetCam.id != null) {
+            ref.read(cameraStaticFrameProvider.notifier).update((m) => {...m, targetCam.id!: frameUrl!});
           }
         } catch (_) {}
       }
 
-      frameUrl ??= getPreloadedSceneFrame(cam.sourceRef);
-      if (cam.id != null) {
-        ref.read(cameraStaticFrameProvider.notifier).update((m) => {...m, cam.id!: frameUrl!});
+      frameUrl ??= getPreloadedSceneFrame(targetCam.sourceRef);
+      if (targetCam.id != null) {
+        ref.read(cameraStaticFrameProvider.notifier).update((m) => {...m, targetCam.id!: frameUrl!});
       }
     }
 
@@ -316,7 +323,9 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
   }
 
   void _onCanvasTap(TapUpDetails details, Size canvasSize) {
+    final isGuard = ref.read(activeFacilityRoleProvider).toLowerCase() == 'guard';
     if (_currentTool == EditorTool.polygon) {
+      if (isGuard) return;
       final normX = (details.localPosition.dx / canvasSize.width).clamp(0.0, 1.0);
       final normY = (details.localPosition.dy / canvasSize.height).clamp(0.0, 1.0);
 
@@ -344,6 +353,9 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
   }
 
   void _onPanStart(DragStartDetails details, Size canvasSize) {
+    final isGuard = ref.read(activeFacilityRoleProvider).toLowerCase() == 'guard';
+    if (isGuard) return;
+
     final localPos = details.localPosition;
     _mouseCursorPos = localPos;
 
@@ -970,24 +982,26 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                           children: [
                             _buildToolButton(
                               tool: EditorTool.select,
-                              icon: Icons.open_with_rounded,
-                              label: 'Select & Move',
-                              tooltip: 'Hold & drag anywhere inside to move whole area, or drag corners',
+                              icon: ref.watch(activeFacilityRoleProvider).toLowerCase() == 'guard' ? Icons.visibility_outlined : Icons.open_with_rounded,
+                              label: ref.watch(activeFacilityRoleProvider).toLowerCase() == 'guard' ? 'View Zones' : 'Select & Move',
+                              tooltip: ref.watch(activeFacilityRoleProvider).toLowerCase() == 'guard' ? 'View zones on this camera' : 'Hold & drag anywhere inside to move whole area, or drag corners',
                             ),
-                            const SizedBox(width: 4),
-                            _buildToolButton(
-                              tool: EditorTool.freehand,
-                              icon: Icons.gesture_rounded,
-                              label: 'Freehand Draw',
-                              tooltip: 'Draw freely with laser brush — auto-closes & downsamples to precision area',
-                            ),
-                            const SizedBox(width: 4),
-                            _buildToolButton(
-                              tool: EditorTool.polygon,
-                              icon: Icons.polyline_rounded,
-                              label: 'Polygon Pen',
-                              tooltip: 'Click point-by-point with magnetic snap-to-close',
-                            ),
+                            if (ref.watch(activeFacilityRoleProvider).toLowerCase() != 'guard') ...[
+                              const SizedBox(width: 4),
+                              _buildToolButton(
+                                tool: EditorTool.freehand,
+                                icon: Icons.gesture_rounded,
+                                label: 'Freehand Draw',
+                                tooltip: 'Draw freely with laser brush — auto-closes & downsamples to precision area',
+                              ),
+                              const SizedBox(width: 4),
+                              _buildToolButton(
+                                tool: EditorTool.polygon,
+                                icon: Icons.polyline_rounded,
+                                label: 'Polygon Pen',
+                                tooltip: 'Click point-by-point with magnetic snap-to-close',
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -1221,61 +1235,85 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Quick Zone Templates', style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Places an instant draggable template. Grab anywhere inside to position it.',
-                    style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary),
-                  ),
-                  const SizedBox(height: 12),
-                  Column(
-                    children: [
-                      Row(
+                  if (ref.watch(activeFacilityRoleProvider).toLowerCase() == 'guard') ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: ArgusTokens.bgOverlay,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: ArgusTokens.borderSubtle),
+                      ),
+                      child: Row(
                         children: [
-                          Expanded(
-                            child: _buildTemplateChip(
-                              icon: Icons.warning_amber_rounded,
-                              color: const Color(0xFFFBBF24),
-                              label: 'Danger Box',
-                              onTap: () => _applyPreset('Danger Area'),
-                            ),
-                          ),
+                          const Icon(Icons.shield_rounded, size: 16, color: ArgusTokens.success),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: _buildTemplateChip(
-                              icon: Icons.door_front_door_outlined,
-                              color: const Color(0xFFF43F5E),
-                              label: 'Doorway Box',
-                              onTap: () => _applyPreset('Doorway'),
+                            child: Text(
+                              'Guard clearance active: Zones are read-only and cannot be altered or removed.',
+                              style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textSecondary),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTemplateChip(
-                              icon: Icons.stairs_rounded,
-                              color: const Color(0xFFA78BFA),
-                              label: 'Staircase',
-                              onTap: () => _applyPreset('Staircase'),
+                    ),
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    Text('Quick Zone Templates', style: GoogleFonts.sora(fontSize: 14, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Places an instant draggable template. Grab anywhere inside to position it.',
+                      style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary),
+                    ),
+                    const SizedBox(height: 12),
+                    Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTemplateChip(
+                                icon: Icons.warning_amber_rounded,
+                                color: const Color(0xFFFBBF24),
+                                label: 'Danger Box',
+                                onTap: () => _applyPreset('Danger Area'),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _buildTemplateChip(
-                              icon: Icons.crop_square_rounded,
-                              color: const Color(0xFF38BDF8),
-                              label: 'Perimeter Line',
-                              onTap: () => _applyPreset('Perimeter Line'),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildTemplateChip(
+                                icon: Icons.door_front_door_outlined,
+                                color: const Color(0xFFF43F5E),
+                                label: 'Doorway Box',
+                                onTap: () => _applyPreset('Doorway'),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTemplateChip(
+                                icon: Icons.stairs_rounded,
+                                color: const Color(0xFFA78BFA),
+                                label: 'Staircase',
+                                onTap: () => _applyPreset('Staircase'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _buildTemplateChip(
+                                icon: Icons.crop_square_rounded,
+                                color: const Color(0xFF38BDF8),
+                                label: 'Perimeter Line',
+                                onTap: () => _applyPreset('Perimeter Line'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                   const Divider(color: ArgusTokens.borderSubtle),
                   const SizedBox(height: 12),
 
@@ -1374,11 +1412,12 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                                           message: 'Ready to Drag & Move',
                                           child: Icon(Icons.open_with_rounded, size: 16, color: Colors.white70),
                                         ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
-                                        tooltip: 'Delete Zone',
-                                        onPressed: () => _showDeleteZoneDialog(z),
-                                      ),
+                                      if (ref.watch(activeFacilityRoleProvider).toLowerCase() != 'guard')
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline_rounded, size: 18, color: ArgusTokens.textTertiary),
+                                          tooltip: 'Delete Zone',
+                                          onPressed: () => _showDeleteZoneDialog(z),
+                                        ),
                                     ],
                                   ),
                                 ),

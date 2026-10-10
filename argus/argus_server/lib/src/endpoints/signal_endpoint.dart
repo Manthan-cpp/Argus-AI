@@ -12,6 +12,7 @@ class SignalEndpoint extends Endpoint {
 
     // 1. Update camera status (throttled to at most once per 10s to prevent DB lock contention)
     final camera = await Camera.db.findById(session, batch.cameraId);
+    final targetWsId = camera?.workspaceId ?? ws.id!;
     if (camera != null) {
       final last = camera.lastSignalAt;
       if (last == null || DateTime.now().difference(last).inSeconds >= 10) {
@@ -28,7 +29,7 @@ class SignalEndpoint extends Endpoint {
     // 2. Load active rules for this workspace and camera
     final rules = await RuleSpec.db.find(
       session,
-      where: (t) => t.workspaceId.equals(ws.id!) & t.enabled.equals(true),
+      where: (t) => (t.workspaceId.equals(targetWsId) | t.workspaceId.equals(ws.id!)) & t.enabled.equals(true),
     );
 
     // Filter rules applying to this camera
@@ -134,20 +135,19 @@ class SignalEndpoint extends Endpoint {
         final existing = await Incident.db.findFirstRow(
           session,
           where: (t) =>
-              t.workspaceId.equals(ws.id!) &
+              (t.workspaceId.equals(targetWsId) | t.workspaceId.equals(ws.id!)) &
               t.ruleId.equals(rule.id!) &
-              t.cameraId.equals(batch.cameraId) &
-              (t.status.equals('open') | t.status.equals('acknowledged')),
-          orderBy: (t) => t.openedAt.desc(),
+              t.cameraId.equals(batch.cameraId),
+          orderBy: (t) => t.id.desc(),
         );
 
         bool isSuppressed = false;
         if (existing != null) {
           if (existing.status == 'open') {
             isSuppressed = true;
-          } else if (existing.status == 'acknowledged') {
-            final cooldownSeconds = rule.cooldownSec > 0 ? rule.cooldownSec : 60;
-            final lastActionTime = existing.ackedAt ?? existing.openedAt;
+          } else {
+            final cooldownSeconds = rule.cooldownSec > 0 ? rule.cooldownSec : 30;
+            final lastActionTime = existing.ackedAt ?? existing.resolvedAt ?? existing.openedAt;
             final elapsed = DateTime.now().difference(lastActionTime).inSeconds;
             if (elapsed < cooldownSeconds) {
               isSuppressed = true;
@@ -158,7 +158,7 @@ class SignalEndpoint extends Endpoint {
         if (!isSuppressed) {
           // Open new incident
           final newIncident = Incident(
-            workspaceId: ws.id!,
+            workspaceId: targetWsId,
             cameraId: batch.cameraId,
             ruleId: rule.id!,
             ruleSnapshotJson: json.encode(rule.toJson()),
@@ -219,11 +219,10 @@ class SignalEndpoint extends Endpoint {
 
           // Broadcast to active dispatch rooms
           try {
-            final camera = await Camera.db.findById(session, batch.cameraId);
             final cameraName = camera?.name ?? 'Camera #${batch.cameraId}';
             final activeRooms = await DispatchRoom.db.find(
               session,
-              where: (t) => t.workspaceId.equals(ws.id!) & t.isActive.equals(true),
+              where: (t) => (t.workspaceId.equals(targetWsId) | t.workspaceId.equals(ws.id!)) & t.isActive.equals(true),
             );
             for (final room in activeRooms) {
               if (room.cameraIds.isEmpty || room.cameraIds.contains(batch.cameraId)) {
@@ -251,7 +250,7 @@ class SignalEndpoint extends Endpoint {
           await AuditEntry.db.insertRow(
             session,
             AuditEntry(
-              workspaceId: ws.id!,
+              workspaceId: targetWsId,
               at: DateTime.now(),
               actor: 'ArgusEngine',
               action: 'INCIDENT_FIRED',
