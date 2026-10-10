@@ -37,8 +37,12 @@ incident:
 room:
   - createRoom:
   - joinRoom:
+  - deleteRoom:
+  - updateRoom:
   - listRooms:
+  - getRoom:
   - getRoomByCode:
+  - getRoomForWorkspace:
   - listMembers:
 roomMessage:
   - watch:
@@ -54,12 +58,19 @@ rule:
 signal:
   - send:
 user:
+  - signUp:
   - login:
   - getCurrentUser:
+  - resetData:
 workspace:
   - ensure:
-  - updateSettings:
-  - deleteWorkspaceData:
+  - createWorkspace:
+  - joinWorkspace:
+  - listUserWorkspaces:
+  - getWorkspace:
+  - updateWorkspace:
+  - deleteWorkspace:
+  - resetAllData:
 zone:
   - list:
   - save:

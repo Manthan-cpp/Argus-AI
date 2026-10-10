@@ -3,5 +3,10 @@ table: argus_workspace
 fields:
   ownerUserId: String
   name: String
+  description: String?
+  organizerCode: String
+  supervisorCode: String
+  guardCode: String
   createdAt: DateTime
+  isActive: bool
   settings: WorkspaceSettings

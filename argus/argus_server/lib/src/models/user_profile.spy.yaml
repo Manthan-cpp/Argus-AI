@@ -3,7 +3,9 @@ table: user_profile
 fields:
   workspaceId: int
   fullName: String
-  email: String
+  email: String?
+  passwordHash: String?
   role: String
   avatarUrl: String?
   createdAt: DateTime
+

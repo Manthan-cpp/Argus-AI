@@ -20,7 +20,12 @@ abstract class Workspace
     this.id,
     required this.ownerUserId,
     required this.name,
+    this.description,
+    required this.organizerCode,
+    required this.supervisorCode,
+    required this.guardCode,
     required this.createdAt,
+    required this.isActive,
     required this.settings,
   });
 
@@ -28,7 +33,12 @@ abstract class Workspace
     int? id,
     required String ownerUserId,
     required String name,
+    String? description,
+    required String organizerCode,
+    required String supervisorCode,
+    required String guardCode,
     required DateTime createdAt,
+    required bool isActive,
     required _i88empjm.WorkspaceSettings settings,
   }) = _WorkspaceImpl;
 
@@ -37,9 +47,14 @@ abstract class Workspace
       id: jsonSerialization['id'] as int?,
       ownerUserId: jsonSerialization['ownerUserId'] as String,
       name: jsonSerialization['name'] as String,
+      description: jsonSerialization['description'] as String?,
+      organizerCode: jsonSerialization['organizerCode'] as String,
+      supervisorCode: jsonSerialization['supervisorCode'] as String,
+      guardCode: jsonSerialization['guardCode'] as String,
       createdAt: _isc.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
+      isActive: _isc.BoolJsonExtension.fromJson(jsonSerialization['isActive']),
       settings: _i5naexi9.Protocol().deserialize<_i88empjm.WorkspaceSettings>(
         jsonSerialization['settings'],
       ),
@@ -55,7 +70,17 @@ abstract class Workspace
 
   String name;
 
+  String? description;
+
+  String organizerCode;
+
+  String supervisorCode;
+
+  String guardCode;
+
   DateTime createdAt;
+
+  bool isActive;
 
   _i88empjm.WorkspaceSettings settings;
 
@@ -66,7 +91,12 @@ abstract class Workspace
     int? id,
     String? ownerUserId,
     String? name,
+    String? description,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     DateTime? createdAt,
+    bool? isActive,
     _i88empjm.WorkspaceSettings? settings,
   });
   @override
@@ -76,7 +106,12 @@ abstract class Workspace
       if (id != null) 'id': id,
       'ownerUserId': ownerUserId,
       'name': name,
+      if (description != null) 'description': description,
+      'organizerCode': organizerCode,
+      'supervisorCode': supervisorCode,
+      'guardCode': guardCode,
       'createdAt': createdAt.toJson(),
+      'isActive': isActive,
       'settings': settings.toJson(),
     };
   }
@@ -88,7 +123,12 @@ abstract class Workspace
       if (id != null) 'id': id,
       'ownerUserId': ownerUserId,
       'name': name,
+      if (description != null) 'description': description,
+      'organizerCode': organizerCode,
+      'supervisorCode': supervisorCode,
+      'guardCode': guardCode,
       'createdAt': createdAt.toJson(),
+      'isActive': isActive,
       'settings': settings.toJsonForProtocol(),
     };
   }
@@ -106,13 +146,23 @@ class _WorkspaceImpl extends Workspace {
     int? id,
     required String ownerUserId,
     required String name,
+    String? description,
+    required String organizerCode,
+    required String supervisorCode,
+    required String guardCode,
     required DateTime createdAt,
+    required bool isActive,
     required _i88empjm.WorkspaceSettings settings,
   }) : super._(
          id: id,
          ownerUserId: ownerUserId,
          name: name,
+         description: description,
+         organizerCode: organizerCode,
+         supervisorCode: supervisorCode,
+         guardCode: guardCode,
          createdAt: createdAt,
+         isActive: isActive,
          settings: settings,
        );
 
@@ -124,14 +174,24 @@ class _WorkspaceImpl extends Workspace {
     Object? id = _Undefined,
     String? ownerUserId,
     String? name,
+    Object? description = _Undefined,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     DateTime? createdAt,
+    bool? isActive,
     _i88empjm.WorkspaceSettings? settings,
   }) {
     return Workspace(
       id: id is int? ? id : this.id,
       ownerUserId: ownerUserId ?? this.ownerUserId,
       name: name ?? this.name,
+      description: description is String? ? description : this.description,
+      organizerCode: organizerCode ?? this.organizerCode,
+      supervisorCode: supervisorCode ?? this.supervisorCode,
+      guardCode: guardCode ?? this.guardCode,
       createdAt: createdAt ?? this.createdAt,
+      isActive: isActive ?? this.isActive,
       settings: settings ?? this.settings.copyWith(),
     );
   }

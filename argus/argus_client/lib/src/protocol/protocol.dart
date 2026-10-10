@@ -19,6 +19,7 @@ import 'package:argus_client/src/protocol/incident.dart' as _i1aq5e6k;
 import 'package:argus_client/src/protocol/room_member.dart' as _is3b1078;
 import 'package:argus_client/src/protocol/room_message.dart' as _iy4hi5ej;
 import 'package:argus_client/src/protocol/rule_spec.dart' as _iu4sgp9a;
+import 'package:argus_client/src/protocol/workspace.dart' as _ijok4rmj;
 import 'package:argus_client/src/protocol/zone.dart' as _igytwnus;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
@@ -62,6 +63,7 @@ import 'time_window.dart' as _idjbqmwg;
 import 'user_profile.dart' as _ir2mn8w1;
 import 'verification_info.dart' as _iv8f4ltc;
 import 'workspace.dart' as _io6eoug6;
+import 'workspace_member.dart' as _iidcmvkk;
 import 'workspace_settings.dart' as _i88empjm;
 import 'zone.dart' as _ixcxr4o1;
 export 'audit_entry.dart';
@@ -101,6 +103,7 @@ export 'time_window.dart';
 export 'user_profile.dart';
 export 'verification_info.dart';
 export 'workspace.dart';
+export 'workspace_member.dart';
 export 'workspace_settings.dart';
 export 'zone.dart';
 export 'client.dart';
@@ -250,6 +253,9 @@ class Protocol extends _isc.SerializationManager {
     if (t == _io6eoug6.Workspace) {
       return _io6eoug6.Workspace.fromJson(data) as T;
     }
+    if (t == _iidcmvkk.WorkspaceMember) {
+      return _iidcmvkk.WorkspaceMember.fromJson(data) as T;
+    }
     if (t == _i88empjm.WorkspaceSettings) {
       return _i88empjm.WorkspaceSettings.fromJson(data) as T;
     }
@@ -379,6 +385,10 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_io6eoug6.Workspace?>()) {
       return (data != null ? _io6eoug6.Workspace.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_iidcmvkk.WorkspaceMember?>()) {
+      return (data != null ? _iidcmvkk.WorkspaceMember.fromJson(data) : null)
+          as T;
+    }
     if (t == _isc.getType<_i88empjm.WorkspaceSettings?>()) {
       return (data != null ? _i88empjm.WorkspaceSettings.fromJson(data) : null)
           as T;
@@ -497,6 +507,12 @@ class Protocol extends _isc.SerializationManager {
               .toList()
           as T;
     }
+    if (t == List<_ijok4rmj.Workspace>) {
+      return (data as List)
+              .map((e) => deserialize<_ijok4rmj.Workspace>(e))
+              .toList()
+          as T;
+    }
     if (t == List<_igytwnus.Zone>) {
       return (data as List).map((e) => deserialize<_igytwnus.Zone>(e)).toList()
           as T;
@@ -549,6 +565,7 @@ class Protocol extends _isc.SerializationManager {
       _ir2mn8w1.UserProfile => 'UserProfile',
       _iv8f4ltc.VerificationInfo => 'VerificationInfo',
       _io6eoug6.Workspace => 'Workspace',
+      _iidcmvkk.WorkspaceMember => 'WorkspaceMember',
       _i88empjm.WorkspaceSettings => 'WorkspaceSettings',
       _ixcxr4o1.Zone => 'Zone',
       _ => null,
@@ -639,6 +656,8 @@ class Protocol extends _isc.SerializationManager {
         return 'VerificationInfo';
       case _io6eoug6.Workspace():
         return 'Workspace';
+      case _iidcmvkk.WorkspaceMember():
+        return 'WorkspaceMember';
       case _i88empjm.WorkspaceSettings():
         return 'WorkspaceSettings';
       case _ixcxr4o1.Zone():
@@ -775,6 +794,9 @@ class Protocol extends _isc.SerializationManager {
     }
     if (dataClassName == 'Workspace') {
       return deserialize<_io6eoug6.Workspace>(data['data']);
+    }
+    if (dataClassName == 'WorkspaceMember') {
+      return deserialize<_iidcmvkk.WorkspaceMember>(data['data']);
     }
     if (dataClassName == 'WorkspaceSettings') {
       return deserialize<_i88empjm.WorkspaceSettings>(data['data']);

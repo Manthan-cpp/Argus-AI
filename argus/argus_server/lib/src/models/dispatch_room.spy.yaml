@@ -4,9 +4,13 @@ fields:
   workspaceId: int
   name: String
   code: String
+  organizerCode: String?
+  supervisorCode: String?
+  guardCode: String?
   description: String?
   createdById: int
   createdByName: String
   createdAt: DateTime
   cameraIds: List<int>
   isActive: bool
+

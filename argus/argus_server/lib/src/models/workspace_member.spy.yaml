@@ -1,0 +1,8 @@
+class: WorkspaceMember
+table: argus_workspace_member
+fields:
+  workspaceId: int
+  userId: int
+  userName: String
+  userRole: String
+  joinedAt: DateTime

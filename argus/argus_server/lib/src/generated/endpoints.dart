@@ -16,8 +16,6 @@ import 'package:argus_server/src/generated/evidence_upload.dart' as _isa1j3gg;
 import 'package:argus_server/src/generated/future_calls.dart' as _ividxzou;
 import 'package:argus_server/src/generated/rule_spec.dart' as _ihw84zwb;
 import 'package:argus_server/src/generated/signal_batch.dart' as _iefjwdie;
-import 'package:argus_server/src/generated/workspace_settings.dart'
-    as _io4d1l6f;
 import 'package:argus_server/src/generated/zone.dart' as _i8tshavy;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
@@ -386,13 +384,20 @@ class Endpoints extends _is.EndpointDispatch {
       methodConnectors: {
         'list': _is.MethodConnector(
           name: 'list',
-          params: {},
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
           call:
               (
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async => (endpoints['camera'] as _izyq4o13.CameraEndpoint).list(
                 session,
+                workspaceId: params['workspaceId'],
               ),
         ),
         'save': _is.MethodConnector(
@@ -403,6 +408,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<_irrewps0.Camera>(),
               nullable: false,
             ),
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
           },
           call:
               (
@@ -411,6 +421,7 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['camera'] as _izyq4o13.CameraEndpoint).save(
                 session,
                 params['camera'],
+                workspaceId: params['workspaceId'],
               ),
         ),
         'delete': _is.MethodConnector(
@@ -553,6 +564,11 @@ class Endpoints extends _is.EndpointDispatch {
         'list': _is.MethodConnector(
           name: 'list',
           params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
             'status': _is.ParameterDescription(
               name: 'status',
               type: _is.getType<String?>(),
@@ -576,6 +592,7 @@ class Endpoints extends _is.EndpointDispatch {
               ) async =>
                   (endpoints['incident'] as _idvfe0v9.IncidentEndpoint).list(
                     session,
+                    workspaceId: params['workspaceId'],
                     status: params['status'],
                     severity: params['severity'],
                     cameraId: params['cameraId'],
@@ -696,13 +713,22 @@ class Endpoints extends _is.EndpointDispatch {
         ),
         'deleteAll': _is.MethodConnector(
           name: 'deleteAll',
-          params: {},
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+          },
           call:
               (
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async => (endpoints['incident'] as _idvfe0v9.IncidentEndpoint)
-                  .deleteAll(session),
+                  .deleteAll(
+                    session,
+                    workspaceId: params['workspaceId'],
+                  ),
         ),
         'watch': _is.MethodStreamConnector(
           name: 'watch',
@@ -749,15 +775,20 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<List<int>?>(),
               nullable: true,
             ),
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
             'creatorName': _is.ParameterDescription(
               name: 'creatorName',
-              type: _is.getType<String?>(),
-              nullable: true,
+              type: _is.getType<String>(),
+              nullable: false,
             ),
             'creatorRole': _is.ParameterDescription(
               name: 'creatorRole',
-              type: _is.getType<String?>(),
-              nullable: true,
+              type: _is.getType<String>(),
+              nullable: false,
             ),
           },
           call:
@@ -770,6 +801,7 @@ class Endpoints extends _is.EndpointDispatch {
                     params['name'],
                     description: params['description'],
                     cameraIds: params['cameraIds'],
+                    workspaceId: params['workspaceId'],
                     creatorName: params['creatorName'],
                     creatorRole: params['creatorRole'],
                   ),
@@ -787,16 +819,6 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<String>(),
               nullable: false,
             ),
-            'userRole': _is.ParameterDescription(
-              name: 'userRole',
-              type: _is.getType<String>(),
-              nullable: false,
-            ),
-            'userEmail': _is.ParameterDescription(
-              name: 'userEmail',
-              type: _is.getType<String?>(),
-              nullable: true,
-            ),
           },
           call:
               (
@@ -806,19 +828,124 @@ class Endpoints extends _is.EndpointDispatch {
                 session,
                 params['code'],
                 userName: params['userName'],
-                userRole: params['userRole'],
-                userEmail: params['userEmail'],
               ),
         ),
-        'listRooms': _is.MethodConnector(
-          name: 'listRooms',
-          params: {},
+        'deleteRoom': _is.MethodConnector(
+          name: 'deleteRoom',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
           call:
               (
                 _is.Session session,
                 Map<String, dynamic> params,
-              ) async => (endpoints['room'] as _io7erjyw.RoomEndpoint)
-                  .listRooms(session),
+              ) async =>
+                  (endpoints['room'] as _io7erjyw.RoomEndpoint).deleteRoom(
+                    session,
+                    params['roomId'],
+                    userName: params['userName'],
+                  ),
+        ),
+        'updateRoom': _is.MethodConnector(
+          name: 'updateRoom',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'description': _is.ParameterDescription(
+              name: 'description',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'cameraIds': _is.ParameterDescription(
+              name: 'cameraIds',
+              type: _is.getType<List<int>?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _io7erjyw.RoomEndpoint).updateRoom(
+                    session,
+                    params['roomId'],
+                    userName: params['userName'],
+                    name: params['name'],
+                    description: params['description'],
+                    cameraIds: params['cameraIds'],
+                  ),
+        ),
+        'listRooms': _is.MethodConnector(
+          name: 'listRooms',
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _io7erjyw.RoomEndpoint).listRooms(
+                    session,
+                    workspaceId: params['workspaceId'],
+                    userName: params['userName'],
+                  ),
+        ),
+        'getRoom': _is.MethodConnector(
+          name: 'getRoom',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _io7erjyw.RoomEndpoint).getRoom(
+                session,
+                params['roomId'],
+                userName: params['userName'],
+              ),
         ),
         'getRoomByCode': _is.MethodConnector(
           name: 'getRoomByCode',
@@ -837,6 +964,31 @@ class Endpoints extends _is.EndpointDispatch {
                   (endpoints['room'] as _io7erjyw.RoomEndpoint).getRoomByCode(
                     session,
                     params['code'],
+                  ),
+        ),
+        'getRoomForWorkspace': _is.MethodConnector(
+          name: 'getRoomForWorkspace',
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _io7erjyw.RoomEndpoint)
+                  .getRoomForWorkspace(
+                    session,
+                    params['workspaceId'],
+                    userName: params['userName'],
                   ),
         ),
         'listMembers': _is.MethodConnector(
@@ -1131,6 +1283,30 @@ class Endpoints extends _is.EndpointDispatch {
       name: 'user',
       endpoint: endpoints['user']!,
       methodConnectors: {
+        'signUp': _is.MethodConnector(
+          name: 'signUp',
+          params: {
+            'fullName': _is.ParameterDescription(
+              name: 'fullName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'password': _is.ParameterDescription(
+              name: 'password',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['user'] as _iymy5306.UserEndpoint).signUp(
+                session,
+                params['fullName'],
+                params['password'],
+              ),
+        ),
         'login': _is.MethodConnector(
           name: 'login',
           params: {
@@ -1139,15 +1315,10 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<String>(),
               nullable: false,
             ),
-            'role': _is.ParameterDescription(
-              name: 'role',
+            'password': _is.ParameterDescription(
+              name: 'password',
               type: _is.getType<String>(),
               nullable: false,
-            ),
-            'email': _is.ParameterDescription(
-              name: 'email',
-              type: _is.getType<String?>(),
-              nullable: true,
             ),
           },
           call:
@@ -1157,19 +1328,37 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['user'] as _iymy5306.UserEndpoint).login(
                 session,
                 params['fullName'],
-                params['role'],
-                email: params['email'],
+                params['password'],
               ),
         ),
         'getCurrentUser': _is.MethodConnector(
           name: 'getCurrentUser',
+          params: {
+            'fullName': _is.ParameterDescription(
+              name: 'fullName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['user'] as _iymy5306.UserEndpoint).getCurrentUser(
+                    session,
+                    fullName: params['fullName'],
+                  ),
+        ),
+        'resetData': _is.MethodConnector(
+          name: 'resetData',
           params: {},
           call:
               (
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async => (endpoints['user'] as _iymy5306.UserEndpoint)
-                  .getCurrentUser(session),
+                  .resetData(session),
         ),
       },
     );
@@ -1187,12 +1376,22 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
                   .ensure(session),
         ),
-        'updateSettings': _is.MethodConnector(
-          name: 'updateSettings',
+        'createWorkspace': _is.MethodConnector(
+          name: 'createWorkspace',
           params: {
-            'settings': _is.ParameterDescription(
-              name: 'settings',
-              type: _is.getType<_io4d1l6f.WorkspaceSettings>(),
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'description': _is.ParameterDescription(
+              name: 'description',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'creatorName': _is.ParameterDescription(
+              name: 'creatorName',
+              type: _is.getType<String>(),
               nullable: false,
             ),
           },
@@ -1201,20 +1400,153 @@ class Endpoints extends _is.EndpointDispatch {
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
-                  .updateSettings(
+                  .createWorkspace(
                     session,
-                    params['settings'],
+                    params['name'],
+                    description: params['description'],
+                    creatorName: params['creatorName'],
                   ),
         ),
-        'deleteWorkspaceData': _is.MethodConnector(
-          name: 'deleteWorkspaceData',
+        'joinWorkspace': _is.MethodConnector(
+          name: 'joinWorkspace',
+          params: {
+            'code': _is.ParameterDescription(
+              name: 'code',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
+                  .joinWorkspace(
+                    session,
+                    params['code'],
+                    userName: params['userName'],
+                  ),
+        ),
+        'listUserWorkspaces': _is.MethodConnector(
+          name: 'listUserWorkspaces',
+          params: {
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
+                  .listUserWorkspaces(
+                    session,
+                    userName: params['userName'],
+                  ),
+        ),
+        'getWorkspace': _is.MethodConnector(
+          name: 'getWorkspace',
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
+                  .getWorkspace(
+                    session,
+                    params['workspaceId'],
+                    userName: params['userName'],
+                  ),
+        ),
+        'updateWorkspace': _is.MethodConnector(
+          name: 'updateWorkspace',
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+            'description': _is.ParameterDescription(
+              name: 'description',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
+                  .updateWorkspace(
+                    session,
+                    params['workspaceId'],
+                    userName: params['userName'],
+                    name: params['name'],
+                    description: params['description'],
+                  ),
+        ),
+        'deleteWorkspace': _is.MethodConnector(
+          name: 'deleteWorkspace',
+          params: {
+            'workspaceId': _is.ParameterDescription(
+              name: 'workspaceId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'userName': _is.ParameterDescription(
+              name: 'userName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
+                  .deleteWorkspace(
+                    session,
+                    params['workspaceId'],
+                    userName: params['userName'],
+                  ),
+        ),
+        'resetAllData': _is.MethodConnector(
+          name: 'resetAllData',
           params: {},
           call:
               (
                 _is.Session session,
                 Map<String, dynamic> params,
               ) async => (endpoints['workspace'] as _i9dwb32i.WorkspaceEndpoint)
-                  .deleteWorkspaceData(session),
+                  .resetAllData(session),
         ),
       },
     );

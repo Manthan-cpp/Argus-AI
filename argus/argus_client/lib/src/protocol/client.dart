@@ -31,7 +31,6 @@ import 'package:argus_client/src/protocol/signal_ack.dart' as _idevjgfk;
 import 'package:argus_client/src/protocol/signal_batch.dart' as _if0pbfo6;
 import 'package:argus_client/src/protocol/user_profile.dart' as _i7qokifa;
 import 'package:argus_client/src/protocol/workspace.dart' as _ijok4rmj;
-import 'package:argus_client/src/protocol/workspace_settings.dart' as _igkec3gh;
 import 'package:argus_client/src/protocol/zone.dart' as _igytwnus;
 import 'package:http/http.dart' as _i85jenna;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
@@ -288,19 +287,24 @@ class EndpointCamera extends _isc.EndpointRef {
   @override
   String get name => 'camera';
 
-  _ida.Future<List<_i20qtz6o.Camera>> list() =>
+  _ida.Future<List<_i20qtz6o.Camera>> list({int? workspaceId}) =>
       caller.callServerEndpoint<List<_i20qtz6o.Camera>>(
         'camera',
         'list',
-        {},
+        {'workspaceId': workspaceId},
       );
 
-  _ida.Future<_i20qtz6o.Camera> save(_i20qtz6o.Camera camera) =>
-      caller.callServerEndpoint<_i20qtz6o.Camera>(
-        'camera',
-        'save',
-        {'camera': camera},
-      );
+  _ida.Future<_i20qtz6o.Camera> save(
+    _i20qtz6o.Camera camera, {
+    int? workspaceId,
+  }) => caller.callServerEndpoint<_i20qtz6o.Camera>(
+    'camera',
+    'save',
+    {
+      'camera': camera,
+      'workspaceId': workspaceId,
+    },
+  );
 
   _ida.Future<void> delete(int id) => caller.callServerEndpoint<void>(
     'camera',
@@ -401,6 +405,7 @@ class EndpointIncident extends _isc.EndpointRef {
       );
 
   _ida.Future<List<_i1aq5e6k.Incident>> list({
+    int? workspaceId,
     String? status,
     String? severity,
     int? cameraId,
@@ -408,6 +413,7 @@ class EndpointIncident extends _isc.EndpointRef {
     'incident',
     'list',
     {
+      'workspaceId': workspaceId,
       'status': status,
       'severity': severity,
       'cameraId': cameraId,
@@ -463,11 +469,12 @@ class EndpointIncident extends _isc.EndpointRef {
     {'id': id},
   );
 
-  _ida.Future<bool> deleteAll() => caller.callServerEndpoint<bool>(
-    'incident',
-    'deleteAll',
-    {},
-  );
+  _ida.Future<bool> deleteAll({int? workspaceId}) =>
+      caller.callServerEndpoint<bool>(
+        'incident',
+        'deleteAll',
+        {'workspaceId': workspaceId},
+      );
 }
 
 /// {@category Endpoint}
@@ -481,8 +488,9 @@ class EndpointRoom extends _isc.EndpointRef {
     String name, {
     String? description,
     List<int>? cameraIds,
-    String? creatorName,
-    String? creatorRole,
+    int? workspaceId,
+    required String creatorName,
+    required String creatorRole,
   }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom>(
     'room',
     'createRoom',
@@ -490,6 +498,7 @@ class EndpointRoom extends _isc.EndpointRef {
       'name': name,
       'description': description,
       'cameraIds': cameraIds,
+      'workspaceId': workspaceId,
       'creatorName': creatorName,
       'creatorRole': creatorRole,
     },
@@ -498,25 +507,68 @@ class EndpointRoom extends _isc.EndpointRef {
   _ida.Future<_ic2gvio8.DispatchRoom?> joinRoom(
     String code, {
     required String userName,
-    required String userRole,
-    String? userEmail,
   }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom?>(
     'room',
     'joinRoom',
     {
       'code': code,
       'userName': userName,
-      'userRole': userRole,
-      'userEmail': userEmail,
     },
   );
 
-  _ida.Future<List<_ic2gvio8.DispatchRoom>> listRooms() =>
-      caller.callServerEndpoint<List<_ic2gvio8.DispatchRoom>>(
-        'room',
-        'listRooms',
-        {},
-      );
+  _ida.Future<bool> deleteRoom(
+    int roomId, {
+    required String userName,
+  }) => caller.callServerEndpoint<bool>(
+    'room',
+    'deleteRoom',
+    {
+      'roomId': roomId,
+      'userName': userName,
+    },
+  );
+
+  _ida.Future<_ic2gvio8.DispatchRoom> updateRoom(
+    int roomId, {
+    required String userName,
+    String? name,
+    String? description,
+    List<int>? cameraIds,
+  }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom>(
+    'room',
+    'updateRoom',
+    {
+      'roomId': roomId,
+      'userName': userName,
+      'name': name,
+      'description': description,
+      'cameraIds': cameraIds,
+    },
+  );
+
+  _ida.Future<List<_ic2gvio8.DispatchRoom>> listRooms({
+    int? workspaceId,
+    String? userName,
+  }) => caller.callServerEndpoint<List<_ic2gvio8.DispatchRoom>>(
+    'room',
+    'listRooms',
+    {
+      'workspaceId': workspaceId,
+      'userName': userName,
+    },
+  );
+
+  _ida.Future<_ic2gvio8.DispatchRoom?> getRoom(
+    int roomId, {
+    String? userName,
+  }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom?>(
+    'room',
+    'getRoom',
+    {
+      'roomId': roomId,
+      'userName': userName,
+    },
+  );
 
   _ida.Future<_ic2gvio8.DispatchRoom?> getRoomByCode(String code) =>
       caller.callServerEndpoint<_ic2gvio8.DispatchRoom?>(
@@ -524,6 +576,18 @@ class EndpointRoom extends _isc.EndpointRef {
         'getRoomByCode',
         {'code': code},
       );
+
+  _ida.Future<_ic2gvio8.DispatchRoom?> getRoomForWorkspace(
+    int workspaceId, {
+    String? userName,
+  }) => caller.callServerEndpoint<_ic2gvio8.DispatchRoom?>(
+    'room',
+    'getRoomForWorkspace',
+    {
+      'workspaceId': workspaceId,
+      'userName': userName,
+    },
+  );
 
   _ida.Future<List<_is3b1078.RoomMember>> listMembers(int roomId) =>
       caller.callServerEndpoint<List<_is3b1078.RoomMember>>(
@@ -674,26 +738,42 @@ class EndpointUser extends _isc.EndpointRef {
   @override
   String get name => 'user';
 
+  _ida.Future<_i7qokifa.UserProfile> signUp(
+    String fullName,
+    String password,
+  ) => caller.callServerEndpoint<_i7qokifa.UserProfile>(
+    'user',
+    'signUp',
+    {
+      'fullName': fullName,
+      'password': password,
+    },
+  );
+
   _ida.Future<_i7qokifa.UserProfile> login(
     String fullName,
-    String role, {
-    String? email,
-  }) => caller.callServerEndpoint<_i7qokifa.UserProfile>(
+    String password,
+  ) => caller.callServerEndpoint<_i7qokifa.UserProfile>(
     'user',
     'login',
     {
       'fullName': fullName,
-      'role': role,
-      'email': email,
+      'password': password,
     },
   );
 
-  _ida.Future<_i7qokifa.UserProfile> getCurrentUser() =>
-      caller.callServerEndpoint<_i7qokifa.UserProfile>(
+  _ida.Future<_i7qokifa.UserProfile?> getCurrentUser({String? fullName}) =>
+      caller.callServerEndpoint<_i7qokifa.UserProfile?>(
         'user',
         'getCurrentUser',
-        {},
+        {'fullName': fullName},
       );
+
+  _ida.Future<bool> resetData() => caller.callServerEndpoint<bool>(
+    'user',
+    'resetData',
+    {},
+  );
 }
 
 /// {@category Endpoint}
@@ -710,17 +790,83 @@ class EndpointWorkspace extends _isc.EndpointRef {
         {},
       );
 
-  _ida.Future<_igkec3gh.WorkspaceSettings> updateSettings(
-    _igkec3gh.WorkspaceSettings settings,
-  ) => caller.callServerEndpoint<_igkec3gh.WorkspaceSettings>(
+  _ida.Future<_ijok4rmj.Workspace> createWorkspace(
+    String name, {
+    String? description,
+    required String creatorName,
+  }) => caller.callServerEndpoint<_ijok4rmj.Workspace>(
     'workspace',
-    'updateSettings',
-    {'settings': settings},
+    'createWorkspace',
+    {
+      'name': name,
+      'description': description,
+      'creatorName': creatorName,
+    },
   );
 
-  _ida.Future<void> deleteWorkspaceData() => caller.callServerEndpoint<void>(
+  _ida.Future<_ijok4rmj.Workspace?> joinWorkspace(
+    String code, {
+    required String userName,
+  }) => caller.callServerEndpoint<_ijok4rmj.Workspace?>(
     'workspace',
-    'deleteWorkspaceData',
+    'joinWorkspace',
+    {
+      'code': code,
+      'userName': userName,
+    },
+  );
+
+  _ida.Future<List<_ijok4rmj.Workspace>> listUserWorkspaces({
+    required String userName,
+  }) => caller.callServerEndpoint<List<_ijok4rmj.Workspace>>(
+    'workspace',
+    'listUserWorkspaces',
+    {'userName': userName},
+  );
+
+  _ida.Future<_ijok4rmj.Workspace?> getWorkspace(
+    int workspaceId, {
+    String? userName,
+  }) => caller.callServerEndpoint<_ijok4rmj.Workspace?>(
+    'workspace',
+    'getWorkspace',
+    {
+      'workspaceId': workspaceId,
+      'userName': userName,
+    },
+  );
+
+  _ida.Future<_ijok4rmj.Workspace> updateWorkspace(
+    int workspaceId, {
+    required String userName,
+    String? name,
+    String? description,
+  }) => caller.callServerEndpoint<_ijok4rmj.Workspace>(
+    'workspace',
+    'updateWorkspace',
+    {
+      'workspaceId': workspaceId,
+      'userName': userName,
+      'name': name,
+      'description': description,
+    },
+  );
+
+  _ida.Future<bool> deleteWorkspace(
+    int workspaceId, {
+    required String userName,
+  }) => caller.callServerEndpoint<bool>(
+    'workspace',
+    'deleteWorkspace',
+    {
+      'workspaceId': workspaceId,
+      'userName': userName,
+    },
+  );
+
+  _ida.Future<bool> resetAllData() => caller.callServerEndpoint<bool>(
+    'workspace',
+    'resetAllData',
     {},
   );
 }

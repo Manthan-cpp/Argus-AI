@@ -20,6 +20,9 @@ abstract class DispatchRoom
     required this.workspaceId,
     required this.name,
     required this.code,
+    this.organizerCode,
+    this.supervisorCode,
+    this.guardCode,
     this.description,
     required this.createdById,
     required this.createdByName,
@@ -33,6 +36,9 @@ abstract class DispatchRoom
     required int workspaceId,
     required String name,
     required String code,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     String? description,
     required int createdById,
     required String createdByName,
@@ -47,6 +53,9 @@ abstract class DispatchRoom
       workspaceId: jsonSerialization['workspaceId'] as int,
       name: jsonSerialization['name'] as String,
       code: jsonSerialization['code'] as String,
+      organizerCode: jsonSerialization['organizerCode'] as String?,
+      supervisorCode: jsonSerialization['supervisorCode'] as String?,
+      guardCode: jsonSerialization['guardCode'] as String?,
       description: jsonSerialization['description'] as String?,
       createdById: jsonSerialization['createdById'] as int,
       createdByName: jsonSerialization['createdByName'] as String,
@@ -71,6 +80,12 @@ abstract class DispatchRoom
 
   String code;
 
+  String? organizerCode;
+
+  String? supervisorCode;
+
+  String? guardCode;
+
   String? description;
 
   int createdById;
@@ -91,6 +106,9 @@ abstract class DispatchRoom
     int? workspaceId,
     String? name,
     String? code,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     String? description,
     int? createdById,
     String? createdByName,
@@ -106,6 +124,9 @@ abstract class DispatchRoom
       'workspaceId': workspaceId,
       'name': name,
       'code': code,
+      if (organizerCode != null) 'organizerCode': organizerCode,
+      if (supervisorCode != null) 'supervisorCode': supervisorCode,
+      if (guardCode != null) 'guardCode': guardCode,
       if (description != null) 'description': description,
       'createdById': createdById,
       'createdByName': createdByName,
@@ -123,6 +144,9 @@ abstract class DispatchRoom
       'workspaceId': workspaceId,
       'name': name,
       'code': code,
+      if (organizerCode != null) 'organizerCode': organizerCode,
+      if (supervisorCode != null) 'supervisorCode': supervisorCode,
+      if (guardCode != null) 'guardCode': guardCode,
       if (description != null) 'description': description,
       'createdById': createdById,
       'createdByName': createdByName,
@@ -146,6 +170,9 @@ class _DispatchRoomImpl extends DispatchRoom {
     required int workspaceId,
     required String name,
     required String code,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     String? description,
     required int createdById,
     required String createdByName,
@@ -157,6 +184,9 @@ class _DispatchRoomImpl extends DispatchRoom {
          workspaceId: workspaceId,
          name: name,
          code: code,
+         organizerCode: organizerCode,
+         supervisorCode: supervisorCode,
+         guardCode: guardCode,
          description: description,
          createdById: createdById,
          createdByName: createdByName,
@@ -174,6 +204,9 @@ class _DispatchRoomImpl extends DispatchRoom {
     int? workspaceId,
     String? name,
     String? code,
+    Object? organizerCode = _Undefined,
+    Object? supervisorCode = _Undefined,
+    Object? guardCode = _Undefined,
     Object? description = _Undefined,
     int? createdById,
     String? createdByName,
@@ -186,6 +219,13 @@ class _DispatchRoomImpl extends DispatchRoom {
       workspaceId: workspaceId ?? this.workspaceId,
       name: name ?? this.name,
       code: code ?? this.code,
+      organizerCode: organizerCode is String?
+          ? organizerCode
+          : this.organizerCode,
+      supervisorCode: supervisorCode is String?
+          ? supervisorCode
+          : this.supervisorCode,
+      guardCode: guardCode is String? ? guardCode : this.guardCode,
       description: description is String? ? description : this.description,
       createdById: createdById ?? this.createdById,
       createdByName: createdByName ?? this.createdByName,

@@ -18,7 +18,8 @@ abstract class UserProfile
     this.id,
     required this.workspaceId,
     required this.fullName,
-    required this.email,
+    this.email,
+    this.passwordHash,
     required this.role,
     this.avatarUrl,
     required this.createdAt,
@@ -28,7 +29,8 @@ abstract class UserProfile
     int? id,
     required int workspaceId,
     required String fullName,
-    required String email,
+    String? email,
+    String? passwordHash,
     required String role,
     String? avatarUrl,
     required DateTime createdAt,
@@ -39,7 +41,8 @@ abstract class UserProfile
       id: jsonSerialization['id'] as int?,
       workspaceId: jsonSerialization['workspaceId'] as int,
       fullName: jsonSerialization['fullName'] as String,
-      email: jsonSerialization['email'] as String,
+      email: jsonSerialization['email'] as String?,
+      passwordHash: jsonSerialization['passwordHash'] as String?,
       role: jsonSerialization['role'] as String,
       avatarUrl: jsonSerialization['avatarUrl'] as String?,
       createdAt: _isc.DateTimeJsonExtension.fromJson(
@@ -57,7 +60,9 @@ abstract class UserProfile
 
   String fullName;
 
-  String email;
+  String? email;
+
+  String? passwordHash;
 
   String role;
 
@@ -73,6 +78,7 @@ abstract class UserProfile
     int? workspaceId,
     String? fullName,
     String? email,
+    String? passwordHash,
     String? role,
     String? avatarUrl,
     DateTime? createdAt,
@@ -84,7 +90,8 @@ abstract class UserProfile
       if (id != null) 'id': id,
       'workspaceId': workspaceId,
       'fullName': fullName,
-      'email': email,
+      if (email != null) 'email': email,
+      if (passwordHash != null) 'passwordHash': passwordHash,
       'role': role,
       if (avatarUrl != null) 'avatarUrl': avatarUrl,
       'createdAt': createdAt.toJson(),
@@ -98,7 +105,8 @@ abstract class UserProfile
       if (id != null) 'id': id,
       'workspaceId': workspaceId,
       'fullName': fullName,
-      'email': email,
+      if (email != null) 'email': email,
+      if (passwordHash != null) 'passwordHash': passwordHash,
       'role': role,
       if (avatarUrl != null) 'avatarUrl': avatarUrl,
       'createdAt': createdAt.toJson(),
@@ -118,7 +126,8 @@ class _UserProfileImpl extends UserProfile {
     int? id,
     required int workspaceId,
     required String fullName,
-    required String email,
+    String? email,
+    String? passwordHash,
     required String role,
     String? avatarUrl,
     required DateTime createdAt,
@@ -127,6 +136,7 @@ class _UserProfileImpl extends UserProfile {
          workspaceId: workspaceId,
          fullName: fullName,
          email: email,
+         passwordHash: passwordHash,
          role: role,
          avatarUrl: avatarUrl,
          createdAt: createdAt,
@@ -140,7 +150,8 @@ class _UserProfileImpl extends UserProfile {
     Object? id = _Undefined,
     int? workspaceId,
     String? fullName,
-    String? email,
+    Object? email = _Undefined,
+    Object? passwordHash = _Undefined,
     String? role,
     Object? avatarUrl = _Undefined,
     DateTime? createdAt,
@@ -149,7 +160,8 @@ class _UserProfileImpl extends UserProfile {
       id: id is int? ? id : this.id,
       workspaceId: workspaceId ?? this.workspaceId,
       fullName: fullName ?? this.fullName,
-      email: email ?? this.email,
+      email: email is String? ? email : this.email,
+      passwordHash: passwordHash is String? ? passwordHash : this.passwordHash,
       role: role ?? this.role,
       avatarUrl: avatarUrl is String? ? avatarUrl : this.avatarUrl,
       createdAt: createdAt ?? this.createdAt,

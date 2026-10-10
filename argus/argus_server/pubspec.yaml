@@ -11,9 +11,11 @@ resolution: workspace
 dependencies:
   argus_engine:
     path: ../argus_engine
+  crypto: ^3.0.3
   serverpod: 4.0.4
   serverpod_auth_idp_server: 4.0.4
   serverpod_cloud_storage: 4.0.4
+
 
 dev_dependencies:
   lints: '>=3.0.0 <7.0.0'
@@ -62,5 +64,5 @@ serverpod:
     argus:
       path: ../argus_flutter
       displayName: "Argus app"
-      auto_launch: true
-      target: lib/driver.dart
+      auto_launch: false
+      target: lib/main.dart

@@ -19,6 +19,7 @@ import 'package:argus_server/src/generated/incident.dart' as _iyz089d3;
 import 'package:argus_server/src/generated/room_member.dart' as _icqxjjtk;
 import 'package:argus_server/src/generated/room_message.dart' as _ii0sf679;
 import 'package:argus_server/src/generated/rule_spec.dart' as _ihw84zwb;
+import 'package:argus_server/src/generated/workspace.dart' as _i8uz39mp;
 import 'package:argus_server/src/generated/zone.dart' as _i8tshavy;
 import 'package:serverpod/protocol.dart' as _isp;
 import 'package:serverpod/serverpod.dart' as _is;
@@ -63,6 +64,7 @@ import 'time_window.dart' as _idjbqmwg;
 import 'user_profile.dart' as _ir2mn8w1;
 import 'verification_info.dart' as _iv8f4ltc;
 import 'workspace.dart' as _io6eoug6;
+import 'workspace_member.dart' as _iidcmvkk;
 import 'workspace_settings.dart' as _i88empjm;
 import 'zone.dart' as _ixcxr4o1;
 export 'audit_entry.dart';
@@ -102,6 +104,7 @@ export 'time_window.dart';
 export 'user_profile.dart';
 export 'verification_info.dart';
 export 'workspace.dart';
+export 'workspace_member.dart';
 export 'workspace_settings.dart';
 export 'zone.dart';
 
@@ -583,16 +586,94 @@ class Protocol extends _is.DatabaseSerializationManager {
           dartType: 'String',
         ),
         _isp.ColumnDefinition(
+          name: 'description',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'organizerCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'supervisorCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'guardCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
           name: 'createdAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: false,
           dartType: 'DateTime',
         ),
         _isp.ColumnDefinition(
+          name: 'isActive',
+          columnType: _isp.ColumnType.boolean,
+          isNullable: false,
+          dartType: 'bool',
+        ),
+        _isp.ColumnDefinition(
           name: 'settings',
           columnType: _isp.ColumnType.json,
           isNullable: false,
           dartType: 'protocol:WorkspaceSettings',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
+      name: 'argus_workspace_member',
+      dartName: 'WorkspaceMember',
+      schema: 'public',
+      module: 'argus',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'workspaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'userRole',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'joinedAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
         ),
       ],
       foreignKeys: [],
@@ -683,6 +764,24 @@ class Protocol extends _is.DatabaseSerializationManager {
           columnType: _isp.ColumnType.text,
           isNullable: false,
           dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'organizerCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'supervisorCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'guardCode',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
         ),
         _isp.ColumnDefinition(
           name: 'description',
@@ -879,8 +978,14 @@ class Protocol extends _is.DatabaseSerializationManager {
         _isp.ColumnDefinition(
           name: 'email',
           columnType: _isp.ColumnType.text,
-          isNullable: false,
-          dartType: 'String',
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'passwordHash',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
         ),
         _isp.ColumnDefinition(
           name: 'role',
@@ -1048,6 +1153,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _io6eoug6.Workspace) {
       return _io6eoug6.Workspace.fromJson(data) as T;
     }
+    if (t == _iidcmvkk.WorkspaceMember) {
+      return _iidcmvkk.WorkspaceMember.fromJson(data) as T;
+    }
     if (t == _i88empjm.WorkspaceSettings) {
       return _i88empjm.WorkspaceSettings.fromJson(data) as T;
     }
@@ -1177,6 +1285,10 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_io6eoug6.Workspace?>()) {
       return (data != null ? _io6eoug6.Workspace.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_iidcmvkk.WorkspaceMember?>()) {
+      return (data != null ? _iidcmvkk.WorkspaceMember.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_i88empjm.WorkspaceSettings?>()) {
       return (data != null ? _i88empjm.WorkspaceSettings.fromJson(data) : null)
           as T;
@@ -1295,6 +1407,12 @@ class Protocol extends _is.DatabaseSerializationManager {
               .toList()
           as T;
     }
+    if (t == List<_i8uz39mp.Workspace>) {
+      return (data as List)
+              .map((e) => deserialize<_i8uz39mp.Workspace>(e))
+              .toList()
+          as T;
+    }
     if (t == List<_i8tshavy.Zone>) {
       return (data as List).map((e) => deserialize<_i8tshavy.Zone>(e)).toList()
           as T;
@@ -1350,6 +1468,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _ir2mn8w1.UserProfile => 'UserProfile',
       _iv8f4ltc.VerificationInfo => 'VerificationInfo',
       _io6eoug6.Workspace => 'Workspace',
+      _iidcmvkk.WorkspaceMember => 'WorkspaceMember',
       _i88empjm.WorkspaceSettings => 'WorkspaceSettings',
       _ixcxr4o1.Zone => 'Zone',
       _ => null,
@@ -1440,6 +1559,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'VerificationInfo';
       case _io6eoug6.Workspace():
         return 'Workspace';
+      case _iidcmvkk.WorkspaceMember():
+        return 'WorkspaceMember';
       case _i88empjm.WorkspaceSettings():
         return 'WorkspaceSettings';
       case _ixcxr4o1.Zone():
@@ -1581,6 +1702,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (dataClassName == 'Workspace') {
       return deserialize<_io6eoug6.Workspace>(data['data']);
     }
+    if (dataClassName == 'WorkspaceMember') {
+      return deserialize<_iidcmvkk.WorkspaceMember>(data['data']);
+    }
     if (dataClassName == 'WorkspaceSettings') {
       return deserialize<_i88empjm.WorkspaceSettings>(data['data']);
     }
@@ -1650,6 +1774,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return _ir2mn8w1.UserProfile.t;
       case _io6eoug6.Workspace:
         return _io6eoug6.Workspace.t;
+      case _iidcmvkk.WorkspaceMember:
+        return _iidcmvkk.WorkspaceMember.t;
       case _ixcxr4o1.Zone:
         return _ixcxr4o1.Zone.t;
     }

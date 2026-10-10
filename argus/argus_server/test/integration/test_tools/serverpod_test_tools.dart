@@ -38,8 +38,6 @@ import 'package:argus_server/src/generated/signal_ack.dart' as _iq6nqrrt;
 import 'package:argus_server/src/generated/signal_batch.dart' as _iefjwdie;
 import 'package:argus_server/src/generated/user_profile.dart' as _ix1mq967;
 import 'package:argus_server/src/generated/workspace.dart' as _i8uz39mp;
-import 'package:argus_server/src/generated/workspace_settings.dart'
-    as _io4d1l6f;
 import 'package:argus_server/src/generated/zone.dart' as _i8tshavy;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
@@ -670,8 +668,9 @@ class _CameraEndpoint {
   final _is.SerializationManager _serializationManager;
 
   _ida.Future<List<_irrewps0.Camera>> list(
-    _ist.TestSessionBuilder sessionBuilder,
-  ) async {
+    _ist.TestSessionBuilder sessionBuilder, {
+    int? workspaceId,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -683,7 +682,7 @@ class _CameraEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'camera',
           methodName: 'list',
-          parameters: _ist.testObjectToJson({}),
+          parameters: _ist.testObjectToJson({'workspaceId': workspaceId}),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -701,8 +700,9 @@ class _CameraEndpoint {
 
   _ida.Future<_irrewps0.Camera> save(
     _ist.TestSessionBuilder sessionBuilder,
-    _irrewps0.Camera camera,
-  ) async {
+    _irrewps0.Camera camera, {
+    int? workspaceId,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -714,7 +714,10 @@ class _CameraEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'camera',
           methodName: 'save',
-          parameters: _ist.testObjectToJson({'camera': camera}),
+          parameters: _ist.testObjectToJson({
+            'camera': camera,
+            'workspaceId': workspaceId,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -1034,6 +1037,7 @@ class _IncidentEndpoint {
 
   _ida.Future<List<_iyz089d3.Incident>> list(
     _ist.TestSessionBuilder sessionBuilder, {
+    int? workspaceId,
     String? status,
     String? severity,
     int? cameraId,
@@ -1050,6 +1054,7 @@ class _IncidentEndpoint {
           endpointPath: 'incident',
           methodName: 'list',
           parameters: _ist.testObjectToJson({
+            'workspaceId': workspaceId,
             'status': status,
             'severity': severity,
             'cameraId': cameraId,
@@ -1236,7 +1241,10 @@ class _IncidentEndpoint {
     });
   }
 
-  _ida.Future<bool> deleteAll(_ist.TestSessionBuilder sessionBuilder) async {
+  _ida.Future<bool> deleteAll(
+    _ist.TestSessionBuilder sessionBuilder, {
+    int? workspaceId,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -1248,7 +1256,7 @@ class _IncidentEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'incident',
           methodName: 'deleteAll',
-          parameters: _ist.testObjectToJson({}),
+          parameters: _ist.testObjectToJson({'workspaceId': workspaceId}),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -1280,8 +1288,9 @@ class _RoomEndpoint {
     String name, {
     String? description,
     List<int>? cameraIds,
-    String? creatorName,
-    String? creatorRole,
+    int? workspaceId,
+    required String creatorName,
+    required String creatorRole,
   }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -1298,6 +1307,7 @@ class _RoomEndpoint {
             'name': name,
             'description': description,
             'cameraIds': cameraIds,
+            'workspaceId': workspaceId,
             'creatorName': creatorName,
             'creatorRole': creatorRole,
           }),
@@ -1320,8 +1330,6 @@ class _RoomEndpoint {
     _ist.TestSessionBuilder sessionBuilder,
     String code, {
     required String userName,
-    required String userRole,
-    String? userEmail,
   }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -1337,8 +1345,6 @@ class _RoomEndpoint {
           parameters: _ist.testObjectToJson({
             'code': code,
             'userName': userName,
-            'userRole': userRole,
-            'userEmail': userEmail,
           }),
           serializationManager: _serializationManager,
         );
@@ -1355,9 +1361,87 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<List<_i6m69ikf.DispatchRoom>> listRooms(
+  _ida.Future<bool> deleteRoom(
     _ist.TestSessionBuilder sessionBuilder,
-  ) async {
+    int roomId, {
+    required String userName,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'deleteRoom',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'deleteRoom',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'userName': userName,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<bool>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_i6m69ikf.DispatchRoom> updateRoom(
+    _ist.TestSessionBuilder sessionBuilder,
+    int roomId, {
+    required String userName,
+    String? name,
+    String? description,
+    List<int>? cameraIds,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'updateRoom',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'updateRoom',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'userName': userName,
+            'name': name,
+            'description': description,
+            'cameraIds': cameraIds,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i6m69ikf.DispatchRoom>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_i6m69ikf.DispatchRoom>> listRooms(
+    _ist.TestSessionBuilder sessionBuilder, {
+    int? workspaceId,
+    String? userName,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -1369,7 +1453,10 @@ class _RoomEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'room',
           methodName: 'listRooms',
-          parameters: _ist.testObjectToJson({}),
+          parameters: _ist.testObjectToJson({
+            'workspaceId': workspaceId,
+            'userName': userName,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -1378,6 +1465,41 @@ class _RoomEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<List<_i6m69ikf.DispatchRoom>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_i6m69ikf.DispatchRoom?> getRoom(
+    _ist.TestSessionBuilder sessionBuilder,
+    int roomId, {
+    String? userName,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'getRoom',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'getRoom',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'userName': userName,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i6m69ikf.DispatchRoom?>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -1401,6 +1523,41 @@ class _RoomEndpoint {
           endpointPath: 'room',
           methodName: 'getRoomByCode',
           parameters: _ist.testObjectToJson({'code': code}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i6m69ikf.DispatchRoom?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_i6m69ikf.DispatchRoom?> getRoomForWorkspace(
+    _ist.TestSessionBuilder sessionBuilder,
+    int workspaceId, {
+    String? userName,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'getRoomForWorkspace',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'getRoomForWorkspace',
+          parameters: _ist.testObjectToJson({
+            'workspaceId': workspaceId,
+            'userName': userName,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -1834,27 +1991,25 @@ class _UserEndpoint {
 
   final _is.SerializationManager _serializationManager;
 
-  _ida.Future<_ix1mq967.UserProfile> login(
+  _ida.Future<_ix1mq967.UserProfile> signUp(
     _ist.TestSessionBuilder sessionBuilder,
     String fullName,
-    String role, {
-    String? email,
-  }) async {
+    String password,
+  ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
             endpoint: 'user',
-            method: 'login',
+            method: 'signUp',
           );
       try {
         var _localCallContext = await _endpointDispatch.getMethodCallContext(
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'user',
-          methodName: 'login',
+          methodName: 'signUp',
           parameters: _ist.testObjectToJson({
             'fullName': fullName,
-            'role': role,
-            'email': email,
+            'password': password,
           }),
           serializationManager: _serializationManager,
         );
@@ -1871,9 +2026,45 @@ class _UserEndpoint {
     });
   }
 
-  _ida.Future<_ix1mq967.UserProfile> getCurrentUser(
+  _ida.Future<_ix1mq967.UserProfile> login(
     _ist.TestSessionBuilder sessionBuilder,
+    String fullName,
+    String password,
   ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'user',
+            method: 'login',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'user',
+          methodName: 'login',
+          parameters: _ist.testObjectToJson({
+            'fullName': fullName,
+            'password': password,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ix1mq967.UserProfile>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_ix1mq967.UserProfile?> getCurrentUser(
+    _ist.TestSessionBuilder sessionBuilder, {
+    String? fullName,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -1885,6 +2076,34 @@ class _UserEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'user',
           methodName: 'getCurrentUser',
+          parameters: _ist.testObjectToJson({'fullName': fullName}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_ix1mq967.UserProfile?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<bool> resetData(_ist.TestSessionBuilder sessionBuilder) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'user',
+            method: 'resetData',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'user',
+          methodName: 'resetData',
           parameters: _ist.testObjectToJson({}),
           serializationManager: _serializationManager,
         );
@@ -1893,7 +2112,7 @@ class _UserEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_ix1mq967.UserProfile>);
+                as _ida.Future<bool>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -1942,22 +2161,28 @@ class _WorkspaceEndpoint {
     });
   }
 
-  _ida.Future<_io4d1l6f.WorkspaceSettings> updateSettings(
+  _ida.Future<_i8uz39mp.Workspace> createWorkspace(
     _ist.TestSessionBuilder sessionBuilder,
-    _io4d1l6f.WorkspaceSettings settings,
-  ) async {
+    String name, {
+    String? description,
+    required String creatorName,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
             endpoint: 'workspace',
-            method: 'updateSettings',
+            method: 'createWorkspace',
           );
       try {
         var _localCallContext = await _endpointDispatch.getMethodCallContext(
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'workspace',
-          methodName: 'updateSettings',
-          parameters: _ist.testObjectToJson({'settings': settings}),
+          methodName: 'createWorkspace',
+          parameters: _ist.testObjectToJson({
+            'name': name,
+            'description': description,
+            'creatorName': creatorName,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -1965,7 +2190,7 @@ class _WorkspaceEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_io4d1l6f.WorkspaceSettings>);
+                as _ida.Future<_i8uz39mp.Workspace>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -1973,20 +2198,193 @@ class _WorkspaceEndpoint {
     });
   }
 
-  _ida.Future<void> deleteWorkspaceData(
+  _ida.Future<_i8uz39mp.Workspace?> joinWorkspace(
     _ist.TestSessionBuilder sessionBuilder,
-  ) async {
+    String code, {
+    required String userName,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
             endpoint: 'workspace',
-            method: 'deleteWorkspaceData',
+            method: 'joinWorkspace',
           );
       try {
         var _localCallContext = await _endpointDispatch.getMethodCallContext(
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'workspace',
-          methodName: 'deleteWorkspaceData',
+          methodName: 'joinWorkspace',
+          parameters: _ist.testObjectToJson({
+            'code': code,
+            'userName': userName,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i8uz39mp.Workspace?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_i8uz39mp.Workspace>> listUserWorkspaces(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required String userName,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'workspace',
+            method: 'listUserWorkspaces',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'workspace',
+          methodName: 'listUserWorkspaces',
+          parameters: _ist.testObjectToJson({'userName': userName}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_i8uz39mp.Workspace>>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_i8uz39mp.Workspace?> getWorkspace(
+    _ist.TestSessionBuilder sessionBuilder,
+    int workspaceId, {
+    String? userName,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'workspace',
+            method: 'getWorkspace',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'workspace',
+          methodName: 'getWorkspace',
+          parameters: _ist.testObjectToJson({
+            'workspaceId': workspaceId,
+            'userName': userName,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i8uz39mp.Workspace?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_i8uz39mp.Workspace> updateWorkspace(
+    _ist.TestSessionBuilder sessionBuilder,
+    int workspaceId, {
+    required String userName,
+    String? name,
+    String? description,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'workspace',
+            method: 'updateWorkspace',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'workspace',
+          methodName: 'updateWorkspace',
+          parameters: _ist.testObjectToJson({
+            'workspaceId': workspaceId,
+            'userName': userName,
+            'name': name,
+            'description': description,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_i8uz39mp.Workspace>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<bool> deleteWorkspace(
+    _ist.TestSessionBuilder sessionBuilder,
+    int workspaceId, {
+    required String userName,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'workspace',
+            method: 'deleteWorkspace',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'workspace',
+          methodName: 'deleteWorkspace',
+          parameters: _ist.testObjectToJson({
+            'workspaceId': workspaceId,
+            'userName': userName,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<bool>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<bool> resetAllData(_ist.TestSessionBuilder sessionBuilder) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'workspace',
+            method: 'resetAllData',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'workspace',
+          methodName: 'resetAllData',
           parameters: _ist.testObjectToJson({}),
           serializationManager: _serializationManager,
         );
@@ -1995,7 +2393,7 @@ class _WorkspaceEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<void>);
+                as _ida.Future<bool>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

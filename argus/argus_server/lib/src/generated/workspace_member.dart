@@ -12,130 +12,114 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _is;
 
-abstract class UserProfile
+abstract class WorkspaceMember
     implements _is.TableRow<int?>, _is.ProtocolSerialization {
-  UserProfile._({
+  WorkspaceMember._({
     this.id,
     required this.workspaceId,
-    required this.fullName,
-    this.email,
-    this.passwordHash,
-    required this.role,
-    this.avatarUrl,
-    required this.createdAt,
+    required this.userId,
+    required this.userName,
+    required this.userRole,
+    required this.joinedAt,
   });
 
-  factory UserProfile({
+  factory WorkspaceMember({
     int? id,
     required int workspaceId,
-    required String fullName,
-    String? email,
-    String? passwordHash,
-    required String role,
-    String? avatarUrl,
-    required DateTime createdAt,
-  }) = _UserProfileImpl;
+    required int userId,
+    required String userName,
+    required String userRole,
+    required DateTime joinedAt,
+  }) = _WorkspaceMemberImpl;
 
-  factory UserProfile.fromJson(Map<String, dynamic> jsonSerialization) {
-    return UserProfile(
+  factory WorkspaceMember.fromJson(Map<String, dynamic> jsonSerialization) {
+    return WorkspaceMember(
       id: jsonSerialization['id'] as int?,
       workspaceId: jsonSerialization['workspaceId'] as int,
-      fullName: jsonSerialization['fullName'] as String,
-      email: jsonSerialization['email'] as String?,
-      passwordHash: jsonSerialization['passwordHash'] as String?,
-      role: jsonSerialization['role'] as String,
-      avatarUrl: jsonSerialization['avatarUrl'] as String?,
-      createdAt: _is.DateTimeJsonExtension.fromJson(
-        jsonSerialization['createdAt'],
+      userId: jsonSerialization['userId'] as int,
+      userName: jsonSerialization['userName'] as String,
+      userRole: jsonSerialization['userRole'] as String,
+      joinedAt: _is.DateTimeJsonExtension.fromJson(
+        jsonSerialization['joinedAt'],
       ),
     );
   }
 
-  static final t = UserProfileTable();
+  static final t = WorkspaceMemberTable();
 
-  static const db = UserProfileRepository._();
+  static const db = WorkspaceMemberRepository._();
 
   @override
   int? id;
 
   int workspaceId;
 
-  String fullName;
+  int userId;
 
-  String? email;
+  String userName;
 
-  String? passwordHash;
+  String userRole;
 
-  String role;
-
-  String? avatarUrl;
-
-  DateTime createdAt;
+  DateTime joinedAt;
 
   @override
   _is.Table<int?> get table => t;
 
-  /// Returns a shallow copy of this [UserProfile]
+  /// Returns a shallow copy of this [WorkspaceMember]
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
-  UserProfile copyWith({
+  WorkspaceMember copyWith({
     int? id,
     int? workspaceId,
-    String? fullName,
-    String? email,
-    String? passwordHash,
-    String? role,
-    String? avatarUrl,
-    DateTime? createdAt,
+    int? userId,
+    String? userName,
+    String? userRole,
+    DateTime? joinedAt,
   });
   @override
   Map<String, dynamic> toJson() {
     return {
-      '__className__': 'UserProfile',
+      '__className__': 'WorkspaceMember',
       if (id != null) 'id': id,
       'workspaceId': workspaceId,
-      'fullName': fullName,
-      if (email != null) 'email': email,
-      if (passwordHash != null) 'passwordHash': passwordHash,
-      'role': role,
-      if (avatarUrl != null) 'avatarUrl': avatarUrl,
-      'createdAt': createdAt.toJson(),
+      'userId': userId,
+      'userName': userName,
+      'userRole': userRole,
+      'joinedAt': joinedAt.toJson(),
     };
   }
 
   @override
   Map<String, dynamic> toJsonForProtocol() {
     return {
-      '__className__': 'UserProfile',
+      '__className__': 'WorkspaceMember',
       if (id != null) 'id': id,
       'workspaceId': workspaceId,
-      'fullName': fullName,
-      if (email != null) 'email': email,
-      if (passwordHash != null) 'passwordHash': passwordHash,
-      'role': role,
-      if (avatarUrl != null) 'avatarUrl': avatarUrl,
-      'createdAt': createdAt.toJson(),
+      'userId': userId,
+      'userName': userName,
+      'userRole': userRole,
+      'joinedAt': joinedAt.toJson(),
     };
   }
 
-  static UserProfileInclude include() {
-    return UserProfileInclude._();
+  static WorkspaceMemberInclude include() {
+    return WorkspaceMemberInclude._();
   }
 
-  static UserProfileIncludeList includeList({
-    _is.WhereExpressionBuilder<UserProfileTable>? where,
+  static WorkspaceMemberIncludeList includeList({
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? where,
     int? limit,
     int? offset,
-    _is.OrderByBuilder<UserProfileTable>? orderBy,
-    _is.OrderByListBuilder<UserProfileTable>? orderByList,
-    UserProfileInclude? include,
+    _is.OrderByBuilder<WorkspaceMemberTable>? orderBy,
+    _is.OrderByListBuilder<WorkspaceMemberTable>? orderByList,
+    WorkspaceMemberInclude? include,
   }) {
-    return UserProfileIncludeList._(
+    return WorkspaceMemberIncludeList._(
       where: where,
       limit: limit,
       offset: offset,
-      orderBy: orderBy?.call(UserProfile.t),
-      orderByList: orderByList?.call(UserProfile.t),
+      orderBy: orderBy?.call(WorkspaceMember.t),
+      orderByList: orderByList?.call(WorkspaceMember.t),
       include: include,
     );
   }
@@ -148,190 +132,158 @@ abstract class UserProfile
 
 class _Undefined {}
 
-class _UserProfileImpl extends UserProfile {
-  _UserProfileImpl({
+class _WorkspaceMemberImpl extends WorkspaceMember {
+  _WorkspaceMemberImpl({
     int? id,
     required int workspaceId,
-    required String fullName,
-    String? email,
-    String? passwordHash,
-    required String role,
-    String? avatarUrl,
-    required DateTime createdAt,
+    required int userId,
+    required String userName,
+    required String userRole,
+    required DateTime joinedAt,
   }) : super._(
          id: id,
          workspaceId: workspaceId,
-         fullName: fullName,
-         email: email,
-         passwordHash: passwordHash,
-         role: role,
-         avatarUrl: avatarUrl,
-         createdAt: createdAt,
+         userId: userId,
+         userName: userName,
+         userRole: userRole,
+         joinedAt: joinedAt,
        );
 
-  /// Returns a shallow copy of this [UserProfile]
+  /// Returns a shallow copy of this [WorkspaceMember]
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
   @override
-  UserProfile copyWith({
+  WorkspaceMember copyWith({
     Object? id = _Undefined,
     int? workspaceId,
-    String? fullName,
-    Object? email = _Undefined,
-    Object? passwordHash = _Undefined,
-    String? role,
-    Object? avatarUrl = _Undefined,
-    DateTime? createdAt,
+    int? userId,
+    String? userName,
+    String? userRole,
+    DateTime? joinedAt,
   }) {
-    return UserProfile(
+    return WorkspaceMember(
       id: id is int? ? id : this.id,
       workspaceId: workspaceId ?? this.workspaceId,
-      fullName: fullName ?? this.fullName,
-      email: email is String? ? email : this.email,
-      passwordHash: passwordHash is String? ? passwordHash : this.passwordHash,
-      role: role ?? this.role,
-      avatarUrl: avatarUrl is String? ? avatarUrl : this.avatarUrl,
-      createdAt: createdAt ?? this.createdAt,
+      userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
+      userRole: userRole ?? this.userRole,
+      joinedAt: joinedAt ?? this.joinedAt,
     );
   }
 }
 
-class UserProfileUpdateTable extends _is.UpdateTable<UserProfileTable> {
-  UserProfileUpdateTable(super.table);
+class WorkspaceMemberUpdateTable extends _is.UpdateTable<WorkspaceMemberTable> {
+  WorkspaceMemberUpdateTable(super.table);
 
   _is.ColumnValue<int, int> workspaceId(int value) => _is.ColumnValue(
     table.workspaceId,
     value,
   );
 
-  _is.ColumnValue<String, String> fullName(String value) => _is.ColumnValue(
-    table.fullName,
+  _is.ColumnValue<int, int> userId(int value) => _is.ColumnValue(
+    table.userId,
     value,
   );
 
-  _is.ColumnValue<String, String> email(String? value) => _is.ColumnValue(
-    table.email,
+  _is.ColumnValue<String, String> userName(String value) => _is.ColumnValue(
+    table.userName,
     value,
   );
 
-  _is.ColumnValue<String, String> passwordHash(String? value) =>
+  _is.ColumnValue<String, String> userRole(String value) => _is.ColumnValue(
+    table.userRole,
+    value,
+  );
+
+  _is.ColumnValue<DateTime, DateTime> joinedAt(DateTime value) =>
       _is.ColumnValue(
-        table.passwordHash,
-        value,
-      );
-
-  _is.ColumnValue<String, String> role(String value) => _is.ColumnValue(
-    table.role,
-    value,
-  );
-
-  _is.ColumnValue<String, String> avatarUrl(String? value) => _is.ColumnValue(
-    table.avatarUrl,
-    value,
-  );
-
-  _is.ColumnValue<DateTime, DateTime> createdAt(DateTime value) =>
-      _is.ColumnValue(
-        table.createdAt,
+        table.joinedAt,
         value,
       );
 }
 
-class UserProfileTable extends _is.Table<int?> {
-  UserProfileTable({super.tableRelation}) : super(tableName: 'user_profile') {
-    updateTable = UserProfileUpdateTable(this);
+class WorkspaceMemberTable extends _is.Table<int?> {
+  WorkspaceMemberTable({super.tableRelation})
+    : super(tableName: 'argus_workspace_member') {
+    updateTable = WorkspaceMemberUpdateTable(this);
     workspaceId = _is.ColumnInt(
       'workspaceId',
       this,
     );
-    fullName = _is.ColumnString(
-      'fullName',
+    userId = _is.ColumnInt(
+      'userId',
       this,
     );
-    email = _is.ColumnString(
-      'email',
+    userName = _is.ColumnString(
+      'userName',
       this,
     );
-    passwordHash = _is.ColumnString(
-      'passwordHash',
+    userRole = _is.ColumnString(
+      'userRole',
       this,
     );
-    role = _is.ColumnString(
-      'role',
-      this,
-    );
-    avatarUrl = _is.ColumnString(
-      'avatarUrl',
-      this,
-    );
-    createdAt = _is.ColumnDateTime(
-      'createdAt',
+    joinedAt = _is.ColumnDateTime(
+      'joinedAt',
       this,
     );
   }
 
-  late final UserProfileUpdateTable updateTable;
+  late final WorkspaceMemberUpdateTable updateTable;
 
   late final _is.ColumnInt workspaceId;
 
-  late final _is.ColumnString fullName;
+  late final _is.ColumnInt userId;
 
-  late final _is.ColumnString email;
+  late final _is.ColumnString userName;
 
-  late final _is.ColumnString passwordHash;
+  late final _is.ColumnString userRole;
 
-  late final _is.ColumnString role;
-
-  late final _is.ColumnString avatarUrl;
-
-  late final _is.ColumnDateTime createdAt;
+  late final _is.ColumnDateTime joinedAt;
 
   @override
   List<_is.Column> get columns => [
     id,
     workspaceId,
-    fullName,
-    email,
-    passwordHash,
-    role,
-    avatarUrl,
-    createdAt,
+    userId,
+    userName,
+    userRole,
+    joinedAt,
   ];
 }
 
-class UserProfileInclude extends _is.IncludeObject {
-  UserProfileInclude._();
+class WorkspaceMemberInclude extends _is.IncludeObject {
+  WorkspaceMemberInclude._();
 
   @override
   Map<String, _is.Include?> get includes => {};
 
   @override
-  _is.Table<int?> get table => UserProfile.t;
+  _is.Table<int?> get table => WorkspaceMember.t;
 }
 
-class UserProfileIncludeList extends _is.IncludeList {
-  UserProfileIncludeList._({
-    _is.WhereExpressionBuilder<UserProfileTable>? where,
+class WorkspaceMemberIncludeList extends _is.IncludeList {
+  WorkspaceMemberIncludeList._({
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? where,
     super.limit,
     super.offset,
     super.orderBy,
     super.orderByList,
     super.include,
   }) {
-    super.where = where?.call(UserProfile.t);
+    super.where = where?.call(WorkspaceMember.t);
   }
 
   @override
   Map<String, _is.Include?> get includes => include?.includes ?? {};
 
   @override
-  _is.Table<int?> get table => UserProfile.t;
+  _is.Table<int?> get table => WorkspaceMember.t;
 }
 
-class UserProfileRepository {
-  const UserProfileRepository._();
+class WorkspaceMemberRepository {
+  const WorkspaceMemberRepository._();
 
-  /// Returns a list of [UserProfile]s matching the given query parameters.
+  /// Returns a list of [WorkspaceMember]s matching the given query parameters.
   ///
   /// Use [where] to specify which items to include in the return value.
   /// If none is specified, all items will be returned.
@@ -353,21 +305,21 @@ class UserProfileRepository {
   ///   limit: 100,
   /// );
   /// ```
-  Future<List<UserProfile>> find(
+  Future<List<WorkspaceMember>> find(
     _is.DatabaseSession session, {
-    _is.WhereExpressionBuilder<UserProfileTable>? where,
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? where,
     int? limit,
     int? offset,
-    _is.OrderByBuilder<UserProfileTable>? orderBy,
-    _is.OrderByListBuilder<UserProfileTable>? orderByList,
+    _is.OrderByBuilder<WorkspaceMemberTable>? orderBy,
+    _is.OrderByListBuilder<WorkspaceMemberTable>? orderByList,
     _is.Transaction? transaction,
     _is.LockMode? lockMode,
     _is.LockBehavior? lockBehavior,
   }) async {
-    return session.db.find<UserProfile>(
-      where: where?.call(UserProfile.t),
-      orderBy: orderBy?.call(UserProfile.t),
-      orderByList: orderByList?.call(UserProfile.t),
+    return session.db.find<WorkspaceMember>(
+      where: where?.call(WorkspaceMember.t),
+      orderBy: orderBy?.call(WorkspaceMember.t),
+      orderByList: orderByList?.call(WorkspaceMember.t),
       limit: limit,
       offset: offset,
       transaction: transaction,
@@ -376,7 +328,7 @@ class UserProfileRepository {
     );
   }
 
-  /// Returns the first matching [UserProfile] matching the given query parameters.
+  /// Returns the first matching [WorkspaceMember] matching the given query parameters.
   ///
   /// Use [where] to specify which items to include in the return value.
   /// If none is specified, all items will be returned.
@@ -393,20 +345,20 @@ class UserProfileRepository {
   ///   orderBy: (t) => t.age,
   /// );
   /// ```
-  Future<UserProfile?> findFirstRow(
+  Future<WorkspaceMember?> findFirstRow(
     _is.DatabaseSession session, {
-    _is.WhereExpressionBuilder<UserProfileTable>? where,
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? where,
     int? offset,
-    _is.OrderByBuilder<UserProfileTable>? orderBy,
-    _is.OrderByListBuilder<UserProfileTable>? orderByList,
+    _is.OrderByBuilder<WorkspaceMemberTable>? orderBy,
+    _is.OrderByListBuilder<WorkspaceMemberTable>? orderByList,
     _is.Transaction? transaction,
     _is.LockMode? lockMode,
     _is.LockBehavior? lockBehavior,
   }) async {
-    return session.db.findFirstRow<UserProfile>(
-      where: where?.call(UserProfile.t),
-      orderBy: orderBy?.call(UserProfile.t),
-      orderByList: orderByList?.call(UserProfile.t),
+    return session.db.findFirstRow<WorkspaceMember>(
+      where: where?.call(WorkspaceMember.t),
+      orderBy: orderBy?.call(WorkspaceMember.t),
+      orderByList: orderByList?.call(WorkspaceMember.t),
       offset: offset,
       transaction: transaction,
       lockMode: lockMode,
@@ -414,15 +366,15 @@ class UserProfileRepository {
     );
   }
 
-  /// Finds a single [UserProfile] by its [id] or null if no such row exists.
-  Future<UserProfile?> findById(
+  /// Finds a single [WorkspaceMember] by its [id] or null if no such row exists.
+  Future<WorkspaceMember?> findById(
     _is.DatabaseSession session,
     int id, {
     _is.Transaction? transaction,
     _is.LockMode? lockMode,
     _is.LockBehavior? lockBehavior,
   }) async {
-    return session.db.findById<UserProfile>(
+    return session.db.findById<WorkspaceMember>(
       id,
       transaction: transaction,
       lockMode: lockMode,
@@ -430,9 +382,9 @@ class UserProfileRepository {
     );
   }
 
-  /// Inserts all [UserProfile]s in the list and returns the inserted rows.
+  /// Inserts all [WorkspaceMember]s in the list and returns the inserted rows.
   ///
-  /// The returned [UserProfile]s will have their `id` fields set.
+  /// The returned [WorkspaceMember]s will have their `id` fields set.
   ///
   /// This is an atomic operation, meaning that if one of the rows fails to
   /// insert, none of the rows will be inserted.
@@ -444,14 +396,14 @@ class UserProfileRepository {
   /// If [noReturn] is set to `true`, the inserted rows are not read back from
   /// the database and an empty list is returned. This avoids the overhead of
   /// transferring and deserializing the rows when the result is not needed.
-  Future<List<UserProfile>> insert(
+  Future<List<WorkspaceMember>> insert(
     _is.DatabaseSession session,
-    List<UserProfile> rows, {
+    List<WorkspaceMember> rows, {
     _is.Transaction? transaction,
     bool ignoreConflicts = false,
     bool noReturn = false,
   }) async {
-    return session.db.insert<UserProfile>(
+    return session.db.insert<WorkspaceMember>(
       rows,
       transaction: transaction,
       ignoreConflicts: ignoreConflicts,
@@ -459,21 +411,21 @@ class UserProfileRepository {
     );
   }
 
-  /// Inserts a single [UserProfile] and returns the inserted row.
+  /// Inserts a single [WorkspaceMember] and returns the inserted row.
   ///
-  /// The returned [UserProfile] will have its `id` field set.
-  Future<UserProfile> insertRow(
+  /// The returned [WorkspaceMember] will have its `id` field set.
+  Future<WorkspaceMember> insertRow(
     _is.DatabaseSession session,
-    UserProfile row, {
+    WorkspaceMember row, {
     _is.Transaction? transaction,
   }) async {
-    return session.db.insertRow<UserProfile>(
+    return session.db.insertRow<WorkspaceMember>(
       row,
       transaction: transaction,
     );
   }
 
-  /// Upserts all [UserProfile]s in the list and returns the resulting rows.
+  /// Upserts all [WorkspaceMember]s in the list and returns the resulting rows.
   ///
   /// If a row conflicts on the given [conflictColumns], the existing row is
   /// updated with the new values. Otherwise, a new row is inserted.
@@ -485,7 +437,7 @@ class UserProfileRepository {
   /// given expression. Conflicting rows that don't match are skipped and not
   /// returned, so the resulting list may be shorter than [rows].
   ///
-  /// The returned [UserProfile]s will have their `id` fields set.
+  /// The returned [WorkspaceMember]s will have their `id` fields set.
   ///
   /// This is an atomic operation, meaning that if one of the rows fails,
   /// none of the rows will be affected.
@@ -493,26 +445,26 @@ class UserProfileRepository {
   /// If [noReturn] is set to `true`, the resulting rows are not read back from
   /// the database and an empty list is returned. This avoids the overhead of
   /// transferring and deserializing the rows when the result is not needed.
-  Future<List<UserProfile>> upsert(
+  Future<List<WorkspaceMember>> upsert(
     _is.DatabaseSession session,
-    List<UserProfile> rows, {
-    required _is.ColumnSelections<UserProfileTable> conflictColumns,
-    _is.ColumnSelections<UserProfileTable>? updateColumns,
-    _is.WhereExpressionBuilder<UserProfileTable>? updateWhere,
+    List<WorkspaceMember> rows, {
+    required _is.ColumnSelections<WorkspaceMemberTable> conflictColumns,
+    _is.ColumnSelections<WorkspaceMemberTable>? updateColumns,
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? updateWhere,
     _is.Transaction? transaction,
     bool noReturn = false,
   }) async {
-    return session.db.upsert<UserProfile>(
+    return session.db.upsert<WorkspaceMember>(
       rows,
-      conflictColumns: conflictColumns(UserProfile.t),
-      updateColumns: updateColumns?.call(UserProfile.t),
-      updateWhere: updateWhere?.call(UserProfile.t),
+      conflictColumns: conflictColumns(WorkspaceMember.t),
+      updateColumns: updateColumns?.call(WorkspaceMember.t),
+      updateWhere: updateWhere?.call(WorkspaceMember.t),
       transaction: transaction,
       noReturn: noReturn,
     );
   }
 
-  /// Upserts a single [UserProfile] and returns the resulting row.
+  /// Upserts a single [WorkspaceMember] and returns the resulting row.
   ///
   /// If the row conflicts on the given [conflictColumns], the existing row is
   /// updated. Otherwise, a new row is inserted.
@@ -524,25 +476,25 @@ class UserProfileRepository {
   /// row matches the expression. Returns `null` if no row was affected — for
   /// example when [updateWhere] does not match the conflicting row.
   ///
-  /// The returned [UserProfile] will have its `id` field set.
-  Future<UserProfile?> upsertRow(
+  /// The returned [WorkspaceMember] will have its `id` field set.
+  Future<WorkspaceMember?> upsertRow(
     _is.DatabaseSession session,
-    UserProfile row, {
-    required _is.ColumnSelections<UserProfileTable> conflictColumns,
-    _is.ColumnSelections<UserProfileTable>? updateColumns,
-    _is.WhereExpressionBuilder<UserProfileTable>? updateWhere,
+    WorkspaceMember row, {
+    required _is.ColumnSelections<WorkspaceMemberTable> conflictColumns,
+    _is.ColumnSelections<WorkspaceMemberTable>? updateColumns,
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? updateWhere,
     _is.Transaction? transaction,
   }) async {
-    return session.db.upsertRow<UserProfile>(
+    return session.db.upsertRow<WorkspaceMember>(
       row,
-      conflictColumns: conflictColumns(UserProfile.t),
-      updateColumns: updateColumns?.call(UserProfile.t),
-      updateWhere: updateWhere?.call(UserProfile.t),
+      conflictColumns: conflictColumns(WorkspaceMember.t),
+      updateColumns: updateColumns?.call(WorkspaceMember.t),
+      updateWhere: updateWhere?.call(WorkspaceMember.t),
       transaction: transaction,
     );
   }
 
-  /// Updates all [UserProfile]s in the list and returns the updated rows. If
+  /// Updates all [WorkspaceMember]s in the list and returns the updated rows. If
   /// [columns] is provided, only those columns will be updated. Defaults to
   /// all columns.
   /// This is an atomic operation, meaning that if one of the rows fails to
@@ -551,82 +503,84 @@ class UserProfileRepository {
   /// If [noReturn] is set to `true`, the updated rows are not read back from
   /// the database and an empty list is returned. This avoids the overhead of
   /// transferring and deserializing the rows when the result is not needed.
-  Future<List<UserProfile>> update(
+  Future<List<WorkspaceMember>> update(
     _is.DatabaseSession session,
-    List<UserProfile> rows, {
-    _is.ColumnSelections<UserProfileTable>? columns,
+    List<WorkspaceMember> rows, {
+    _is.ColumnSelections<WorkspaceMemberTable>? columns,
     _is.Transaction? transaction,
     bool noReturn = false,
   }) async {
-    return session.db.update<UserProfile>(
+    return session.db.update<WorkspaceMember>(
       rows,
-      columns: columns?.call(UserProfile.t),
+      columns: columns?.call(WorkspaceMember.t),
       transaction: transaction,
       noReturn: noReturn,
     );
   }
 
-  /// Updates a single [UserProfile]. The row needs to have its id set.
+  /// Updates a single [WorkspaceMember]. The row needs to have its id set.
   /// Optionally, a list of [columns] can be provided to only update those
   /// columns. Defaults to all columns.
-  Future<UserProfile> updateRow(
+  Future<WorkspaceMember> updateRow(
     _is.DatabaseSession session,
-    UserProfile row, {
-    _is.ColumnSelections<UserProfileTable>? columns,
+    WorkspaceMember row, {
+    _is.ColumnSelections<WorkspaceMemberTable>? columns,
     _is.Transaction? transaction,
   }) async {
-    return session.db.updateRow<UserProfile>(
+    return session.db.updateRow<WorkspaceMember>(
       row,
-      columns: columns?.call(UserProfile.t),
+      columns: columns?.call(WorkspaceMember.t),
       transaction: transaction,
     );
   }
 
-  /// Updates a single [UserProfile] by its [id] with the specified [columnValues].
+  /// Updates a single [WorkspaceMember] by its [id] with the specified [columnValues].
   /// Returns the updated row or null if no row with the given id exists.
-  Future<UserProfile?> updateById(
+  Future<WorkspaceMember?> updateById(
     _is.DatabaseSession session,
     int id, {
-    required _is.ColumnValueListBuilder<UserProfileUpdateTable> columnValues,
+    required _is.ColumnValueListBuilder<WorkspaceMemberUpdateTable>
+    columnValues,
     _is.Transaction? transaction,
   }) async {
-    return session.db.updateById<UserProfile>(
+    return session.db.updateById<WorkspaceMember>(
       id,
-      columnValues: columnValues(UserProfile.t.updateTable),
+      columnValues: columnValues(WorkspaceMember.t.updateTable),
       transaction: transaction,
     );
   }
 
-  /// Updates all [UserProfile]s matching the [where] expression with the specified [columnValues].
+  /// Updates all [WorkspaceMember]s matching the [where] expression with the specified [columnValues].
   /// Returns the list of updated rows.
   ///
   /// If [noReturn] is set to `true`, the updated rows are not read back from
   /// the database and an empty list is returned. This avoids the overhead of
   /// transferring and deserializing the rows when the result is not needed.
-  Future<List<UserProfile>> updateWhere(
+  Future<List<WorkspaceMember>> updateWhere(
     _is.DatabaseSession session, {
-    required _is.ColumnValueListBuilder<UserProfileUpdateTable> columnValues,
-    required _is.WhereExpressionBuilder<UserProfileTable> where,
+    required _is.ColumnValueListBuilder<WorkspaceMemberUpdateTable>
+    columnValues,
+    required _is.WhereExpressionBuilder<WorkspaceMemberTable> where,
     int? limit,
     int? offset,
-    _is.OrderByBuilder<UserProfileTable>? orderBy,
-    _is.OrderByListBuilder<UserProfileTable>? orderByList,
+    _is.OrderByBuilder<WorkspaceMemberTable>? orderBy,
+    _is.OrderByListBuilder<WorkspaceMemberTable>? orderByList,
     _is.Transaction? transaction,
     bool noReturn = false,
   }) async {
-    return session.db.updateWhere<UserProfile>(
-      columnValues: columnValues(UserProfile.t.updateTable),
-      where: where(UserProfile.t),
+    return session.db.updateWhere<WorkspaceMember>(
+      columnValues: columnValues(WorkspaceMember.t.updateTable),
+      where: where(WorkspaceMember.t),
       limit: limit,
       offset: offset,
-      orderBy: orderBy?.call(UserProfile.t),
-      orderByList: orderByList?.call(UserProfile.t),
+      orderBy: orderBy?.call(WorkspaceMember.t),
+      orderByList: orderByList?.call(WorkspaceMember.t),
       transaction: transaction,
       noReturn: noReturn,
     );
   }
 
-  /// Deletes all [UserProfile]s in the list and returns the deleted rows.
+  /// Deletes all [WorkspaceMember]s in the list and returns the deleted rows.
   ///
   /// To specify the order of the returned rows use [orderBy] or [orderByList]
   /// when sorting by multiple columns.
@@ -637,30 +591,30 @@ class UserProfileRepository {
   /// If [noReturn] is set to `true`, the deleted rows are not read back from
   /// the database and an empty list is returned. This avoids the overhead of
   /// transferring and deserializing the rows when the result is not needed.
-  Future<List<UserProfile>> delete(
+  Future<List<WorkspaceMember>> delete(
     _is.DatabaseSession session,
-    List<UserProfile> rows, {
-    _is.OrderByBuilder<UserProfileTable>? orderBy,
-    _is.OrderByListBuilder<UserProfileTable>? orderByList,
+    List<WorkspaceMember> rows, {
+    _is.OrderByBuilder<WorkspaceMemberTable>? orderBy,
+    _is.OrderByListBuilder<WorkspaceMemberTable>? orderByList,
     _is.Transaction? transaction,
     bool noReturn = false,
   }) async {
-    return session.db.delete<UserProfile>(
+    return session.db.delete<WorkspaceMember>(
       rows,
-      orderBy: orderBy?.call(UserProfile.t),
-      orderByList: orderByList?.call(UserProfile.t),
+      orderBy: orderBy?.call(WorkspaceMember.t),
+      orderByList: orderByList?.call(WorkspaceMember.t),
       transaction: transaction,
       noReturn: noReturn,
     );
   }
 
-  /// Deletes a single [UserProfile].
-  Future<UserProfile> deleteRow(
+  /// Deletes a single [WorkspaceMember].
+  Future<WorkspaceMember> deleteRow(
     _is.DatabaseSession session,
-    UserProfile row, {
+    WorkspaceMember row, {
     _is.Transaction? transaction,
   }) async {
-    return session.db.deleteRow<UserProfile>(
+    return session.db.deleteRow<WorkspaceMember>(
       row,
       transaction: transaction,
     );
@@ -674,18 +628,18 @@ class UserProfileRepository {
   /// If [noReturn] is set to `true`, the deleted rows are not read back from
   /// the database and an empty list is returned. This avoids the overhead of
   /// transferring and deserializing the rows when the result is not needed.
-  Future<List<UserProfile>> deleteWhere(
+  Future<List<WorkspaceMember>> deleteWhere(
     _is.DatabaseSession session, {
-    required _is.WhereExpressionBuilder<UserProfileTable> where,
-    _is.OrderByBuilder<UserProfileTable>? orderBy,
-    _is.OrderByListBuilder<UserProfileTable>? orderByList,
+    required _is.WhereExpressionBuilder<WorkspaceMemberTable> where,
+    _is.OrderByBuilder<WorkspaceMemberTable>? orderBy,
+    _is.OrderByListBuilder<WorkspaceMemberTable>? orderByList,
     _is.Transaction? transaction,
     bool noReturn = false,
   }) async {
-    return session.db.deleteWhere<UserProfile>(
-      where: where(UserProfile.t),
-      orderBy: orderBy?.call(UserProfile.t),
-      orderByList: orderByList?.call(UserProfile.t),
+    return session.db.deleteWhere<WorkspaceMember>(
+      where: where(WorkspaceMember.t),
+      orderBy: orderBy?.call(WorkspaceMember.t),
+      orderByList: orderByList?.call(WorkspaceMember.t),
       transaction: transaction,
       noReturn: noReturn,
     );
@@ -695,27 +649,27 @@ class UserProfileRepository {
   /// will return the count of all rows in the table.
   Future<int> count(
     _is.DatabaseSession session, {
-    _is.WhereExpressionBuilder<UserProfileTable>? where,
+    _is.WhereExpressionBuilder<WorkspaceMemberTable>? where,
     int? limit,
     _is.Transaction? transaction,
   }) async {
-    return session.db.count<UserProfile>(
-      where: where?.call(UserProfile.t),
+    return session.db.count<WorkspaceMember>(
+      where: where?.call(WorkspaceMember.t),
       limit: limit,
       transaction: transaction,
     );
   }
 
-  /// Acquires row-level locks on [UserProfile] rows matching the [where] expression.
+  /// Acquires row-level locks on [WorkspaceMember] rows matching the [where] expression.
   Future<void> lockRows(
     _is.DatabaseSession session, {
-    required _is.WhereExpressionBuilder<UserProfileTable> where,
+    required _is.WhereExpressionBuilder<WorkspaceMemberTable> where,
     required _is.LockMode lockMode,
     required _is.Transaction transaction,
     _is.LockBehavior lockBehavior = _is.LockBehavior.wait,
   }) async {
-    return session.db.lockRows<UserProfile>(
-      where: where(UserProfile.t),
+    return session.db.lockRows<WorkspaceMember>(
+      where: where(WorkspaceMember.t),
       lockMode: lockMode,
       lockBehavior: lockBehavior,
       transaction: transaction,

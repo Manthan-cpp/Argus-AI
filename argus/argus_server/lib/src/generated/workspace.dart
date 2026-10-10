@@ -20,7 +20,12 @@ abstract class Workspace
     this.id,
     required this.ownerUserId,
     required this.name,
+    this.description,
+    required this.organizerCode,
+    required this.supervisorCode,
+    required this.guardCode,
     required this.createdAt,
+    required this.isActive,
     required this.settings,
   });
 
@@ -28,7 +33,12 @@ abstract class Workspace
     int? id,
     required String ownerUserId,
     required String name,
+    String? description,
+    required String organizerCode,
+    required String supervisorCode,
+    required String guardCode,
     required DateTime createdAt,
+    required bool isActive,
     required _i88empjm.WorkspaceSettings settings,
   }) = _WorkspaceImpl;
 
@@ -37,9 +47,14 @@ abstract class Workspace
       id: jsonSerialization['id'] as int?,
       ownerUserId: jsonSerialization['ownerUserId'] as String,
       name: jsonSerialization['name'] as String,
+      description: jsonSerialization['description'] as String?,
+      organizerCode: jsonSerialization['organizerCode'] as String,
+      supervisorCode: jsonSerialization['supervisorCode'] as String,
+      guardCode: jsonSerialization['guardCode'] as String,
       createdAt: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
       ),
+      isActive: _is.BoolJsonExtension.fromJson(jsonSerialization['isActive']),
       settings: _iggnejrg.Protocol().deserialize<_i88empjm.WorkspaceSettings>(
         jsonSerialization['settings'],
       ),
@@ -57,7 +72,17 @@ abstract class Workspace
 
   String name;
 
+  String? description;
+
+  String organizerCode;
+
+  String supervisorCode;
+
+  String guardCode;
+
   DateTime createdAt;
+
+  bool isActive;
 
   _i88empjm.WorkspaceSettings settings;
 
@@ -71,7 +96,12 @@ abstract class Workspace
     int? id,
     String? ownerUserId,
     String? name,
+    String? description,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     DateTime? createdAt,
+    bool? isActive,
     _i88empjm.WorkspaceSettings? settings,
   });
   @override
@@ -81,7 +111,12 @@ abstract class Workspace
       if (id != null) 'id': id,
       'ownerUserId': ownerUserId,
       'name': name,
+      if (description != null) 'description': description,
+      'organizerCode': organizerCode,
+      'supervisorCode': supervisorCode,
+      'guardCode': guardCode,
       'createdAt': createdAt.toJson(),
+      'isActive': isActive,
       'settings': settings.toJson(),
     };
   }
@@ -93,7 +128,12 @@ abstract class Workspace
       if (id != null) 'id': id,
       'ownerUserId': ownerUserId,
       'name': name,
+      if (description != null) 'description': description,
+      'organizerCode': organizerCode,
+      'supervisorCode': supervisorCode,
+      'guardCode': guardCode,
       'createdAt': createdAt.toJson(),
+      'isActive': isActive,
       'settings': settings.toJsonForProtocol(),
     };
   }
@@ -133,13 +173,23 @@ class _WorkspaceImpl extends Workspace {
     int? id,
     required String ownerUserId,
     required String name,
+    String? description,
+    required String organizerCode,
+    required String supervisorCode,
+    required String guardCode,
     required DateTime createdAt,
+    required bool isActive,
     required _i88empjm.WorkspaceSettings settings,
   }) : super._(
          id: id,
          ownerUserId: ownerUserId,
          name: name,
+         description: description,
+         organizerCode: organizerCode,
+         supervisorCode: supervisorCode,
+         guardCode: guardCode,
          createdAt: createdAt,
+         isActive: isActive,
          settings: settings,
        );
 
@@ -151,14 +201,24 @@ class _WorkspaceImpl extends Workspace {
     Object? id = _Undefined,
     String? ownerUserId,
     String? name,
+    Object? description = _Undefined,
+    String? organizerCode,
+    String? supervisorCode,
+    String? guardCode,
     DateTime? createdAt,
+    bool? isActive,
     _i88empjm.WorkspaceSettings? settings,
   }) {
     return Workspace(
       id: id is int? ? id : this.id,
       ownerUserId: ownerUserId ?? this.ownerUserId,
       name: name ?? this.name,
+      description: description is String? ? description : this.description,
+      organizerCode: organizerCode ?? this.organizerCode,
+      supervisorCode: supervisorCode ?? this.supervisorCode,
+      guardCode: guardCode ?? this.guardCode,
       createdAt: createdAt ?? this.createdAt,
+      isActive: isActive ?? this.isActive,
       settings: settings ?? this.settings.copyWith(),
     );
   }
@@ -177,11 +237,38 @@ class WorkspaceUpdateTable extends _is.UpdateTable<WorkspaceTable> {
     value,
   );
 
+  _is.ColumnValue<String, String> description(String? value) => _is.ColumnValue(
+    table.description,
+    value,
+  );
+
+  _is.ColumnValue<String, String> organizerCode(String value) =>
+      _is.ColumnValue(
+        table.organizerCode,
+        value,
+      );
+
+  _is.ColumnValue<String, String> supervisorCode(String value) =>
+      _is.ColumnValue(
+        table.supervisorCode,
+        value,
+      );
+
+  _is.ColumnValue<String, String> guardCode(String value) => _is.ColumnValue(
+    table.guardCode,
+    value,
+  );
+
   _is.ColumnValue<DateTime, DateTime> createdAt(DateTime value) =>
       _is.ColumnValue(
         table.createdAt,
         value,
       );
+
+  _is.ColumnValue<bool, bool> isActive(bool value) => _is.ColumnValue(
+    table.isActive,
+    value,
+  );
 
   _is.ColumnValue<_i88empjm.WorkspaceSettings, _i88empjm.WorkspaceSettings>
   settings(_i88empjm.WorkspaceSettings value) => _is.ColumnValue(
@@ -201,8 +288,28 @@ class WorkspaceTable extends _is.Table<int?> {
       'name',
       this,
     );
+    description = _is.ColumnString(
+      'description',
+      this,
+    );
+    organizerCode = _is.ColumnString(
+      'organizerCode',
+      this,
+    );
+    supervisorCode = _is.ColumnString(
+      'supervisorCode',
+      this,
+    );
+    guardCode = _is.ColumnString(
+      'guardCode',
+      this,
+    );
     createdAt = _is.ColumnDateTime(
       'createdAt',
+      this,
+    );
+    isActive = _is.ColumnBool(
+      'isActive',
       this,
     );
     settings = _is.ColumnSerializable<_i88empjm.WorkspaceSettings>(
@@ -217,7 +324,17 @@ class WorkspaceTable extends _is.Table<int?> {
 
   late final _is.ColumnString name;
 
+  late final _is.ColumnString description;
+
+  late final _is.ColumnString organizerCode;
+
+  late final _is.ColumnString supervisorCode;
+
+  late final _is.ColumnString guardCode;
+
   late final _is.ColumnDateTime createdAt;
+
+  late final _is.ColumnBool isActive;
 
   late final _is.ColumnSerializable<_i88empjm.WorkspaceSettings> settings;
 
@@ -226,7 +343,12 @@ class WorkspaceTable extends _is.Table<int?> {
     id,
     ownerUserId,
     name,
+    description,
+    organizerCode,
+    supervisorCode,
+    guardCode,
     createdAt,
+    isActive,
     settings,
   ];
 }
