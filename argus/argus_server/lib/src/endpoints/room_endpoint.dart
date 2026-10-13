@@ -69,15 +69,33 @@ class RoomEndpoint extends Endpoint {
       where: (t) => t.workspaceId.equals(targetWsId) & t.fullName.equals(effectiveCreatorName),
     );
 
-    user ??= await UserProfile.db.insertRow(
-      session,
-      UserProfile(
-        workspaceId: targetWsId,
-        fullName: effectiveCreatorName,
-        role: effectiveWsRole,
-        createdAt: DateTime.now(),
-      ),
-    );
+    if (user == null) {
+      final existingProfiles = await UserProfile.db.find(
+        session,
+        where: (t) => t.fullName.ilike(effectiveCreatorName),
+      );
+      final existingWithPassword = existingProfiles.where(
+        (p) => p.passwordHash != null && p.passwordHash!.isNotEmpty,
+      );
+      final preservedHash = existingWithPassword.isNotEmpty
+          ? existingWithPassword.first.passwordHash
+          : null;
+      final preservedEmail = existingProfiles.where((p) => p.email != null && p.email!.isNotEmpty).isNotEmpty
+          ? existingProfiles.firstWhere((p) => p.email != null && p.email!.isNotEmpty).email
+          : (effectiveCreatorName.contains('@') ? effectiveCreatorName : null);
+
+      user = await UserProfile.db.insertRow(
+        session,
+        UserProfile(
+          workspaceId: targetWsId,
+          fullName: effectiveCreatorName,
+          email: preservedEmail,
+          passwordHash: preservedHash,
+          role: effectiveWsRole,
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
 
     final newRoom = DispatchRoom(
       workspaceId: targetWsId,

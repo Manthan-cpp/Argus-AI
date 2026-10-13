@@ -10,15 +10,17 @@ class EvidenceEndpoint extends Endpoint {
 
     final fileKey = 'ev_${upload.incidentId}_${DateTime.now().millisecondsSinceEpoch}';
 
-    // Check if rule requires assistive verification
+    // Check if workspace settings or rule requires assistive verification
+    final ws = await Workspace.db.findById(session, incident.workspaceId);
     final rule = await RuleSpec.db.findById(session, incident.ruleId);
     var verification = incident.verification;
 
-    if (rule?.verify.enabled == true) {
-      final crop = upload.verificationCropJpeg ?? upload.snapshotJpegBase64;
+    final shouldVerify = (ws?.settings.cloudVerification == true) || (rule?.verify.enabled == true);
+    if (shouldVerify) {
+      final realCrop = upload.verificationCropJpeg ?? upload.snapshotJpegBase64;
       verification = await GeminiService.verifySnapshot(
         session,
-        base64Jpeg: crop,
+        base64Jpeg: realCrop,
         ruleContext: incident.summary,
       );
     }

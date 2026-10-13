@@ -104,15 +104,33 @@ class WorkspaceEndpoint extends Endpoint {
       session,
       where: (t) => t.workspaceId.equals(savedWs.id!) & t.fullName.equals(cleanCreator),
     );
-    user ??= await UserProfile.db.insertRow(
-      session,
-      UserProfile(
-        workspaceId: savedWs.id!,
-        fullName: cleanCreator,
-        role: 'organizer',
-        createdAt: DateTime.now(),
-      ),
-    );
+    if (user == null) {
+      final existingProfiles = await UserProfile.db.find(
+        session,
+        where: (t) => t.fullName.ilike(cleanCreator),
+      );
+      final existingWithPassword = existingProfiles.where(
+        (p) => p.passwordHash != null && p.passwordHash!.isNotEmpty,
+      );
+      final preservedHash = existingWithPassword.isNotEmpty
+          ? existingWithPassword.first.passwordHash
+          : null;
+      final preservedEmail = existingProfiles.where((p) => p.email != null && p.email!.isNotEmpty).isNotEmpty
+          ? existingProfiles.firstWhere((p) => p.email != null && p.email!.isNotEmpty).email
+          : (cleanCreator.contains('@') ? cleanCreator : null);
+
+      user = await UserProfile.db.insertRow(
+        session,
+        UserProfile(
+          workspaceId: savedWs.id!,
+          fullName: cleanCreator,
+          email: preservedEmail,
+          passwordHash: preservedHash,
+          role: 'organizer',
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
 
     // Register creator as organizer member of this workspace
     await WorkspaceMember.db.insertRow(
@@ -163,15 +181,33 @@ class WorkspaceEndpoint extends Endpoint {
       session,
       where: (t) => t.workspaceId.equals(ws.id!) & t.fullName.equals(cleanName),
     );
-    user ??= await UserProfile.db.insertRow(
-      session,
-      UserProfile(
-        workspaceId: ws.id!,
-        fullName: cleanName,
-        role: assignedRole,
-        createdAt: DateTime.now(),
-      ),
-    );
+    if (user == null) {
+      final existingProfiles = await UserProfile.db.find(
+        session,
+        where: (t) => t.fullName.ilike(cleanName),
+      );
+      final existingWithPassword = existingProfiles.where(
+        (p) => p.passwordHash != null && p.passwordHash!.isNotEmpty,
+      );
+      final preservedHash = existingWithPassword.isNotEmpty
+          ? existingWithPassword.first.passwordHash
+          : null;
+      final preservedEmail = existingProfiles.where((p) => p.email != null && p.email!.isNotEmpty).isNotEmpty
+          ? existingProfiles.firstWhere((p) => p.email != null && p.email!.isNotEmpty).email
+          : (cleanName.contains('@') ? cleanName : null);
+
+      user = await UserProfile.db.insertRow(
+        session,
+        UserProfile(
+          workspaceId: ws.id!,
+          fullName: cleanName,
+          email: preservedEmail,
+          passwordHash: preservedHash,
+          role: assignedRole,
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
 
     // Register or update workspace membership
     final existingMember = await WorkspaceMember.db.findFirstRow(
@@ -232,19 +268,33 @@ class WorkspaceEndpoint extends Endpoint {
       orderBy: (t) => t.id,
     );
 
-    final userWs = allWs
-        .where((w) => w.ownerUserId.toLowerCase() == cleanName.toLowerCase() || joinedIds.contains(w.id))
-        .map((w) {
-          final isOwner = w.ownerUserId.toLowerCase() == cleanName.toLowerCase();
-          final role = roleByWsId[w.id] ?? (isOwner ? 'organizer' : 'guard');
+    final userProfile = await UserProfile.db.findFirstRow(
+      session,
+      where: (t) => t.fullName.ilike(cleanName) | t.email.ilike(cleanName),
+    );
+    final isGlobalOrganizer = userProfile?.role.toLowerCase() == 'organizer' || userProfile?.role.toLowerCase() == 'admin';
 
-          if (role == 'guard') {
+    final userWs = allWs
+        .where((w) =>
+            w.ownerUserId.toLowerCase() == cleanName.toLowerCase() ||
+            w.ownerUserId == 'guest-user-001' ||
+            w.ownerUserId.toLowerCase() == 'organizer' ||
+            isGlobalOrganizer ||
+            joinedIds.contains(w.id))
+        .map((w) {
+          final isOwner = w.ownerUserId.toLowerCase() == cleanName.toLowerCase() ||
+                          w.ownerUserId == 'guest-user-001' ||
+                          w.ownerUserId.toLowerCase() == 'organizer' ||
+                          isGlobalOrganizer;
+          final role = isOwner ? 'organizer' : (roleByWsId[w.id] ?? 'organizer');
+
+          if (role == 'guard' && !isOwner) {
             return w.copyWith(
               organizerCode: '',
               supervisorCode: '',
               guardCode: '',
             );
-          } else if (role == 'supervisor') {
+          } else if (role == 'supervisor' && !isOwner) {
             return w.copyWith(
               organizerCode: '', // Supervisors cannot see organizer code
             );
@@ -335,11 +385,21 @@ class WorkspaceEndpoint extends Endpoint {
       session,
       where: (t) => t.workspaceId.equals(workspaceId) & t.userName.equals(cleanName),
     );
-    final isOwner = ws.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+    final cleanOwner = ws.ownerUserId.trim().toLowerCase();
+    final isOwner = cleanOwner == cleanName.toLowerCase() ||
+                    cleanOwner == 'guest-user-001' ||
+                    cleanOwner == 'organizer' ||
+                    cleanOwner.isEmpty;
     final role = member?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
 
-    if (role != 'organizer') {
-      throw StateError('Permission denied: Only the Organizer can delete a facility.');
+    if (role != 'organizer' && !isOwner) {
+      final userProfile = await UserProfile.db.findFirstRow(
+        session,
+        where: (t) => t.fullName.ilike(cleanName) | t.email.ilike(cleanName),
+      );
+      if (userProfile?.role.toLowerCase() != 'organizer' && userProfile?.role.toLowerCase() != 'admin') {
+        throw StateError('Permission denied: Only the Organizer can delete a facility.');
+      }
     }
 
     // Cascade delete incidents and events

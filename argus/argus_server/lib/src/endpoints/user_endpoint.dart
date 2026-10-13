@@ -23,9 +23,12 @@ class UserEndpoint extends Endpoint {
       throw ArgumentError('Password cannot be empty.');
     }
 
+    final isEmail = cleanName.contains('@');
     final existingUsers = await UserProfile.db.find(
       session,
-      where: (t) => t.fullName.ilike(cleanName),
+      where: (t) =>
+          t.fullName.ilike(cleanName) |
+          t.email.ilike(cleanName),
     );
 
     final hasPassword = existingUsers.any(
@@ -42,15 +45,34 @@ class UserEndpoint extends Endpoint {
 
     if (existingUsers.isNotEmpty) {
       final user = existingUsers.first;
-      final updated = user.copyWith(passwordHash: hash);
+      final updated = user.copyWith(
+        passwordHash: hash,
+        email: isEmail ? cleanName : user.email,
+      );
       return await UserProfile.db.updateRow(session, updated);
     }
 
+    // Check if user already exists as an owner or member in an active workspace
+    final existingWs = await Workspace.db.findFirstRow(
+      session,
+      where: (t) => t.ownerUserId.ilike(cleanName) & t.isActive.equals(true),
+    );
+    final existingMember = await WorkspaceMember.db.findFirstRow(
+      session,
+      where: (t) => t.userName.ilike(cleanName),
+    );
+
+    final targetWsId = existingWs?.id ?? existingMember?.workspaceId ?? ws.id!;
+    final assignedRole = existingWs != null
+        ? 'organizer'
+        : (existingMember?.userRole ?? 'member');
+
     final newUser = UserProfile(
-      workspaceId: ws.id!,
+      workspaceId: targetWsId,
       fullName: cleanName,
+      email: isEmail ? cleanName : null,
       passwordHash: hash,
-      role: 'member',
+      role: assignedRole,
       createdAt: DateTime.now(),
     );
     return await UserProfile.db.insertRow(session, newUser);
@@ -69,13 +91,52 @@ class UserEndpoint extends Endpoint {
       throw ArgumentError('Password cannot be empty.');
     }
 
+    final isEmail = cleanName.contains('@');
     final users = await UserProfile.db.find(
       session,
-      where: (t) => t.fullName.ilike(cleanName),
+      where: (t) =>
+          t.fullName.ilike(cleanName) |
+          t.email.ilike(cleanName),
     );
 
     if (users.isEmpty) {
-      throw StateError('Account "$cleanName" was not found. Please check your spelling or create a new account.');
+      // Check if user exists in WorkspaceMember or Workspace.
+      // This protects accounts if user_profile was cleared, orphaned, or created via invite.
+      final members = await WorkspaceMember.db.find(
+        session,
+        where: (t) => t.userName.ilike(cleanName),
+      );
+      final workspaces = await Workspace.db.find(
+        session,
+        where: (t) => t.ownerUserId.ilike(cleanName) & t.isActive.equals(true),
+      );
+
+      if (members.isNotEmpty || workspaces.isNotEmpty) {
+        final targetWsId = workspaces.isNotEmpty
+            ? workspaces.first.id!
+            : members.first.workspaceId;
+        final canonicalName = workspaces.isNotEmpty
+            ? workspaces.first.ownerUserId
+            : members.first.userName;
+        final assignedRole = workspaces.isNotEmpty
+            ? 'organizer'
+            : members.first.userRole;
+
+        final hash = _hashPassword(password);
+        final reconstituted = UserProfile(
+          workspaceId: targetWsId,
+          fullName: canonicalName,
+          email: isEmail ? cleanName : null,
+          passwordHash: hash,
+          role: assignedRole,
+          createdAt: DateTime.now(),
+        );
+        return await UserProfile.db.insertRow(session, reconstituted);
+      }
+
+      throw StateError(
+        'Account "$cleanName" was not found. Please check your spelling or create a new account.',
+      );
     }
 
     final targetUser = users.firstWhere(
@@ -86,11 +147,18 @@ class UserEndpoint extends Endpoint {
     final hash = _hashPassword(password);
     if (targetUser.passwordHash != null && targetUser.passwordHash!.isNotEmpty) {
       if (targetUser.passwordHash != hash) {
-        throw StateError('Incorrect password for "$cleanName". Please check your password and try again.');
+        throw StateError(
+          'Incorrect password for "$cleanName". Please check your password and try again.',
+        );
       }
     } else {
-      targetUser.passwordHash = hash;
-      await UserProfile.db.updateRow(session, targetUser);
+      // If profile was created without a password hash (e.g. joined via code or workspace invitation),
+      // attach the password hash now so future logins succeed seamlessly.
+      final updated = targetUser.copyWith(
+        passwordHash: hash,
+        email: isEmail ? cleanName : targetUser.email,
+      );
+      return await UserProfile.db.updateRow(session, updated);
     }
 
     return targetUser;
@@ -104,13 +172,39 @@ class UserEndpoint extends Endpoint {
       final cleanName = fullName.trim();
       final users = await UserProfile.db.find(
         session,
-        where: (t) => t.fullName.ilike(cleanName),
+        where: (t) =>
+            t.fullName.ilike(cleanName) |
+            t.email.ilike(cleanName),
       );
-      if (users.isEmpty) return null;
-      return users.firstWhere(
-        (u) => u.passwordHash != null && u.passwordHash!.isNotEmpty,
-        orElse: () => users.first,
+      if (users.isNotEmpty) {
+        return users.firstWhere(
+          (u) => u.passwordHash != null && u.passwordHash!.isNotEmpty,
+          orElse: () => users.first,
+        );
+      }
+
+      // Check if user exists in Workspace / WorkspaceMember
+      final existingWs = await Workspace.db.findFirstRow(
+        session,
+        where: (t) => t.ownerUserId.ilike(cleanName) & t.isActive.equals(true),
       );
+      final existingMember = await WorkspaceMember.db.findFirstRow(
+        session,
+        where: (t) => t.userName.ilike(cleanName),
+      );
+      if (existingWs != null || existingMember != null) {
+        final targetWsId = existingWs?.id ?? existingMember!.workspaceId;
+        final assignedRole = existingWs != null
+            ? 'organizer'
+            : existingMember!.userRole;
+        final profile = UserProfile(
+          workspaceId: targetWsId,
+          fullName: existingWs?.ownerUserId ?? existingMember!.userName,
+          role: assignedRole,
+          createdAt: DateTime.now(),
+        );
+        return await UserProfile.db.insertRow(session, profile);
+      }
     }
     return null;
   }

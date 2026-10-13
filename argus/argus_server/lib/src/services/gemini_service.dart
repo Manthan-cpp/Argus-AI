@@ -307,7 +307,8 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
 
       final prompt = '''
 You are an assistive safety verification agent for a municipal CCTV command center.
-Examine this privacy-blurred security frame crop for the hazard: "$ruleContext".
+Examine this real, unblurred security camera frame/crop for the safety hazard or violation: "$ruleContext".
+Inspect for subjects, unauthorized intrusion, presence/absence of safety gear (such as safety helmets or hard hats), falls, or motionless posture as requested.
 Respond ONLY with a JSON object:
 {
   "isViolation": boolean,
@@ -315,6 +316,10 @@ Respond ONLY with a JSON object:
   "reason": string
 }
 ''';
+
+      final cleanBase64 = base64Jpeg.contains(',')
+          ? base64Jpeg.split(',').last.trim()
+          : base64Jpeg.trim();
 
       final payload = json.encode({
         'contents': [
@@ -324,7 +329,7 @@ Respond ONLY with a JSON object:
               {
                 'inline_data': {
                   'mime_type': 'image/jpeg',
-                  'data': base64Jpeg,
+                  'data': cleanBase64,
                 }
               }
             ]
