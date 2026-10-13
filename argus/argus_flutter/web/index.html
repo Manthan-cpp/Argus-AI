@@ -31,6 +31,925 @@
 
   <title>argus_flutter</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Preload Pipeline Eye Images -->
+  <link rel="preload" as="image" href="images/pipeline_eyes_white.png">
+  <link rel="preload" as="image" href="images/pipeline_eyes_blue.png">
+  <link rel="preload" as="image" href="images/pipeline_eyes_yellow.png">
+  <link rel="preload" as="image" href="images/pipeline_eyes_red.png">
+  <style>
+    @font-face {
+      font-family: 'Aquire';
+      src: url('fonts/aquire-light.woff') format('woff'),
+           url('https://fonts.cdnfonts.com/s/35282/AquireLight-YzE0o.woff') format('woff');
+      font-weight: 300;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'Aquire';
+      src: url('fonts/aquire-regular.woff') format('woff'),
+           url('https://fonts.cdnfonts.com/s/35282/Aquire-BW0ox.woff') format('woff');
+      font-weight: 400;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: 'Aquire';
+      src: url('fonts/aquire-bold.woff') format('woff'),
+           url('fonts/aquire.otf') format('opentype'),
+           url('https://fonts.cdnfonts.com/s/35282/AquireBold-8Ma60.woff') format('woff');
+      font-weight: 700;
+      font-style: normal;
+    }
+
+    .hero-aquire-headline {
+      font-family: 'Aquire', sans-serif;
+      font-size: clamp(48px, 6.8vw, 92px);
+      font-weight: 300;
+      text-transform: uppercase;
+      margin: 0;
+      letter-spacing: 3px;
+      line-height: 1.05;
+      color: #ffffff;
+      text-shadow: 0 0 24px rgba(255,255,255,0.18);
+    }
+
+    /* Hero Enter Button - Tactical Muted Tone & Rubik's Roll Hover */
+    .enter-hero-btn {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 36px;
+      box-sizing: border-box;
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 3px;
+      font-family: 'Aquire', sans-serif;
+      font-size: 13px;
+      font-weight: normal;
+      text-transform: uppercase;
+      letter-spacing: 2.2px;
+      cursor: pointer;
+      align-self: flex-start;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+      user-select: none;
+    }
+
+    .enter-hero-btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.55);
+      box-shadow: 0 6px 28px rgba(0, 0, 0, 0.65), 0 0 24px rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .enter-hero-btn:active {
+      transform: translateY(1px);
+    }
+
+    .enter-btn-track {
+      display: inline-flex;
+      align-items: center;
+      line-height: 1;
+    }
+
+    .char-slot {
+      position: relative;
+      display: inline-block;
+      overflow: hidden;
+      height: 1.4em;
+      line-height: 1.4em;
+    }
+
+    .char-slot.char-space {
+      width: 0.55em;
+    }
+
+    .char-roll {
+      display: flex;
+      flex-direction: column;
+      transition: transform 340ms cubic-bezier(0.76, 0, 0.24, 1);
+      transition-delay: calc(var(--char-i, 0) * 16ms);
+      will-change: transform;
+    }
+
+    .enter-hero-btn:hover .char-roll,
+    .enter-hero-btn:focus-visible .char-roll {
+      transform: translateY(-50%);
+    }
+
+    .char-face {
+      height: 1.4em;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      white-space: pre;
+    }
+
+    .glass-window-card {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 -8px 32px rgba(255, 255, 255, 0.05);
+      box-sizing: border-box;
+      transform-origin: center bottom;
+      pointer-events: none;
+      opacity: 1;
+      visibility: hidden;
+      will-change: transform;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+      padding: clamp(80px, 11vh, 130px) clamp(32px, 5.5vw, 96px);
+    }
+
+    /* Slight white gradient glow bleeding downward from the top edge of slide up sections */
+    .glass-window-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: clamp(140px, 20vh, 260px);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%);
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    #glass-window-problem,
+    #glass-window-solution {
+      background: #000000;
+      position: fixed;
+      overflow: hidden;
+    }
+
+    .torch-bg-base {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .torch-adam-base {
+      background: #000000 url('images/creation_of_adam.jpg') no-repeat center center / cover;
+      filter: brightness(0.19) contrast(1.12);
+    }
+
+    .torch-eyes-base {
+      background: #000000 url('images/eyes_sight_bg.jpg') no-repeat center center / cover;
+      filter: brightness(0.20) contrast(1.12);
+    }
+
+    .torch-bg-spotlight {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      -webkit-mask-image: radial-gradient(circle 240px at var(--torch-x, 50vw) var(--torch-y, 50vh), black 0%, rgba(0,0,0,0.65) 45%, transparent 100%);
+      mask-image: radial-gradient(circle 240px at var(--torch-x, 50vw) var(--torch-y, 50vh), black 0%, rgba(0,0,0,0.65) 45%, transparent 100%);
+      will-change: mask-image, -webkit-mask-image;
+    }
+
+    .torch-adam-spotlight {
+      background: #000000 url('images/creation_of_adam.jpg') no-repeat center center / cover;
+      filter: brightness(1.25) contrast(1.2);
+    }
+
+    .torch-eyes-spotlight {
+      background: #000000 url('images/eyes_sight_bg.jpg') no-repeat center center / cover;
+      filter: brightness(1.3) contrast(1.2);
+    }
+
+    .torch-bg-full {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 3;
+      opacity: 1;
+      will-change: opacity;
+    }
+
+    .torch-adam-full {
+      background: #000000 url('images/creation_of_adam.jpg') no-repeat center center / cover;
+      filter: brightness(1.05) contrast(1.15);
+    }
+
+    .torch-eyes-full {
+      background: #000000 url('images/eyes_sight_bg.jpg') no-repeat center center / cover;
+      filter: brightness(1.1) contrast(1.15);
+    }
+
+    .glass-content-wrapper {
+      max-width: min(1560px, 92vw);
+      width: 100%;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      position: relative;
+      z-index: 5;
+    }
+
+    .glass-heading {
+      font-family: 'Aquire', sans-serif;
+      font-size: clamp(48px, 6.8vw, 105px);
+      font-weight: 300;
+      letter-spacing: 4px;
+      line-height: 1.05;
+      text-transform: uppercase;
+      color: #ffffff;
+      margin: 0 0 clamp(24px, 4vh, 48px) 0;
+      text-shadow: 0 0 32px rgba(255, 255, 255, 0.4), 0 4px 18px rgba(0, 0, 0, 0.95);
+    }
+
+    .glass-body-text {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(28px, 3.4vw, 56px);
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      line-height: 1.35;
+      color: rgba(255, 255, 255, 0.95);
+      margin: 0;
+      max-width: 100%;
+      position: relative;
+      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.95), 0 0 32px rgba(0, 0, 0, 0.95);
+    }
+
+    .reveal-word {
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    .reveal-char {
+      display: inline;
+      opacity: 0;
+      color: rgba(255, 255, 255, 0.95);
+      will-change: opacity;
+    }
+
+    /* Horizontal Features Section */
+    #horizontal-features-section {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 30;
+      overflow: hidden;
+      background: #000000;
+      visibility: hidden;
+      opacity: 1;
+      transform-origin: center bottom;
+      will-change: transform;
+    }
+
+    /* Warp-Speed Horizontal Starfield */
+    .horizontal-starfield-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+      overflow: hidden;
+      contain: paint layout;
+    }
+
+    .star-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      background: transparent;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    .star-layer-far {
+      opacity: 0.85;
+      transform-origin: 50% 50%;
+    }
+
+    /* Serverpod Rocket Mascot Flying Overlay (Cruises below the paragraph) */
+    .horizontal-rocket-wrap {
+      position: absolute;
+      bottom: clamp(65px, 12vh, 120px);
+      left: 50%;
+      width: clamp(160px, 20vw, 320px);
+      max-width: 60vw;
+      pointer-events: none;
+      z-index: 2;
+      will-change: transform;
+      filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.75)) drop-shadow(0 0 18px rgba(243, 63, 143, 0.3));
+    }
+
+    .horizontal-rocket-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #horizontal-track {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      flex-direction: row;
+      width: 500vw;
+      height: 100vh;
+      will-change: transform;
+    }
+
+    .feature-panel {
+      width: 100vw;
+      height: 100vh;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: clamp(80px, 11vh, 120px) clamp(32px, 5.5vw, 96px);
+      box-sizing: border-box;
+      position: relative;
+      background: radial-gradient(circle at 75% 50%, rgba(255, 255, 255, 0.03) 0%, transparent 60%);
+    }
+
+    .feature-text-col {
+      max-width: clamp(340px, 44vw, 640px);
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .feature-badge {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(12px, 1.1vw, 14px);
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+
+    .feature-title {
+      position: relative;
+      display: inline-block;
+      font-family: 'Aquire', sans-serif;
+      font-size: clamp(32px, 4vw, 60px);
+      font-weight: 300;
+      letter-spacing: 3px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      margin: 0 0 clamp(16px, 2.5vh, 24px) 0;
+    }
+
+    .feature-desc {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(18px, 1.45vw, 23px);
+      font-weight: 500;
+      letter-spacing: 0.6px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.75);
+      margin: 0;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.9);
+    }
+
+    .feature-card-placeholder {
+      width: clamp(340px, 46vw, 680px);
+      height: clamp(380px, 66vh, 580px);
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    .feature-hud-card {
+      width: clamp(340px, 46vw, 680px);
+      height: clamp(380px, 66vh, 580px);
+      background: rgba(12, 12, 12, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 12px;
+      padding: clamp(20px, 2.4vw, 32px);
+      box-sizing: border-box;
+      backdrop-filter: blur(28px);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 1px rgba(255, 255, 255, 0.15);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hud-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .hud-card-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #ffffff;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hud-status-pill {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    .hud-status-pill.inverted {
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
+    }
+
+    .hud-card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .hud-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px;
+      letter-spacing: 1.2px;
+      color: rgba(255, 255, 255, 0.5);
+      text-transform: uppercase;
+    }
+
+    .horizontal-pinned-header {
+      position: absolute;
+      top: clamp(84px, 10vh, 104px);
+      left: clamp(32px, 5.5vw, 96px);
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+    }
+
+    .horizontal-pinned-title {
+      position: relative;
+      display: inline-block;
+      font-family: 'Aquire', sans-serif;
+      font-size: clamp(28px, 3.4vw, 54px);
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      line-height: 1.1;
+      margin: 0;
+    }
+
+    .gradient-text-base {
+      display: inline-block;
+      color: #ffffff;
+      text-shadow: 0 0 24px rgba(255, 255, 255, 0.25);
+    }
+
+    .gradient-text-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: inline-block;
+      background: linear-gradient(90deg, #9DD4FA 0%, #CBB8F4 25%, #E284CF 50%, #F33F8F 75%, #9DD4FA 100%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      opacity: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 0 24px rgba(243, 63, 143, 0.35));
+      will-change: opacity, background-position;
+    }
+
+    .horizontal-nav-bar {
+      position: absolute;
+      bottom: clamp(16px, 2.5vh, 28px);
+      left: clamp(32px, 5.5vw, 96px);
+      right: clamp(32px, 5.5vw, 96px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .horizontal-pills {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-pill {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.45);
+      transition: all 0.25s ease;
+    }
+
+    .nav-pill.active {
+      background: #ffffff;
+      border-color: #ffffff;
+      color: #000000;
+      box-shadow: 0 0 16px rgba(255, 255, 255, 0.35);
+    }
+
+    .horizontal-progress-bar {
+      width: clamp(120px, 15vw, 240px);
+      height: 2px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .horizontal-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #9DD4FA 0%, #CBB8F4 33%, #E284CF 66%, #F33F8F 100%);
+      box-shadow: 0 0 10px rgba(243, 63, 143, 0.7);
+      transition: width 0.1s linear;
+    }
+
+    /* Workflow Line Tracing Section */
+    #workflow-section {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 35;
+      overflow: hidden;
+      background: #000000;
+      visibility: hidden;
+      opacity: 1;
+      transform-origin: center bottom;
+      will-change: transform;
+      border-top: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 -8px 32px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Slight white gradient glow bleeding downward from the top edge of workflow section */
+    #workflow-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: clamp(140px, 20vh, 260px);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    /* Workflow Background Eyes Layers */
+    .wf-bg-eyes-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .wf-eye-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      opacity: 0;
+      will-change: opacity;
+      pointer-events: none;
+    }
+
+    .wf-eyes-white {
+      background-image: url('images/pipeline_eyes_white.png');
+      opacity: 1;
+    }
+
+    .wf-eyes-blue {
+      background-image: url('images/pipeline_eyes_blue.png');
+    }
+
+    .wf-eyes-yellow {
+      background-image: url('images/pipeline_eyes_yellow.png');
+    }
+
+    .wf-eyes-red {
+      background-image: url('images/pipeline_eyes_red.png');
+    }
+
+    #workflow-camera {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      min-height: 2300px;
+      z-index: 2;
+      will-change: transform;
+    }
+
+    .workflow-container {
+      position: relative;
+      width: 1000px;
+      max-width: 1000px;
+      margin: 0 auto;
+      min-height: 2200px;
+      padding-top: 80px;
+      box-sizing: border-box;
+      transform: scale(min(1, calc((100vw - 40px) / 1460)));
+      transform-origin: top center;
+    }
+
+    .workflow-header-wrap {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 5;
+    }
+
+    .workflow-main-title {
+      font-family: 'Aquire', sans-serif;
+      font-size: clamp(36px, 4.6vw, 62px);
+      font-weight: 300;
+      letter-spacing: 4px;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin: 0;
+      text-shadow: 0 0 28px rgba(255, 255, 255, 0.25);
+    }
+
+    .workflow-subtitle {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(16px, 1.3vw, 19px);
+      font-weight: 500;
+      letter-spacing: 1px;
+      color: rgba(255, 255, 255, 0.6);
+      margin: 0;
+    }
+
+    .workflow-svg-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1000px;
+      height: 2100px;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .workflow-card {
+      position: absolute;
+      width: 350px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      box-sizing: border-box;
+      backdrop-filter: none;
+      box-shadow: none;
+      z-index: 3;
+      opacity: 0.12;
+      transform: translateY(16px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+      pointer-events: auto;
+    }
+
+    .workflow-card.active {
+      opacity: 1;
+      transform: translateY(0);
+      border: none;
+      box-shadow: none;
+    }
+
+    .workflow-card-step {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .workflow-card.active .workflow-card-step {
+      color: #ffffff;
+    }
+
+    .workflow-card-title {
+      font-family: 'Aquire', sans-serif;
+      font-size: clamp(20px, 1.8vw, 24px);
+      font-weight: 300;
+      letter-spacing: 2px;
+      color: #ffffff;
+      text-transform: uppercase;
+      margin: 0 0 10px 0;
+      text-shadow: 0 2px 16px rgba(0, 0, 0, 0.95), 0 0 24px rgba(0, 0, 0, 0.95);
+    }
+
+    .workflow-card-desc {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(15px, 1.2vw, 17px);
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      line-height: 1.55;
+      color: rgba(255, 255, 255, 0.85);
+      margin: 0;
+      text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95), 0 0 20px rgba(0, 0, 0, 0.9);
+    }
+
+    .workflow-node-group {
+      transition: opacity 0.4s ease, filter 0.4s ease;
+      opacity: 0.25;
+    }
+
+    .workflow-node-group.active {
+      opacity: 1;
+      filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.85));
+    }
+
+    @media (max-width: 900px) {
+      .glass-content-wrapper {
+        max-width: 100%;
+      }
+      #glass-window-solution {
+        background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.2) 100%), #000000 url('images/eyes_sight_bg.jpg') no-repeat center center / cover;
+      }
+      .feature-panel {
+        flex-direction: column;
+        justify-content: center;
+        gap: 20px;
+        padding: 80px 24px;
+      }
+      .feature-text-col,
+      .feature-hud-card {
+        max-width: 100%;
+        width: 100%;
+      }
+      .feature-hud-card {
+        height: auto;
+        max-height: 44vh;
+      }
+      .horizontal-nav-bar {
+        left: 24px;
+        right: 24px;
+      }
+      .horizontal-pinned-header {
+        top: 78px;
+        left: 24px;
+      }
+      .horizontal-pinned-title {
+        font-size: clamp(20px, 5.2vw, 28px);
+      }
+    }
+
+    /* Website Footer (Monumental 2/5 View Height [40vh] ARGUS Wordmark with Pure Black Background) */
+    .pipeline-footer-wrap {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      height: 40vh;
+      min-height: 280px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+      transform: translate3d(0, 100%, 0);
+      visibility: hidden;
+      opacity: 0;
+      will-change: transform, opacity;
+      background: #000000;
+      border-top: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 -8px 32px rgba(255, 255, 255, 0.05);
+      overflow: hidden;
+    }
+
+    /* Slight white gradient glow bleeding downward from the top edge of the footer */
+    .pipeline-footer-wrap::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 38%;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%);
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .pipeline-footer-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('images/download.gif');
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      opacity: 0.32;
+      filter: brightness(0.72) contrast(1.1);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .pipeline-footer-title {
+      position: relative;
+      z-index: 3;
+      font-family: 'Aquire', 'Orbitron', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: clamp(70px, 16vw, 270px);
+      font-weight: 700;
+      line-height: 0.88;
+      text-transform: uppercase;
+      letter-spacing: clamp(8px, 1.8vw, 32px);
+      padding-left: clamp(8px, 1.8vw, 32px);
+      margin: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      user-select: none;
+      color: #ffffff;
+      background: none;
+      -webkit-background-clip: initial;
+      background-clip: initial;
+      -webkit-text-fill-color: initial;
+      text-shadow: 0 0 35px rgba(255, 255, 255, 0.22);
+      pointer-events: auto;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), text-shadow 0.3s ease;
+    }
+
+    .pipeline-footer-title:hover {
+      transform: scale(1.02);
+      text-shadow: 0 0 50px rgba(255, 255, 255, 0.45);
+    }
+  </style>
 </head>
 <body>
   <!--
@@ -41,8 +960,1293 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <!-- Argus On-Device Vision Engine -->
+  <!-- Argus On-Device Vision Engine (MediaPipe Tasks Vision + Bridge) -->
+  <script src="vision/vendor/vision_bundle.js"></script>
   <script src="vision/vision_bridge.js"></script>
+
+  <!-- GSAP & Lenis Native Web Implementation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+  <script src="https://unpkg.com/@studio-freight/lenis@1.0.39/dist/lenis.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600&family=Sora:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- Preloader Jet-Black Backdrop -->
+  <div id="preloader-backdrop" style="position: fixed; z-index: 100000; inset: 0; background: #000000; pointer-events: all; user-select: none;"></div>
+
+  <!-- Animated Bull Logo Wrapper (starts centered, scales & flies to navbar on load complete) -->
+  <div id="preloader-logo-wrapper" style="position: fixed; z-index: 100001; top: 50%; left: 50%; transform: translate(-50%, -50%); width: clamp(200px, 26vw, 320px); height: auto; pointer-events: none; user-select: none;">
+    <svg id="loader-bull-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 431 290" width="100%" height="100%" style="overflow: visible; filter: drop-shadow(0 0 12px rgba(255,255,255,0.25));">
+      <!-- Horns -->
+      <path id="loader-horn-left" class="bull-stroke" d="M 112.5 25.5 L 54 55 L 52 111 L 181 160 L 211 263 L 199 149 L 68 103 L 66 62 Z" fill="rgba(255,255,255,0)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path id="loader-horn-right" class="bull-stroke" d="M 318.5 25.5 L 377 55 L 379 111 L 250 160 L 220 263 L 232 149 L 363 103 L 365 62 Z" fill="rgba(255,255,255,0)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <!-- Eyes -->
+      <path id="loader-eye-left" class="bull-stroke" d="M 97 152 L 166 174 L 162 209 L 158 181 L 125 170 L 139 199 Z" fill="rgba(255,255,255,0)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path id="loader-eye-right" class="bull-stroke" d="M 334 152 L 265 174 L 269 209 L 273 181 L 306 170 L 292 199 Z" fill="rgba(255,255,255,0)" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </div>
+
+  <div id="landing-overlay" style="position: fixed; z-index: 9999; top: 0; left: 0; width: 100vw; height: 100vh; overflow-y: auto; overflow-x: hidden; background: black; color: white; font-family: 'Aquire', sans-serif;">
+    <!-- Landing Top Navbar with Logo Dock and Writing Brand Name -->
+    <header id="landing-navbar" style="position: fixed; top: 0; left: 0; width: 100vw; height: 74px; z-index: 1000; display: flex; align-items: center; padding: 0 clamp(24px, 5vw, 64px); box-sizing: border-box; pointer-events: auto;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div id="navbar-logo-slot" style="width: 44px; height: 30px; display: flex; align-items: center; justify-content: center; position: relative;"></div>
+        <div id="navbar-brand-name" style="font-family: 'Aquire', sans-serif; font-size: 16px; font-weight: normal; letter-spacing: 2.5px; text-transform: uppercase; color: #ffffff; display: flex; align-items: center; overflow: hidden; height: 28px;">
+          <span id="pen-brand-text" style="white-space: nowrap; clip-path: inset(0 100% 0 0); display: inline-block;">Argus AI</span>
+        </div>
+      </div>
+    </header>
+
+    <canvas id="sequence-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1;"></canvas>
+    <img id="hero-bg" src="images/hero_camera.png" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; object-position: right; z-index: 2;" />
+    
+    <div id="hero-ui" style="position: fixed; top: 0; left: clamp(24px, 5vw, 64px); height: 100vh; display: flex; flex-direction: column; justify-content: center; z-index: 3;">
+      <!-- Line 1: Vision That -->
+      <div class="hero-line-mask" style="overflow: hidden; padding-bottom: 8px;">
+        <h1 class="hero-reveal-item hero-aquire-headline">
+          Vision That
+        </h1>
+      </div>
+      <!-- Line 2: Never Blinks. -->
+      <div class="hero-line-mask" style="overflow: hidden; padding-bottom: 10px; margin-top: 4px;">
+        <h1 class="hero-reveal-item hero-aquire-headline">
+          Never Blinks.
+        </h1>
+      </div>
+      <!-- Subheadline -->
+      <div class="hero-line-mask" style="overflow: hidden; margin-top: 22px;">
+        <h2 class="hero-reveal-item" style="font-family: 'Aquire', sans-serif; font-size: clamp(16px, 1.8vw, 22px); font-weight: normal; text-transform: uppercase; color: rgba(255,255,255,0.85); letter-spacing: 2px; margin: 0; line-height: 1.4;">
+          Autonomous threat detection at machine speed.
+        </h2>
+      </div>
+      <!-- Description -->
+      <div class="hero-line-mask" style="overflow: hidden; margin-top: 20px;">
+        <p class="hero-reveal-item" style="font-family: 'Aquire', sans-serif; font-size: clamp(11.5px, 1vw, 13px); line-height: 1.75; color: rgba(255,255,255,0.6); max-width: 560px; margin: 0; letter-spacing: 1.2px; text-transform: uppercase;">
+          Transform existing CCTV feeds into an active, proactive defense network. Zero blind spots. Absolute security.
+        </p>
+      </div>
+      <!-- Button -->
+      <div class="hero-line-mask" style="overflow: hidden; padding-top: 8px; padding-bottom: 8px; margin-top: 36px;">
+        <div class="hero-reveal-item">
+          <button id="enter-btn" class="enter-hero-btn">
+            <span class="enter-btn-track">
+              <span class="char-slot" style="--char-i: 0;"><span class="char-roll"><span class="char-face">E</span><span class="char-face" aria-hidden="true">E</span></span></span>
+              <span class="char-slot" style="--char-i: 1;"><span class="char-roll"><span class="char-face">N</span><span class="char-face" aria-hidden="true">N</span></span></span>
+              <span class="char-slot" style="--char-i: 2;"><span class="char-roll"><span class="char-face">T</span><span class="char-face" aria-hidden="true">T</span></span></span>
+              <span class="char-slot" style="--char-i: 3;"><span class="char-roll"><span class="char-face">E</span><span class="char-face" aria-hidden="true">E</span></span></span>
+              <span class="char-slot" style="--char-i: 4;"><span class="char-roll"><span class="char-face">R</span><span class="char-face" aria-hidden="true">R</span></span></span>
+              <span class="char-slot char-space" style="--char-i: 5;"><span class="char-roll"><span class="char-face">&nbsp;</span><span class="char-face" aria-hidden="true">&nbsp;</span></span></span>
+              <span class="char-slot" style="--char-i: 6;"><span class="char-roll"><span class="char-face">H</span><span class="char-face" aria-hidden="true">H</span></span></span>
+              <span class="char-slot" style="--char-i: 7;"><span class="char-roll"><span class="char-face">O</span><span class="char-face" aria-hidden="true">O</span></span></span>
+              <span class="char-slot" style="--char-i: 8;"><span class="char-roll"><span class="char-face">M</span><span class="char-face" aria-hidden="true">M</span></span></span>
+              <span class="char-slot" style="--char-i: 9;"><span class="char-roll"><span class="char-face">E</span><span class="char-face" aria-hidden="true">E</span></span></span>
+              <span class="char-slot" style="--char-i: 10;"><span class="char-roll"><span class="char-face">P</span><span class="char-face" aria-hidden="true">P</span></span></span>
+              <span class="char-slot" style="--char-i: 11;"><span class="char-roll"><span class="char-face">A</span><span class="char-face" aria-hidden="true">A</span></span></span>
+              <span class="char-slot" style="--char-i: 12;"><span class="char-roll"><span class="char-face">G</span><span class="char-face" aria-hidden="true">G</span></span></span>
+              <span class="char-slot" style="--char-i: 13;"><span class="char-roll"><span class="char-face">E</span><span class="char-face" aria-hidden="true">E</span></span></span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Climax Frame Flanking Texts -->
+    <div id="climax-left" style="position: fixed; top: clamp(140px, 24vh, 250px); left: clamp(24px, 5.5vw, 84px); width: clamp(300px, 30vw, 480px); z-index: 10; pointer-events: none; opacity: 0; text-align: left; will-change: transform, opacity;">
+      <div style="width: 48px; height: 1px; background: rgba(255,255,255,0.45); margin-bottom: 20px;"></div>
+      <h2 style="font-family: 'Aquire', sans-serif; font-size: clamp(36px, 4.2vw, 58px); font-weight: 300; letter-spacing: 3.5px; text-transform: uppercase; color: #ffffff; margin: 0 0 16px 0; line-height: 1.05; text-shadow: 0 0 28px rgba(255,255,255,0.28);">
+        I Observe.
+      </h2>
+      <p style="font-family: 'Aquire', sans-serif; font-size: clamp(14px, 1.25vw, 17px); font-weight: 400; letter-spacing: 2.2px; line-height: 1.75; color: rgba(255,255,255,0.72); margin: 0; text-transform: uppercase;">
+        Every shadow. Every angle.<br>
+        At millisecond precision.
+      </p>
+    </div>
+
+    <div id="climax-right" style="position: fixed; top: clamp(140px, 24vh, 250px); right: clamp(24px, 5.5vw, 84px); width: clamp(300px, 30vw, 480px); z-index: 10; pointer-events: none; opacity: 0; text-align: right; will-change: transform, opacity;">
+      <div style="width: 48px; height: 1px; background: rgba(255,255,255,0.45); margin-bottom: 20px; margin-left: auto;"></div>
+      <h2 style="font-family: 'Aquire', sans-serif; font-size: clamp(36px, 4.2vw, 58px); font-weight: 300; letter-spacing: 3.5px; text-transform: uppercase; color: #ffffff; margin: 0 0 16px 0; line-height: 1.05; text-shadow: 0 0 28px rgba(255,255,255,0.28);">
+        I Execute.
+      </h2>
+      <p style="font-family: 'Aquire', sans-serif; font-size: clamp(14px, 1.25vw, 17px); font-weight: 400; letter-spacing: 2.2px; line-height: 1.75; color: rgba(255,255,255,0.72); margin: 0; text-transform: uppercase;">
+        Active perimeter defense.<br>
+        Zero delay. Zero breach.
+      </p>
+    </div>
+
+    <!-- Frosted Glass Section 1: The Problem (Full Screen Takeover) -->
+    <div id="glass-window-problem" class="glass-window-card" style="z-index: 20;">
+      <div class="torch-bg-base torch-adam-base"></div>
+      <div class="torch-bg-spotlight torch-adam-spotlight"></div>
+      <div id="torch-adam-full" class="torch-bg-full torch-adam-full"></div>
+      <div class="glass-content-wrapper" style="position: relative; z-index: 4;">
+        <h1 class="glass-heading">
+          THE SYSTEM IS BLIND.
+        </h1>
+        <p id="problem-body-text" class="glass-body-text"></p>
+      </div>
+    </div>
+
+    <!-- Frosted Glass Section 2: The Solution (Full Screen Takeover) -->
+    <div id="glass-window-solution" class="glass-window-card" style="z-index: 25;">
+      <div class="torch-bg-base torch-eyes-base"></div>
+      <div class="torch-bg-spotlight torch-eyes-spotlight"></div>
+      <div id="torch-eyes-full" class="torch-bg-full torch-eyes-full"></div>
+      <div class="glass-content-wrapper" style="position: relative; z-index: 4;">
+        <h1 class="glass-heading">
+          WE GIVE IT SIGHT.
+        </h1>
+        <p id="solution-body-text" class="glass-body-text"></p>
+      </div>
+    </div>
+
+    <!-- Horizontal Features Section (Serverpod Architecture Pillars) -->
+    <div id="horizontal-features-section">
+      <!-- Pinned Top Header (Serverpod Brand Gradient) -->
+      <div class="horizontal-pinned-header">
+        <h1 class="horizontal-pinned-title">
+          <span class="gradient-text-base">SERVERPOD NERVOUS SYSTEM</span>
+          <span class="gradient-text-overlay" aria-hidden="true">SERVERPOD NERVOUS SYSTEM</span>
+        </h1>
+      </div>
+
+      <!-- Deep Background Starfield (Strictly behind all content) -->
+      <div id="horizontal-starfield" class="horizontal-starfield-wrap">
+        <div id="stars-far" class="star-layer star-layer-far"></div>
+      </div>
+
+      <!-- Serverpod Rocket Mascot (Behind text, flying across the viewport) -->
+      <div id="horizontal-rocket-mascot" class="horizontal-rocket-wrap">
+        <img src="images/serverpod_rocket.png" alt="Serverpod Rocket Mascot" class="horizontal-rocket-img" />
+      </div>
+
+      <div id="horizontal-track">
+        
+        <!-- Panel 1: Neural PubSub Stream -->
+        <div class="feature-panel" id="panel-pubsub">
+          <div class="feature-text-col">
+            <h2 class="feature-title">
+              <span class="gradient-text-base">NEURAL PUBSUB STREAM</span>
+              <span class="gradient-text-overlay" aria-hidden="true">NEURAL PUBSUB STREAM</span>
+            </h2>
+            <p class="feature-desc">
+              Serverpod operates as the real-time nervous system of the entire security grid. By bypassing sluggish polling and heavy external brokers like Redis, Serverpod's native WebSocket message bus multiplexes high-frequency telemetry, live camera heartbeats, and threat vectors directly into operator HUDs with sub-millisecond precision. When a perimeter trips, Serverpod broadcasts state changes across thousands of concurrent clients simultaneously—instant, unified, and unbreakable.
+            </p>
+          </div>
+          <!-- Card area left blank -->
+          <div class="feature-card-placeholder"></div>
+        </div>
+
+        <!-- Panel 2: Edge Telemetry Ingest -->
+        <div class="feature-panel" id="panel-ingest">
+          <div class="feature-text-col">
+            <h2 class="feature-title">
+              <span class="gradient-text-base">EDGE TELEMETRY INGEST</span>
+              <span class="gradient-text-overlay" aria-hidden="true">EDGE TELEMETRY INGEST</span>
+            </h2>
+            <p class="feature-desc">
+              Behind every video feed is Serverpod ingesting torrents of raw neural signals from hardware-accelerated computer vision edge nodes. Serverpod's custom RPC serialization ingests massive signal batches without serialization overhead, evaluates active geometric tripwires and weapon detection matrices against active PostgreSQL policies in microsecond cycles, and deduplicates noise before spawning an emergency event.
+            </p>
+          </div>
+          <!-- Card area left blank -->
+          <div class="feature-card-placeholder"></div>
+        </div>
+
+        <!-- Panel 3: FutureCalls Escalation -->
+        <div class="feature-panel" id="panel-futurecalls">
+          <div class="feature-text-col">
+            <h2 class="feature-title">
+              <span class="gradient-text-base">FUTURECALLS ESCALATION</span>
+              <span class="gradient-text-overlay" aria-hidden="true">FUTURECALLS ESCALATION</span>
+            </h2>
+            <p class="feature-desc">
+              Serverpod never sleeps. Powered by its native FutureCalls engine, Serverpod acts as an autonomous guardian enforcing strict tactical SLAs. The instant a breach occurs, Serverpod schedules durable, database-backed delayed execution ladders. If an on-duty operator fails to acknowledge a critical threat within seconds, Serverpod automatically wakes itself up in the background, escalates alert severity tiers, triggers sirens, and reroutes priority dispatches to backup command units.
+            </p>
+          </div>
+          <!-- Card area left blank -->
+          <div class="feature-card-placeholder"></div>
+        </div>
+
+        <!-- Panel 4: Crisis Dispatch Matrix -->
+        <div class="feature-panel" id="panel-dispatch">
+          <div class="feature-text-col">
+            <h2 class="feature-title">
+              <span class="gradient-text-base">CRISIS DISPATCH MATRIX</span>
+              <span class="gradient-text-overlay" aria-hidden="true">CRISIS DISPATCH MATRIX</span>
+            </h2>
+            <p class="feature-desc">
+              When a crisis erupts, Serverpod dynamically spawns encrypted, isolated dispatch war rooms on demand. Utilizing localized socket channels, Serverpod synchronizes field units, incident commanders, and automated deterrence hardware in real time. Tactical messages, operator acknowledgments, and audio-visual evidence are streamed live through Serverpod's message bus, ensuring absolute zero-latency situational awareness.
+            </p>
+          </div>
+          <!-- Card area left blank -->
+          <div class="feature-card-placeholder"></div>
+        </div>
+
+        <!-- Panel 5: Type-Safe ORM Vault -->
+        <div class="feature-panel" id="panel-orm">
+          <div class="feature-text-col">
+            <h2 class="feature-title">
+              <span class="gradient-text-base">TYPE-SAFE ORM VAULT</span>
+              <span class="gradient-text-overlay" aria-hidden="true">TYPE-SAFE ORM VAULT</span>
+            </h2>
+            <p class="feature-desc">
+              Serverpod provides the ironclad foundation for all forensic and multi-tenant compliance. Over 30 strongly-typed YAML schemas compile into zero-leak database models managing cameras, zones, and security personnel. Every operational override, rule change, and forensic clip is committed through Serverpod's atomic transaction engine to an immutable audit ledger—guaranteeing courtroom-ready compliance and absolute physical facility isolation.
+            </p>
+          </div>
+          <!-- Card area left blank -->
+          <div class="feature-card-placeholder"></div>
+        </div>
+
+      </div>
+
+      <!-- Persistent Horizontal Progress Tracker -->
+      <div class="horizontal-nav-bar" style="justify-content: flex-end;">
+        <div class="horizontal-progress-bar">
+          <div id="horizontal-progress-fill" class="horizontal-progress-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Workflow Line Tracing Section (ARGUS Execution Pipeline) -->
+    <div id="workflow-section">
+      <!-- Workflow Background Eyes Layers -->
+      <div class="wf-bg-eyes-wrap">
+        <div id="wf-eyes-white" class="wf-eye-layer wf-eyes-white"></div>
+        <div id="wf-eyes-blue" class="wf-eye-layer wf-eyes-blue"></div>
+        <div id="wf-eyes-yellow" class="wf-eye-layer wf-eyes-yellow"></div>
+        <div id="wf-eyes-red" class="wf-eye-layer wf-eyes-red"></div>
+      </div>
+
+      <div id="workflow-camera">
+        <div class="workflow-container">
+          <div class="workflow-header-wrap">
+            <h2 class="workflow-main-title">ARGUS OPERATIONAL PIPELINE</h2>
+          </div>
+
+          <!-- SVG Canvas (1000 x 2100 coordinate space) -->
+          <svg class="workflow-svg-wrap" viewBox="0 0 1000 2100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Guide dashed track path (dim monochrome) -->
+            <path d="M 160,260 C 400,260 700,440 840,620 C 960,780 620,920 160,1020 C -20,1110 580,1290 840,1420 C 960,1540 640,1700 500,1780 L 500,1980"
+                  stroke="rgba(255, 255, 255, 0.12)" stroke-width="2" stroke-dasharray="6 8" fill="none" />
+
+            <!-- Animated tracing foreground line (pure white glow) -->
+            <path id="workflow-trace-path"
+                  d="M 160,260 C 400,260 700,440 840,620 C 960,780 620,920 160,1020 C -20,1110 580,1290 840,1420 C 960,1540 640,1700 500,1780 L 500,1980"
+                  stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none"
+                  style="filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));" />
+
+            <!-- Milestone Node 1: Observing (160, 260) -->
+            <g id="wf-node-1" class="workflow-node-group">
+              <circle cx="160" cy="260" r="24" stroke="rgba(255, 255, 255, 0.3)" stroke-width="1" fill="rgba(0, 0, 0, 0.8)" />
+              <circle cx="160" cy="260" r="14" stroke="#ffffff" stroke-width="1.5" fill="#000000" />
+              <circle cx="160" cy="260" r="6" fill="#ffffff" />
+            </g>
+
+            <!-- Milestone Node 2: Threat Detection (840, 620) -->
+            <g id="wf-node-2" class="workflow-node-group">
+              <circle cx="840" cy="620" r="24" stroke="rgba(255, 255, 255, 0.3)" stroke-width="1" fill="rgba(0, 0, 0, 0.8)" />
+              <circle cx="840" cy="620" r="14" stroke="#ffffff" stroke-width="1.5" fill="#000000" />
+              <circle cx="840" cy="620" r="6" fill="#ffffff" />
+            </g>
+
+            <!-- Milestone Node 3: Alert (160, 1020) -->
+            <g id="wf-node-3" class="workflow-node-group">
+              <circle cx="160" cy="1020" r="24" stroke="rgba(255, 255, 255, 0.3)" stroke-width="1" fill="rgba(0, 0, 0, 0.8)" />
+              <circle cx="160" cy="1020" r="14" stroke="#ffffff" stroke-width="1.5" fill="#000000" />
+              <circle cx="160" cy="1020" r="6" fill="#ffffff" />
+            </g>
+
+            <!-- Milestone Node 4: Execution (840, 1420) -->
+            <g id="wf-node-4" class="workflow-node-group">
+              <circle cx="840" cy="1420" r="24" stroke="rgba(255, 255, 255, 0.3)" stroke-width="1" fill="rgba(0, 0, 0, 0.8)" />
+              <circle cx="840" cy="1420" r="14" stroke="#ffffff" stroke-width="1.5" fill="#000000" />
+              <circle cx="840" cy="1420" r="6" fill="#ffffff" />
+            </g>
+
+            <!-- Milestone Node 5: Dispatch (500, 1780) -->
+            <g id="wf-node-5" class="workflow-node-group">
+              <circle cx="500" cy="1780" r="24" stroke="rgba(255, 255, 255, 0.3)" stroke-width="1" fill="rgba(0, 0, 0, 0.8)" />
+              <circle cx="500" cy="1780" r="14" stroke="#ffffff" stroke-width="1.5" fill="#000000" />
+              <circle cx="500" cy="1780" r="6" fill="#ffffff" />
+            </g>
+
+            <!-- Terminus Anchor at (500, 1980) -->
+            <g id="wf-node-terminus" class="workflow-node-group">
+              <circle cx="500" cy="1980" r="32" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1" stroke-dasharray="4 4" fill="none" />
+              <circle cx="500" cy="1980" r="18" stroke="#ffffff" stroke-width="2" fill="#000000" />
+              <circle cx="500" cy="1980" r="8" fill="#ffffff" />
+              <text x="500" y="2035" text-anchor="middle" fill="rgba(255, 255, 255, 0.7)" font-family="Rajdhani, sans-serif" font-size="13" font-weight="700" letter-spacing="3">ARGUS OPERATIONAL</text>
+            </g>
+          </svg>
+
+          <!-- Stage 1 Card: Observing -->
+          <div id="wf-card-1" class="workflow-card" style="left: -225px; top: 195px; text-align: right;">
+            <h3 class="workflow-card-title">IT OBSERVES</h3>
+            <p class="workflow-card-desc">
+              Multi-stream ingest captures RTSP camera feeds across all facilities via WebRTC and WebSocket bridges, piping raw video frames directly into low-latency memory buffers.
+            </p>
+          </div>
+
+          <!-- Stage 2 Card: Threat Detection -->
+          <div id="wf-card-2" class="workflow-card" style="left: 875px; top: 555px;">
+            <h3 class="workflow-card-title">THREAT DETECTION</h3>
+            <p class="workflow-card-desc">
+              Hardware-accelerated YOLO and MediaPipe pipelines evaluate motion vectors, perimeter breaches, recognized weapons, and unauthorized personnel in real time.
+            </p>
+          </div>
+
+          <!-- Stage 3 Card: Alert -->
+          <div id="wf-card-3" class="workflow-card" style="left: -225px; top: 955px; text-align: right;">
+            <h3 class="workflow-card-title">IT ALERTS</h3>
+            <p class="workflow-card-desc">
+              Detections exceeding severity thresholds instantly fire events to the backend bus, spawning incident logs, triggering audio-visual warnings, and updating operator consoles.
+            </p>
+          </div>
+
+          <!-- Stage 4 Card: Execution -->
+          <div id="wf-card-4" class="workflow-card" style="left: 875px; top: 1355px;">
+            <h3 class="workflow-card-title">IT EXECUTES</h3>
+            <p class="workflow-card-desc">
+              Automated facility rules execute lockdown sequences, seal motorized doors, activate zone alarms, and restrict access credentials without requiring human latency.
+            </p>
+          </div>
+
+          <!-- Stage 5 Card: Dispatch -->
+          <div id="wf-card-5" class="workflow-card" style="left: 90px; top: 1715px; text-align: right;">
+            <h3 class="workflow-card-title">DISPATCH</h3>
+            <p class="workflow-card-desc">
+              High-priority incident dossiers, live camera feeds, and facility coordinates are simultaneously routed to field guards, response teams, and emergency personnel.
+            </p>
+          </div>
+
+          <!-- Enter Argus Action at Terminus -->
+          <div style="position: absolute; left: 50%; transform: translateX(-50%); top: 2065px; text-align: center; z-index: 5;">
+            <button id="wf-enter-btn" class="feature-action-btn">ENTER ARGUS CONSOLE</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Website Footer: Monumental 2/5 View Height [40vh] ARGUS Wordmark -->
+      <footer id="pipeline-footer" class="pipeline-footer-wrap">
+        <div class="pipeline-footer-bg" aria-hidden="true"></div>
+        <h1 id="pipeline-footer-title" class="pipeline-footer-title">ARGUS</h1>
+      </footer>
+    </div>
+
+    <!-- Responsive scrollable track: perfectly sized with zero dead scrolling -->
+    <div id="scroll-space" style="position: absolute; top: 0; left: 0; width: 100%; height: calc(17800px + 100vh); z-index: 0;"></div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // --- Preloader Logo Animation & Flight to Navbar ---
+      const backdrop = document.getElementById('preloader-backdrop');
+      const logoWrapper = document.getElementById('preloader-logo-wrapper');
+      const hornPaths = ["#loader-horn-left", "#loader-horn-right"];
+      const eyePaths = ["#loader-eye-left", "#loader-eye-right"];
+      const allLogoPaths = [".bull-stroke"];
+
+      // Set initial stroke dash properties
+      gsap.set(hornPaths, {
+        strokeDasharray: 750,
+        strokeDashoffset: 750,
+        fill: "rgba(255, 255, 255, 0)",
+        opacity: 1
+      });
+      gsap.set(eyePaths, {
+        strokeDasharray: 280,
+        strokeDashoffset: 280,
+        fill: "rgba(255, 255, 255, 0)",
+        opacity: 1
+      });
+
+      // Initial state: hide hero text below their ground lines
+      gsap.set(".hero-reveal-item", { y: "115%", opacity: 0 });
+
+      let isApplicationLoaded = false;
+      let transitionTriggered = false;
+
+      // Track application loading completion
+      function markApplicationReady() {
+        isApplicationLoaded = true;
+      }
+
+      window.addEventListener('load', () => {
+        // Guarantee at least 2.2s so the user experiences the complete badass animation loop while assets warm up
+        setTimeout(markApplicationReady, 2200);
+      });
+
+      // Construct looping timeline: Horns -> Eyes -> Face Fill/Glow -> Instant Loop (NO slow fade out)
+      const logoTimeline = gsap.timeline({
+        repeat: -1,
+        repeatDelay: 0.1,
+        onRepeat: () => {
+          // If the app is fully loaded, finish the current turn gracefully and trigger the flight to the navbar!
+          if (isApplicationLoaded && !transitionTriggered) {
+            transitionTriggered = true;
+            logoTimeline.pause();
+            flyLogoToNavbar();
+          }
+        }
+      });
+
+      logoTimeline
+        // 1. Draw Horns from top tips downward
+        .to(hornPaths, {
+          strokeDashoffset: 0,
+          duration: 1.1,
+          ease: "power2.inOut"
+        })
+        // 2. Draw Eyes inward as horns reach face
+        .to(eyePaths, {
+          strokeDashoffset: 0,
+          duration: 0.65,
+          ease: "power2.out"
+        }, "-=0.55")
+        // 3. Fill face & horns solid white with subtle glow flash
+        .to(allLogoPaths, {
+          fill: "rgba(255, 255, 255, 1)",
+          duration: 0.28,
+          ease: "power1.inOut"
+        }, "-=0.1")
+        .to("#loader-bull-svg", {
+          filter: "drop-shadow(0 0 16px rgba(255, 255, 255, 0.8))",
+          duration: 0.2,
+          yoyo: true,
+          repeat: 1
+        }, "-=0.15")
+        // 4. Instant reset: NO fade out, immediately loop from the top!
+        .set(allLogoPaths, {
+          fill: "rgba(255, 255, 255, 0)"
+        })
+        .set(hornPaths, { strokeDashoffset: 750 })
+        .set(eyePaths, { strokeDashoffset: 280 });
+
+      function flyLogoToNavbar() {
+        // Solidify the logo in pure white for its flight to the navbar
+        gsap.set(hornPaths, { strokeDashoffset: 0 });
+        gsap.set(eyePaths, { strokeDashoffset: 0 });
+        gsap.set(allLogoPaths, { opacity: 1, fill: "#ffffff" });
+
+        const slot = document.getElementById('navbar-logo-slot');
+        const slotRect = slot.getBoundingClientRect();
+        const wrapRect = logoWrapper.getBoundingClientRect();
+
+        const targetScale = 44 / wrapRect.width;
+        const targetCenterX = slotRect.left + slotRect.width / 2;
+        const targetCenterY = slotRect.top + slotRect.height / 2;
+        const currentCenterX = window.innerWidth / 2;
+        const currentCenterY = window.innerHeight / 2;
+
+        const deltaX = targetCenterX - currentCenterX;
+        const deltaY = targetCenterY - currentCenterY;
+
+        const flyTl = gsap.timeline();
+
+        // 1. Smoothly scale down and translate to navbar top-left
+        flyTl.to(logoWrapper, {
+          x: deltaX,
+          y: deltaY,
+          scale: targetScale,
+          duration: 1.15,
+          ease: "power3.inOut",
+          onComplete: () => {
+            // Reparent SVG into navbar slot for 100% responsive resizing
+            const svg = document.getElementById('loader-bull-svg');
+            slot.appendChild(svg);
+            logoWrapper.remove();
+            gsap.set(svg, { clearProps: "all" });
+          }
+        }, 0);
+
+        // 2. Concurrently dissolve the black preloader backdrop, revealing the landing page
+        flyTl.to(backdrop, {
+          opacity: 0,
+          duration: 0.9,
+          ease: "power2.inOut",
+          onComplete: () => {
+            backdrop.style.display = "none";
+          }
+        }, 0.15);
+
+        // 3. SIMULTANEOUSLY: Text rises up from the ground underneath each line!
+        flyTl.to(".hero-reveal-item", {
+          y: "0%",
+          opacity: 1,
+          duration: 1.15,
+          stagger: 0.1,
+          ease: "power3.out",
+          onComplete: () => {
+            document.querySelectorAll('.hero-line-mask').forEach(el => el.style.overflow = 'visible');
+          }
+        }, 0.2); // starts right as the logo begins flying!
+
+        // 4. Trigger the pen reveal animation as it settles in the navbar
+        flyTl.call(startPenRevealAnimation, null, 1.1);
+      }
+
+      function startPenRevealAnimation() {
+        const textEl = document.getElementById('pen-brand-text');
+        // Smooth pen-writing reveal: no cursor, ink flow sweep
+        gsap.to(textEl, {
+          clipPath: "inset(0 0% 0 0)",
+          duration: 1.15,
+          ease: "power2.inOut"
+        });
+      }
+
+      const overlay = document.getElementById('landing-overlay');
+      
+      // Initialize Lenis Smooth Scroll on the overlay element
+      const lenis = new Lenis({
+        wrapper: overlay,
+        content: document.getElementById('scroll-space'),
+        lerp: 0.08,
+        smoothWheel: true,
+      });
+      lenis.on('scroll', ScrollTrigger.update);
+
+      function raf(time) {
+        lenis.raf(time);
+        requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+
+      // Canvas setup
+      const canvas = document.getElementById("sequence-canvas");
+      const ctx = canvas.getContext("2d");
+      
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        render();
+      }
+      window.addEventListener('resize', resizeCanvas);
+
+      const frameCount = 240;
+      const images = [];
+      const sequence = { frame: 0 };
+
+      // Load all frames into array
+      for (let i = 1; i <= frameCount; i++) {
+        const img = new Image();
+        img.src = `sequence/ezgif-frame-${i.toString().padStart(3, '0')}.jpg`;
+        images.push(img);
+      }
+
+      // Initial dimensions & draw
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      images[0].onload = render;
+
+      // Draw function with object-fit: cover emulation
+      function render() {
+        const img = images[sequence.frame];
+        if (!img || !img.complete) return;
+        
+        const canvasRatio = canvas.width / canvas.height;
+        const imgRatio = img.width / img.height;
+        let drawWidth, drawHeight, offsetX = 0, offsetY = 0;
+
+        if (canvasRatio > imgRatio) {
+          drawWidth = canvas.width;
+          drawHeight = canvas.width / imgRatio;
+          offsetY = (canvas.height - drawHeight) / 2;
+        } else {
+          drawWidth = canvas.height * imgRatio;
+          drawHeight = canvas.height;
+          offsetX = (canvas.width - drawWidth) / 2;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+      }
+
+      // GSAP Animations
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Fade out Text and Hero background
+      gsap.to(["#hero-bg", "#hero-ui"], {
+        opacity: 0,
+        scrollTrigger: {
+          scroller: overlay,
+          trigger: "#scroll-space",
+          start: "top top",
+          end: "+=350",
+          scrub: true,
+          onUpdate: (self) => {
+            const heroEl = document.getElementById("hero-ui");
+            if (heroEl) heroEl.style.pointerEvents = self.progress > 0.5 ? "none" : "auto";
+          }
+        }
+      });
+
+      // Climax text initial states (outside the screen)
+      gsap.set("#climax-left", { xPercent: -150, opacity: 0 });
+      gsap.set("#climax-right", { xPercent: 150, opacity: 0 });
+
+      // Master timeline synchronized with the sequence scrub (Frame 0 to 240)
+      const sequenceTl = gsap.timeline({
+        scrollTrigger: {
+          scroller: overlay,
+          trigger: "#scroll-space",
+          start: "top+=350 top",
+          end: "top+=2400 top",
+          scrub: 0.5,
+        }
+      });
+
+      // Scrub frames from 0 to 239 over 240 units
+      sequenceTl.to(sequence, {
+        frame: frameCount - 1,
+        snap: "frame",
+        ease: "none",
+        duration: 240,
+        onUpdate: render
+      }, 0);
+
+      // Translate both climax texts inwards simultaneously from frame 150 to 240!
+      sequenceTl.to("#climax-left", {
+        xPercent: 0,
+        opacity: 1,
+        ease: "power2.out",
+        duration: 90
+      }, 150);
+
+      sequenceTl.to("#climax-right", {
+        xPercent: 0,
+        opacity: 1,
+        ease: "power2.out",
+        duration: 90
+      }, 150);
+
+      // Full Content Strings for Futuristic Scroll-Driven Reveal
+      const problemFullText = "Over a billion CCTV cameras monitor the world in silence—passive digital witnesses recording tragedies only after they unfold. Human attention decays within minutes; no security team can watch a wall of feeds and outpace machine speed. Traditional surveillance is reactive, documenting yesterday's losses instead of preventing today's breaches.";
+
+      const solutionFullText = "Argus transforms dormant camera networks into an active, autonomous neural defense grid. By analyzing live feeds at machine speed, our on-device vision engine detects weapons, fence breaches, and unauthorized incursions the millisecond they materialize—triggering immediate deterrence, emergency dispatch, and perimeter lockdown before a threat escalates.";
+
+      const problemBodyEl = document.getElementById("problem-body-text");
+      const solutionBodyEl = document.getElementById("solution-body-text");
+
+      // Pre-renders every word and character in their exact final line-wrapped positions with opacity: 0
+      // This guarantees the heading and all line heights are perfectly locked in their initial positions with ZERO layout shift
+      function initInPlaceSpans(el, text) {
+        if (!el) return [];
+        const words = text.split(' ');
+        const html = words.map(word => {
+          const chars = word.split('').map(ch => `<span class="reveal-char">${ch}</span>`).join('');
+          return `<span class="reveal-word">${chars}</span>`;
+        }).join(' ');
+        el.innerHTML = html;
+        return Array.from(el.querySelectorAll('.reveal-char'));
+      }
+
+      const problemSpans = initInPlaceSpans(problemBodyEl, problemFullText);
+      const solutionSpans = initInPlaceSpans(solutionBodyEl, solutionFullText);
+
+      // Clean, Pure-White in-place text reveal (zero cursor, zero blue/white-blue tint)
+      function updateInPlaceReveal(spans, progress) {
+        if (!spans || spans.length === 0) return;
+        const total = spans.length;
+        const head = Math.max(0, Math.min(total, progress * total));
+        for (let i = 0; i < total; i++) {
+          if (i < head - 1) {
+            if (spans[i].style.opacity !== '1') spans[i].style.opacity = '1';
+          } else if (i > head + 1) {
+            if (spans[i].style.opacity !== '0') spans[i].style.opacity = '0';
+          } else {
+            const diff = head - i;
+            spans[i].style.opacity = Math.max(0, Math.min(1, diff)).toFixed(2);
+          }
+        }
+      }
+
+      // Initial state: Both body texts start 100% blank in their initial positions
+      updateInPlaceReveal(problemSpans, 0);
+      updateInPlaceReveal(solutionSpans, 0);
+
+      // Initial state: Purely leftward tilt (-18 deg) with full opacity from the start
+      // Placed far off-screen at y: 140vh and strictly hidden so no corner or edge ever peeks at scroll = 0
+      gsap.set("#glass-window-problem", {
+        y: "140vh",
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: -18,
+        scale: 0.94,
+        opacity: 1,
+        visibility: "hidden",
+        transformOrigin: "center bottom",
+        force3D: true
+      });
+
+      gsap.set("#glass-window-solution", {
+        y: "140vh",
+        rotationX: 0,
+        rotationY: 0,
+        rotationZ: -18,
+        scale: 0.94,
+        opacity: 1,
+        visibility: "hidden",
+        transformOrigin: "center bottom",
+        force3D: true
+      });
+
+      // Background image full brightness layers start at full opacity
+      gsap.set("#torch-adam-full", { opacity: 1 });
+      gsap.set("#torch-eyes-full", { opacity: 1 });
+
+      // Procedural Deep Background Starfield Generation (Strictly in the background behind all content)
+      function initHorizontalStarfield() {
+        const farEl = document.getElementById("stars-far");
+        if (!farEl) return;
+
+        const w = window.innerWidth || 1920;
+        const h = window.innerHeight || 1080;
+
+        // Deep background stars: ~1200 fine cosmic pinpricks strictly in the background
+        const farShadows = [];
+        const farSpanX = w + 4500;
+        const farSpanY = h + 200;
+        for (let i = 0; i < 1200; i++) {
+          const x = Math.round(Math.random() * farSpanX);
+          const y = Math.round(Math.random() * farSpanY);
+          const size = Math.random() > 0.88 ? 1.5 : 0.8;
+          const alpha = (Math.random() * 0.45 + 0.25).toFixed(2);
+          const color = Math.random() > 0.78 ? `rgba(157, 212, 250, ${alpha})` : `rgba(255, 255, 255, ${alpha})`;
+          farShadows.push(`${x}px ${y}px 0 ${size}px ${color}`);
+        }
+        farEl.style.boxShadow = farShadows.join(", ");
+      }
+
+      initHorizontalStarfield();
+
+      // Horizontal section initial off-screen state
+      gsap.set("#horizontal-features-section", {
+        y: "120vh",
+        visibility: "hidden"
+      });
+      gsap.set("#horizontal-track", {
+        x: "0vw"
+      });
+      gsap.set("#horizontal-starfield", {
+        opacity: 0
+      });
+      gsap.set("#stars-far", {
+        x: 0
+      });
+
+      // Workflow section initial off-screen state
+      gsap.set("#workflow-section", {
+        y: "100vh",
+        visibility: "hidden"
+      });
+      gsap.set("#workflow-camera", {
+        y: 0
+      });
+      gsap.set("#wf-eyes-white", { opacity: 1 });
+      gsap.set("#wf-eyes-blue", { opacity: 0 });
+      gsap.set("#wf-eyes-yellow", { opacity: 0 });
+      gsap.set("#wf-eyes-red", { opacity: 0 });
+
+      // Preload Pipeline Eye Images into memory
+      ["images/pipeline_eyes_white.png", "images/pipeline_eyes_blue.png", "images/pipeline_eyes_yellow.png", "images/pipeline_eyes_red.png"].forEach(src => {
+        const img = new Image();
+        img.src = src;
+      });
+
+      // Pipeline Background Eyes State Manager (Seamless Morph: White -> Blue -> Yellow -> Red)
+      const eyeWhiteEl = document.getElementById("wf-eyes-white");
+      const eyeBlueEl = document.getElementById("wf-eyes-blue");
+      const eyeYellowEl = document.getElementById("wf-eyes-yellow");
+      const eyeRedEl = document.getElementById("wf-eyes-red");
+
+      function updatePipelineEyes(p) {
+        if (!eyeWhiteEl || !eyeBlueEl || !eyeYellowEl || !eyeRedEl) return;
+
+        function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+        function smooth(v) { return v * v * (3 - 2 * v); }
+
+        // 1. White eyes:
+        // Stands preloaded at 100% opacity as soon as we enter the pipeline section (zero fade-in)!
+        // Stays 100% white until the tracing line touches THREAT DETECTION junction (0.24)!
+        // When THREAT DETECTION junction is touched, gracefully cross-fades into blue (0.24 -> 0.31).
+        let oWhite = 0;
+        if (p < 0.24) {
+          oWhite = 1;
+        } else if (p < 0.31) {
+          oWhite = 1 - smooth(clamp01((p - 0.24) / 0.07));
+        } else {
+          oWhite = 0;
+        }
+
+        // 2. Blue eyes:
+        // Stays 0 until line reaches THREAT DETECTION junction (0.24).
+        // Gracefully fades in when THREAT DETECTION is touched (0.24 -> 0.31).
+        // Stays 100% blue until the tracing line touches IT ALERTS junction (0.49)!
+        // When IT ALERTS junction is touched, gracefully cross-fades into yellow (0.49 -> 0.56).
+        let oBlue = 0;
+        if (p < 0.24) {
+          oBlue = 0;
+        } else if (p < 0.31) {
+          oBlue = smooth(clamp01((p - 0.24) / 0.07));
+        } else if (p < 0.49) {
+          oBlue = 1;
+        } else if (p < 0.56) {
+          oBlue = 1 - smooth(clamp01((p - 0.49) / 0.07));
+        } else {
+          oBlue = 0;
+        }
+
+        // 3. Yellow eyes:
+        // Stays 0 until line reaches IT ALERTS junction (0.49).
+        // Gracefully fades in when IT ALERTS is touched (0.49 -> 0.56).
+        // Stays 100% yellow until the tracing line touches IT EXECUTES junction (0.73)!
+        // When IT EXECUTES junction is touched, gracefully cross-fades into red (0.73 -> 0.80).
+        let oYellow = 0;
+        if (p < 0.49) {
+          oYellow = 0;
+        } else if (p < 0.56) {
+          oYellow = smooth(clamp01((p - 0.49) / 0.07));
+        } else if (p < 0.73) {
+          oYellow = 1;
+        } else if (p < 0.80) {
+          oYellow = 1 - smooth(clamp01((p - 0.73) / 0.07));
+        } else {
+          oYellow = 0;
+        }
+
+        // 4. Red eyes:
+        // Stays 0 until line reaches IT EXECUTES junction (0.73).
+        // Gracefully fades in when IT EXECUTES is touched (0.73 -> 0.80).
+        // Remains 100% red till the last (0.80 -> 1.0)!
+        let oRed = 0;
+        if (p < 0.73) {
+          oRed = 0;
+        } else if (p < 0.80) {
+          oRed = smooth(clamp01((p - 0.73) / 0.07));
+        } else {
+          oRed = 1;
+        }
+
+        eyeWhiteEl.style.opacity = oWhite.toFixed(3);
+        eyeBlueEl.style.opacity = oBlue.toFixed(3);
+        eyeYellowEl.style.opacity = oYellow.toFixed(3);
+        eyeRedEl.style.opacity = oRed.toFixed(3);
+      }
+
+      // Pipeline Website Footer State Manager
+      // When the line tracing animation in the workflow/pipeline tab completes,
+      // rises upward from off-screen bottom to occupy the bottom 2/5 of view height (40vh) with pure black background!
+      const pipelineFooterEl = document.getElementById("pipeline-footer");
+      const footerProxy = { p: 0 };
+
+      function renderFooterProgress(progress) {
+        if (!pipelineFooterEl) return;
+        if (progress <= 0.001) {
+          pipelineFooterEl.style.transform = "translate3d(0, 100%, 0)";
+          pipelineFooterEl.style.opacity = "0";
+          pipelineFooterEl.style.visibility = "hidden";
+        } else {
+          pipelineFooterEl.style.visibility = "visible";
+          // Rises from 100% (hidden below bottom) to 0% (fully elevated to bottom: 0)
+          const yPercent = (1 - progress) * 100;
+          pipelineFooterEl.style.transform = `translate3d(0, ${yPercent.toFixed(2)}%, 0)`;
+          pipelineFooterEl.style.opacity = Math.min(1, progress * 1.8).toFixed(3);
+        }
+      }
+
+      // Initialize footer tucked off-screen
+      renderFooterProgress(0);
+
+      // SVG Tracing Line setup
+      const tracePath = document.getElementById("workflow-trace-path");
+      let tracePathLength = 2600;
+      if (tracePath && tracePath.getTotalLength) {
+        tracePathLength = tracePath.getTotalLength();
+        tracePath.style.strokeDasharray = `${tracePathLength} ${tracePathLength}`;
+        tracePath.style.strokeDashoffset = tracePathLength;
+      }
+
+      // Workflow milestone nodes and cards
+      const wfCards = [
+        document.getElementById("wf-card-1"),
+        document.getElementById("wf-card-2"),
+        document.getElementById("wf-card-3"),
+        document.getElementById("wf-card-4"),
+        document.getElementById("wf-card-5")
+      ];
+      const wfNodes = [
+        document.getElementById("wf-node-1"),
+        document.getElementById("wf-node-2"),
+        document.getElementById("wf-node-3"),
+        document.getElementById("wf-node-4"),
+        document.getElementById("wf-node-5"),
+        document.getElementById("wf-node-terminus")
+      ];
+      const wfProxy = { p: 0 };
+
+      const pills = [
+        document.getElementById("pill-0"),
+        document.getElementById("pill-1"),
+        document.getElementById("pill-2"),
+        document.getElementById("pill-3"),
+        document.getElementById("pill-4")
+      ];
+      const progressFill = document.getElementById("horizontal-progress-fill");
+
+      // Typewriter scrub proxy objects
+      const revealObj1 = { p: 0 };
+      const revealObj2 = { p: 0 };
+
+      // Initialize Serverpod rocket mascot off-screen at left bottom (below paragraph)
+      gsap.set("#horizontal-rocket-mascot", { xPercent: -50, yPercent: 0, x: "-120vw", y: "15vh", rotation: -6 });
+
+      // Unified Master Timeline:
+      // Controls Section 1, Section 2, the 5-Panel Horizontal Features Tour, and the Workflow Pipeline seamlessly
+      const glassTl = gsap.timeline({
+        scrollTrigger: {
+          scroller: overlay,
+          trigger: "#scroll-space",
+          start: "top+=2400 top",
+          end: "top+=17500 top",
+          scrub: 0.6,
+          onUpdate: (self) => {
+            const p = document.getElementById("glass-window-problem");
+            const s = document.getElementById("glass-window-solution");
+            const h = document.getElementById("horizontal-features-section");
+            const w = document.getElementById("workflow-section");
+
+            if (p) p.style.visibility = self.progress > 0.001 ? "visible" : "hidden";
+            if (s) s.style.visibility = (self.progress > 0.13 && self.progress < 0.55) ? "visible" : "hidden";
+            if (h) h.style.visibility = self.progress > 0.27 ? "visible" : "hidden";
+            if (w) w.style.visibility = self.progress > 0.55 ? "visible" : "hidden";
+            if (self.progress <= 0.55) {
+              updatePipelineEyes(0);
+              renderFooterProgress(0);
+              footerProxy.p = 0;
+            }
+            const sf = document.getElementById("horizontal-starfield");
+            if (sf && self.progress <= 0.27) sf.style.opacity = "0";
+
+            // Enforce clean blank states on scrub boundaries
+            if (self.progress < 0.07) {
+              updateInPlaceReveal(problemSpans, 0);
+            }
+            if (self.progress < 0.21) {
+              updateInPlaceReveal(solutionSpans, 0);
+            }
+
+            // Horizontal active pill & progress tracker (active while track scrolls horizontally)
+            const totalDur = glassTl.duration() || 17.8;
+            const hStart = 5.65 / totalDur;
+            const hEnd = 9.65 / totalDur;
+            if (self.progress >= hStart && self.progress <= hEnd) {
+              const horizProgress = (self.progress - hStart) / (hEnd - hStart);
+              if (progressFill) progressFill.style.width = `${(horizProgress * 100).toFixed(1)}%`;
+              const activeIndex = Math.min(4, Math.max(0, Math.floor(horizProgress * 4.99)));
+              pills.forEach((pill, idx) => {
+                if (pill) pill.classList.toggle("active", idx === activeIndex);
+              });
+            } else if (self.progress > hEnd) {
+              if (progressFill) progressFill.style.width = "100%";
+              pills.forEach((pill, idx) => {
+                if (pill) pill.classList.toggle("active", idx === 4);
+              });
+            } else {
+              if (progressFill) progressFill.style.width = "0%";
+              pills.forEach((pill, idx) => {
+                if (pill) pill.classList.toggle("active", idx === 0);
+              });
+            }
+          },
+          onLeaveBack: () => {
+            const p = document.getElementById("glass-window-problem");
+            const s = document.getElementById("glass-window-solution");
+            const h = document.getElementById("horizontal-features-section");
+            const w = document.getElementById("workflow-section");
+            if (p) p.style.visibility = "hidden";
+            if (s) s.style.visibility = "hidden";
+            if (h) h.style.visibility = "hidden";
+            if (w) w.style.visibility = "hidden";
+            updateInPlaceReveal(problemSpans, 0);
+            updateInPlaceReveal(solutionSpans, 0);
+            gsap.set("#torch-adam-full", { opacity: 1 });
+            gsap.set("#torch-eyes-full", { opacity: 1 });
+            gsap.set("#horizontal-track", { x: "0vw" });
+            gsap.set("#horizontal-features-section", { y: "120vh" });
+            gsap.set("#horizontal-rocket-mascot", { x: "-120vw", y: "15vh", rotation: -6 });
+            gsap.set("#horizontal-starfield", { opacity: 0 });
+            gsap.set("#stars-far", { x: 0 });
+            gsap.set("#workflow-section", { y: "100vh" });
+            gsap.set("#workflow-camera", { y: 0 });
+            gsap.set("#wf-eyes-white", { opacity: 1 });
+            gsap.set("#wf-eyes-blue", { opacity: 0 });
+            gsap.set("#wf-eyes-yellow", { opacity: 0 });
+            gsap.set("#wf-eyes-red", { opacity: 0 });
+            updatePipelineEyes(0);
+            renderFooterProgress(0);
+            footerProxy.p = 0;
+            gsap.set(".gradient-text-overlay", { opacity: 0, backgroundPosition: "0% 0%" });
+            if (tracePath) tracePath.style.strokeDashoffset = tracePathLength;
+            wfCards.forEach(c => c && c.classList.remove("active"));
+            wfNodes.forEach(n => n && n.classList.remove("active"));
+          }
+        }
+      });
+
+      // --- PHASE 1: Section 1 (The Problem) glides up into place ---
+      // Background image shown with FULL BRIGHTNESS while translating upwards
+      // Heading is locked in its initial position; content space below is completely blank
+      glassTl.to("#glass-window-problem", {
+        y: "0vh",
+        rotationZ: 0,
+        scale: 1,
+        opacity: 1,
+        ease: "power2.out",
+        duration: 1.0
+      }, 0);
+
+      // As soon as Section 1 takes over the full screen (y: 0vh), full brightness transitions to its initial state
+      glassTl.to("#torch-adam-full", {
+        opacity: 0,
+        ease: "power1.out",
+        duration: 0.3
+      }, 0.85);
+
+      // --- PHASE 2: Section 1 content writes itself in place line by line fast simultaneously while scrolling ---
+      glassTl.to(revealObj1, {
+        p: 1,
+        duration: 1.0,
+        ease: "none",
+        onUpdate: () => {
+          updateInPlaceReveal(problemSpans, revealObj1.p);
+        }
+      }, 1.15);
+
+      // --- PHASE 3: Tight transition hold after Section 1 finishes writing (zero dead scroll) ---
+      glassTl.to({}, { duration: 0.15 }, 2.15);
+
+      // --- PHASE 4: Section 2 (The Solution) glides up over Section 1 ---
+      // Background image shown with FULL BRIGHTNESS while translating upwards
+      // Heading is locked in its initial position; content space below is completely blank
+      glassTl.to("#glass-window-solution", {
+        y: "0vh",
+        rotationZ: 0,
+        scale: 1,
+        opacity: 1,
+        ease: "power2.out",
+        duration: 1.0
+      }, 2.3);
+
+      // As soon as Section 2 takes over the full screen (y: 0vh), full brightness transitions to its initial state
+      glassTl.to("#torch-eyes-full", {
+        opacity: 0,
+        ease: "power1.out",
+        duration: 0.3
+      }, 3.15);
+
+      // --- PHASE 5: Section 2 content writes itself in place line by line fast simultaneously while scrolling ---
+      glassTl.to(revealObj2, {
+        p: 1,
+        duration: 1.0,
+        ease: "none",
+        onUpdate: () => {
+          updateInPlaceReveal(solutionSpans, revealObj2.p);
+        }
+      }, 3.45);
+
+      // --- PHASE 6: Reading hold on Section 2 ---
+      glassTl.to({}, { duration: 0.2 }, 4.45);
+
+      // --- PHASE 7: Horizontal Features Section glides up into place over Section 2 ---
+      glassTl.to("#horizontal-features-section", {
+        y: "0vh",
+        ease: "power2.out",
+        duration: 1.0
+      }, 4.65);
+
+      // Starfield glides into luminous visibility as the section slides up
+      glassTl.to("#horizontal-starfield", {
+        opacity: 1,
+        ease: "power2.out",
+        duration: 0.9
+      }, 4.75);
+
+      // Transition text colors from white to Serverpod brand gradient as the section scrolls into place!
+      glassTl.to(".gradient-text-overlay", {
+        opacity: 1,
+        ease: "power2.inOut",
+        duration: 1.1
+      }, 4.95);
+
+      // --- PHASE 8: Horizontal track translates smoothly across all 5 panels ---
+      glassTl.to("#horizontal-track", {
+        x: "-400vw",
+        ease: "none",
+        duration: 4.0
+      }, 5.65);
+
+      // Deep Background Stars Scrub (Strictly in the background):
+      glassTl.to("#stars-far", {
+        x: -1600,
+        ease: "none",
+        duration: 4.0
+      }, 5.65);
+
+      // Dynamically scrub the Serverpod gradient wave across the letters throughout the 5 panels!
+      glassTl.to(".gradient-text-overlay", {
+        backgroundPosition: "-100% 0%",
+        ease: "none",
+        duration: 4.0
+      }, 5.65);
+
+      // Serverpod Rocket Mascot Flight (Below the paragraph):
+      // 1. As horizontal scroll starts, rocket flies into the screen from the left bottom
+      glassTl.to("#horizontal-rocket-mascot", {
+        x: "0vw",
+        y: "0vh",
+        rotation: -1,
+        ease: "power2.out",
+        duration: 1.2
+      }, 5.65);
+
+      // 2. Holds at the middle below the paragraph with subtle cosmic floating drift
+      glassTl.to("#horizontal-rocket-mascot", {
+        x: "4vw",
+        y: "-1.5vh",
+        rotation: 1.5,
+        ease: "sine.inOut",
+        duration: 1.0
+      }, 6.85);
+
+      // 3. Accelerates towards the right bottom and exits out of the screen at the right bottom
+      glassTl.to("#horizontal-rocket-mascot", {
+        x: "120vw",
+        y: "16vh",
+        rotation: 6,
+        ease: "power2.in",
+        duration: 1.6
+      }, 7.85);
+
+      // --- PHASE 8.5: Brief hold on Incidents panel ---
+      glassTl.to({}, { duration: 0.35 }, 9.65);
+
+      // Smooth fade-out of starfield as horizontal section prepares to exit
+      glassTl.to("#horizontal-starfield", {
+        opacity: 0,
+        ease: "power2.inOut",
+        duration: 0.8
+      }, 9.8);
+
+      // Explicitly hide Section 2 ("WE GIVE IT SIGHT") before horizontal section pulls away
+      glassTl.set("#glass-window-solution", { visibility: "hidden" }, 9.65);
+
+      // --- PHASE 9: Horizontal section glides up and Workflow section glides into view ---
+      glassTl.to("#horizontal-features-section", {
+        y: "-100vh",
+        ease: "power2.inOut",
+        duration: 1.0
+      }, 10.0);
+
+      glassTl.to("#workflow-section", {
+        y: "0vh",
+        ease: "power2.inOut",
+        duration: 1.0
+      }, 10.0);
+
+      // --- PHASE 9.5: Reading pause on workflow header ---
+      glassTl.to({}, { duration: 0.3 }, 11.0);
+
+      // --- PHASE 10: Scroll-driven Line Tracing & Camera Scrub ---
+      glassTl.to(wfProxy, {
+        p: 1,
+        duration: 4.7,
+        ease: "none",
+        onUpdate: () => {
+          const p = wfProxy.p;
+          updatePipelineEyes(p);
+          if (tracePath) {
+            tracePath.style.strokeDashoffset = tracePathLength * (1 - p);
+          }
+          if (wfCards[0]) wfCards[0].classList.toggle("active", p >= 0.02);
+          if (wfNodes[0]) wfNodes[0].classList.toggle("active", p >= 0.02);
+
+          if (wfCards[1]) wfCards[1].classList.toggle("active", p >= 0.24);
+          if (wfNodes[1]) wfNodes[1].classList.toggle("active", p >= 0.24);
+
+          if (wfCards[2]) wfCards[2].classList.toggle("active", p >= 0.49);
+          if (wfNodes[2]) wfNodes[2].classList.toggle("active", p >= 0.49);
+
+          if (wfCards[3]) wfCards[3].classList.toggle("active", p >= 0.73);
+          if (wfNodes[3]) wfNodes[3].classList.toggle("active", p >= 0.73);
+
+          if (wfCards[4]) wfCards[4].classList.toggle("active", p >= 0.90);
+          if (wfNodes[4]) wfNodes[4].classList.toggle("active", p >= 0.90);
+
+          if (wfNodes[5]) wfNodes[5].classList.toggle("active", p >= 0.98);
+        }
+      }, 11.3);
+
+      glassTl.to("#workflow-camera", {
+        y: -1160,
+        ease: "none",
+        duration: 4.7
+      }, 11.3);
+
+      // --- PHASE 11: When line tracing completes, footer rises upwards to occupy 2/5 of view height (40vh) ---
+      glassTl.to(footerProxy, {
+        p: 1,
+        duration: 1.2,
+        ease: "power2.out",
+        onUpdate: () => {
+          renderFooterProgress(footerProxy.p);
+        }
+      }, 16.0);
+
+      // --- PHASE 12: Final resting hold at terminus with full visibility ---
+      glassTl.to({}, { duration: 0.6 }, 17.2);
+
+      // Dismiss Landing Overlay and Enter Home Page logic
+      function dismissLandingOverlay() {
+        gsap.to(overlay, {
+          opacity: 0,
+          duration: 0.8,
+          ease: "power2.inOut",
+          onComplete: () => {
+            overlay.style.display = "none";
+            lenis.destroy();
+          }
+        });
+      }
+
+      [
+        document.getElementById("enter-btn"),
+        document.getElementById("navbar-brand-name"),
+        document.getElementById("navbar-logo-slot"),
+        document.getElementById("features-enter-btn"),
+        document.getElementById("wf-enter-btn"),
+        document.getElementById("pipeline-footer-title")
+      ].forEach(btn => {
+        if (!btn) return;
+        btn.style.cursor = "pointer";
+        btn.addEventListener("click", dismissLandingOverlay);
+      });
+
+      // Interactive Torch Cursor Light for Section 1 & Section 2
+      const problemSection = document.getElementById("glass-window-problem");
+      const solutionSection = document.getElementById("glass-window-solution");
+      window.addEventListener("pointermove", (e) => {
+        if (problemSection) {
+          const rect = problemSection.getBoundingClientRect();
+          problemSection.style.setProperty("--torch-x", `${e.clientX - rect.left}px`);
+          problemSection.style.setProperty("--torch-y", `${e.clientY - rect.top}px`);
+        }
+        if (solutionSection) {
+          const rect = solutionSection.getBoundingClientRect();
+          solutionSection.style.setProperty("--torch-x", `${e.clientX - rect.left}px`);
+          solutionSection.style.setProperty("--torch-y", `${e.clientY - rect.top}px`);
+        }
+      }, { passive: true });
+    });
+  </script>
 
   <script src="flutter_bootstrap.js" async></script>
 </body>

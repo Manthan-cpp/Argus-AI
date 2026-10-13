@@ -14,7 +14,7 @@ abstract class VisionController {
   });
 
   Future<void> start({
-    int targetFps = 8,
+    int targetFps = 15,
     String sourceKind = 'webcam',
     String? sourceUrl,
   });

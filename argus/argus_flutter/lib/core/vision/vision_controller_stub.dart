@@ -33,7 +33,7 @@ class VisionControllerStub implements VisionController {
 
   @override
   Future<void> start({
-    int targetFps = 8,
+    int targetFps = 15,
     String sourceKind = 'webcam',
     String? sourceUrl,
   }) async {

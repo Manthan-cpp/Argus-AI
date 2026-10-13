@@ -64,7 +64,7 @@ class VisionControllerWeb implements VisionController {
 
         final video = web.document.createElement('video') as web.HTMLVideoElement;
         video.id = 'argus-video-element';
-        video.autoplay = true;
+        video.autoplay = false;
         video.playsInline = true;
         video.muted = true;
         video.style.width = '100%';
@@ -152,7 +152,7 @@ class VisionControllerWeb implements VisionController {
 
   @override
   Future<void> start({
-    int targetFps = 8,
+    int targetFps = 15,
     String sourceKind = 'webcam',
     String? sourceUrl,
   }) async {
@@ -169,7 +169,7 @@ class VisionControllerWeb implements VisionController {
       if (video == null) {
         video = web.document.createElement('video') as web.HTMLVideoElement;
         video.id = 'argus-video-element';
-        video.autoplay = true;
+        video.autoplay = false;
         video.playsInline = true;
         video.muted = true;
         video.style.width = '100%';
