@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 431 290" width="100%" height="100%">
+  <g class="argus-bull-logo" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left Horn -->
+    <path id="left-horn" class="horn-path" d="M 112.5 25.5 L 54 55 L 52 111 L 181 160 L 211 263 L 199 149 L 68 103 L 66 62 Z" />
+    <!-- Right Horn -->
+    <path id="right-horn" class="horn-path" d="M 318.5 25.5 L 377 55 L 379 111 L 250 160 L 220 263 L 232 149 L 363 103 L 365 62 Z" />
+    <!-- Left Eye -->
+    <path id="left-eye" class="eye-path" d="M 97 152 L 166 174 L 162 209 L 158 181 L 125 170 L 139 199 Z" />
+    <!-- Right Eye -->
+    <path id="right-eye" class="eye-path" d="M 334 152 L 265 174 L 269 209 L 273 181 L 306 170 L 292 199 Z" />
+  </g>
+</svg>

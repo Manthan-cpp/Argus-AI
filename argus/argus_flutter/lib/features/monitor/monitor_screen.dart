@@ -15,6 +15,7 @@ import '../../core/vision/vision_stage_view.dart';
 import '../../data/repository_provider.dart';
 import '../../core/util/preloaded_scenes.dart';
 import '../../core/util/video_picker.dart';
+import '../../core/widgets/safe_image.dart';
 import '../facilities/facility_providers.dart';
 
 class MonitorScreen extends ConsumerStatefulWidget {
@@ -34,6 +35,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
 
   // Real on-device vision state & telemetry
   VisionStatusInfo? _visionStatus;
+  bool _isStreamActive = false;
   int _personCount = 0;
   double _fallScore = 0.0;
   int _motionlessMs = 0;
@@ -73,7 +75,10 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
       if (mounted) {
         setState(() {
           _visionStatus = status;
-          if (status.status == 'ended' || status.status == 'stopped') {
+          if (status.status == 'running') {
+            _isStreamActive = true;
+          } else if (status.status == 'ended' || status.status == 'stopped' || status.status == 'error') {
+            _isStreamActive = false;
             _personCount = 0;
             _fallScore = 0.0;
             _motionlessMs = 0;
@@ -84,6 +89,11 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
     });
     vision.onSignals((batch) {
       if (!mounted) return;
+      if (!_isStreamActive) {
+        setState(() {
+          _isStreamActive = true;
+        });
+      }
       final signals = batch['signals'] as List?;
       if (signals != null && signals.isNotEmpty) {
         final first = signals.first as Map<String, dynamic>;
@@ -129,20 +139,36 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
             _inRestrictedZone = anyRestricted;
           });
 
-          final pFirst = persons.first as Map<String, dynamic>;
-          final foot = pFirst['footN'] as Map<String, dynamic>?;
-          if (foot != null) {
-            final fx = (foot['x'] as num?)?.toDouble() ?? 0.0;
-            final fy = (foot['y'] as num?)?.toDouble() ?? 0.0;
-            final zIds = (pFirst['zoneIds'] as List? ?? []).map((e) => (e as num).toInt()).toList();
-            final matched = _zones.where((z) => zIds.contains(z.id)).toList();
-            final zoneName = matched.isNotEmpty
-                ? matched.first.name
-                : (anyRestricted ? (_zones.isNotEmpty ? _zones.first.name : "Restricted Zone") : "Clear");
-            final ts = DateTime.now().toIso8601String().substring(11, 19);
-            _eventLogs.insert(0, '[$ts] SIGNAL: ${persons.length} track, foot (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)}), zone: $zoneName');
-            if (_eventLogs.length > 40) _eventLogs.removeLast();
+          // Select subject to report in log: prioritize active intruder or fallen subject
+          Map<String, dynamic> activeSubject = persons.first as Map<String, dynamic>;
+          for (final p in persons) {
+            final pMap = p as Map<String, dynamic>;
+            final zIds = pMap['zoneIds'] as List?;
+            final fall = (pMap['fallScore'] as num?)?.toDouble() ?? 0.0;
+            if (zIds != null && zIds.isNotEmpty) {
+              activeSubject = pMap;
+              break;
+            } else if (fall >= 0.5) {
+              activeSubject = pMap;
+            }
           }
+
+          final foot = activeSubject['footN'] as Map<String, dynamic>?;
+          final fx = foot != null ? ((foot['x'] as num?)?.toDouble() ?? 0.0) : 0.0;
+          final fy = foot != null ? ((foot['y'] as num?)?.toDouble() ?? 0.0) : 0.0;
+          final zIds = (activeSubject['zoneIds'] as List? ?? []).map((e) => (e as num).toInt()).toList();
+          final matched = _zones.where((z) => zIds.contains(z.id)).toList();
+          final ts = DateTime.now().toIso8601String().substring(11, 19);
+          final trackId = activeSubject['trackId'] ?? '1';
+
+          if (matched.isNotEmpty) {
+            _eventLogs.insert(0, '[$ts] INTRUSION: Track #$trackId entered "${matched.first.name}" at (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)})');
+          } else if (maxFall >= 0.5) {
+            _eventLogs.insert(0, '[$ts] ALERT: Track #$trackId fall suspected (${(maxFall * 100).toInt()}%) at (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)})');
+          } else {
+            _eventLogs.insert(0, '[$ts] SIGNAL: ${persons.length} track(s) active, Track #$trackId at (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)}), zone: Clear');
+          }
+          if (_eventLogs.length > 40) _eventLogs.removeLast();
 
           _dispatchSignalBatch(batch);
         } else {
@@ -315,10 +341,21 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
 
   Future<void> _captureAndUploadEvidence(Incident inc) async {
     final vision = ref.read(visionControllerProvider);
+    final activeWs = ref.read(activeFacilityProvider);
+    final shouldBlurForUI = activeWs?.settings.blurEvidence ?? true;
+
     String? snapshotUrl;
+    String? realSnapshotUrl;
     if (vision.isRunning) {
       try {
-        snapshotUrl = await vision.captureSnapshot(blurHead: true);
+        if (shouldBlurForUI) {
+          snapshotUrl = await vision.captureSnapshot(blurHead: true);
+          // Real unblurred frame for cloud multimodal verification
+          realSnapshotUrl = await vision.captureSnapshot(blurHead: false);
+        } else {
+          snapshotUrl = await vision.captureSnapshot(blurHead: false);
+          realSnapshotUrl = snapshotUrl;
+        }
       } catch (e) {
         debugPrint('[Argus Monitor] Failed to capture live snapshot: $e');
       }
@@ -327,10 +364,14 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
     if (snapshotUrl == null || snapshotUrl.isEmpty) {
       final staticFrames = ref.read(cameraStaticFrameProvider);
       snapshotUrl = staticFrames[inc.cameraId];
+      realSnapshotUrl ??= snapshotUrl;
     }
     final String finalSnapshot = (snapshotUrl != null && snapshotUrl.isNotEmpty)
         ? snapshotUrl
         : getPreloadedSceneFrame(_selectedCamera?.sourceRef);
+    final String finalRealSnapshot = (realSnapshotUrl != null && realSnapshotUrl.isNotEmpty)
+        ? realSnapshotUrl
+        : finalSnapshot;
 
     if (finalSnapshot.isNotEmpty && inc.id != null) {
       ref.read(incidentEvidenceProvider.notifier).update((m) => {...m, inc.id!: finalSnapshot});
@@ -339,6 +380,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
           EvidenceUpload(
             incidentId: inc.id!,
             snapshotJpegBase64: finalSnapshot,
+            verificationCropJpeg: finalRealSnapshot,
           ),
         );
       } catch (e) {
@@ -384,10 +426,16 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
         sourceUrl: (source == 'file' || source == 'stream') ? url : null,
       );
       if (mounted) {
+        setState(() {
+          _isStreamActive = true;
+        });
         ScaffoldMessenger.of(context).clearSnackBars();
       }
     } catch (e) {
       if (mounted) {
+        setState(() {
+          _isStreamActive = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             duration: const Duration(seconds: 4),
@@ -649,30 +697,31 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                     ? Colors.redAccent
                     : Colors.black,
                 side: BorderSide(
-                  color: ref.watch(visionControllerProvider).isRunning
+                  color: (_isStreamActive || ref.watch(visionControllerProvider).isRunning)
                       ? Colors.redAccent
                       : Colors.white,
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               icon: Icon(
-                ref.watch(visionControllerProvider).isRunning
+                (_isStreamActive || ref.watch(visionControllerProvider).isRunning)
                     ? Icons.stop_rounded
                     : (_selectedCamera?.sourceKind == 'file' ? Icons.play_arrow_rounded : Icons.videocam_rounded),
                 size: 16,
               ),
               label: Text(
-                ref.watch(visionControllerProvider).isRunning
+                (_isStreamActive || ref.watch(visionControllerProvider).isRunning)
                     ? 'STOP FEED'
                     : (_selectedCamera?.sourceKind == 'file' ? 'PLAY VIDEO' : 'START WEBCAM'),
                 style: GoogleFonts.sora(fontSize: 11, fontWeight: FontWeight.w700),
               ),
               onPressed: () async {
                 final vision = ref.read(visionControllerProvider);
-                if (vision.isRunning) {
+                if (_isStreamActive || vision.isRunning) {
                   await vision.stop();
                   if (mounted) {
                     setState(() {
+                      _isStreamActive = false;
                       _personCount = 0;
                       _fallScore = 0.0;
                       _motionlessMs = 0;
@@ -710,7 +759,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(img, width: 380, fit: BoxFit.contain),
+                          child: SafeImage(url: img, width: 380, fit: BoxFit.contain),
                         ),
                         const SizedBox(height: 12),
                         const Text(
@@ -764,7 +813,10 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
   }
 
   Widget _buildVideoStage() {
-    final isVisionActive = ref.watch(visionControllerProvider).isRunning;
+    final visionRunning = ref.watch(visionControllerProvider).isRunning;
+    final isVisionActive = _isStreamActive ||
+        visionRunning ||
+        (_visionStatus != null && _visionStatus!.status == 'running');
 
     return RainbowMovingBorder(
       borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
@@ -813,6 +865,39 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
                             ? 'Pre-Recorded CCTV Video Feed · MP4 / WebM'
                             : 'Physical Hardware Webcam Stream',
                         style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Model Loading State Banner
+          if (_visionStatus?.status == 'initializing')
+            Positioned(
+              bottom: 24,
+              left: 24,
+              right: 24,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amberAccent),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Loading MediaPipe vision models...',
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.white),
                       ),
                     ],
                   ),
