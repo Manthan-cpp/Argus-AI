@@ -9,6 +9,7 @@ import '../../app/theme/tokens.dart';
 import '../../core/util/preloaded_scenes.dart';
 import '../../core/util/video_picker.dart';
 import '../../core/vision/vision_controller.dart';
+import '../../core/widgets/safe_image.dart';
 import '../../core/widgets/zone_webcam_preview.dart';
 import '../../data/repository_provider.dart';
 import '../facilities/facility_providers.dart';
@@ -667,9 +668,7 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
       return;
     }
 
-    final nameCtrl = TextEditingController(
-      text: isFreehand ? 'Drawn Zone ${_zones.length + 1}' : 'Polygon Zone ${_zones.length + 1}',
-    );
+    final nameCtrl = TextEditingController();
     String kind = 'restricted';
     String color = '#F43F5E';
 
@@ -778,13 +777,15 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty) return;
+                final zoneName = nameCtrl.text.trim().isNotEmpty
+                    ? nameCtrl.text.trim()
+                    : (isFreehand ? 'Drawn Zone ${_zones.length + 1}' : 'Polygon Zone ${_zones.length + 1}');
                 Navigator.pop(ctx);
 
                 final repo = ref.read(argusRepositoryProvider);
                 final newZone = Zone(
                   cameraId: widget.cameraId,
-                  name: nameCtrl.text.trim(),
+                  name: zoneName,
                   kind: kind,
                   color: color,
                   polygon: List.from(_draftPoints),
@@ -1122,17 +1123,22 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                               // 1. Background Feed Layer: Webcam (Live) OR Video (Static First Frame)
                               if (_camera?.sourceKind == 'webcam')
                                 const Positioned.fill(
-                                  child: ZoneWebcamPreview(),
+                                  child: RepaintBoundary(
+                                    child: ZoneWebcamPreview(),
+                                  ),
                                 )
                               else if (_staticFrameUrl != null)
                                 Positioned.fill(
-                                  child: Image.network(
-                                    _staticFrameUrl!,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      color: const Color(0xFF070A0F),
-                                      child: const Center(
-                                        child: Icon(Icons.movie_outlined, size: 48, color: Colors.white24),
+                                  child: RepaintBoundary(
+                                    child: SafeImage(
+                                      key: ValueKey(_staticFrameUrl),
+                                      url: _staticFrameUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context) => Container(
+                                        color: const Color(0xFF070A0F),
+                                        child: const Center(
+                                          child: Icon(Icons.movie_outlined, size: 48, color: Colors.white24),
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1189,21 +1195,23 @@ class _ZoneEditorScreenState extends ConsumerState<ZoneEditorScreen>
                                       child: AnimatedBuilder(
                                         animation: _animController,
                                         builder: (context, child) {
-                                          return CustomPaint(
-                                            size: size,
-                                            painter: _ZoneEditorPainter(
-                                              zones: _zones,
-                                              activeZone: _activeZone,
-                                              draftPoints: _draftPoints,
-                                              freehandStroke: _freehandStroke,
-                                              isFreehandDrawing: _isFreehandDrawing,
-                                              currentTool: _currentTool,
-                                              draggedVertexIndex: _draggedVertexIndex,
-                                              isDraggingWholeZone: _isDraggingWholeZone,
-                                              mouseCursorPos: _mouseCursorPos,
-                                              isNearFirstPoint: _isNearFirstPoint,
-                                              animValue: _animController.value,
-                                              currentDragDelta: _currentDragDeltaNormalized,
+                                          return RepaintBoundary(
+                                            child: CustomPaint(
+                                              size: size,
+                                              painter: _ZoneEditorPainter(
+                                                zones: _zones,
+                                                activeZone: _activeZone,
+                                                draftPoints: _draftPoints,
+                                                freehandStroke: _freehandStroke,
+                                                isFreehandDrawing: _isFreehandDrawing,
+                                                currentTool: _currentTool,
+                                                draggedVertexIndex: _draggedVertexIndex,
+                                                isDraggingWholeZone: _isDraggingWholeZone,
+                                                mouseCursorPos: _mouseCursorPos,
+                                                isNearFirstPoint: _isNearFirstPoint,
+                                                animValue: _animController.value,
+                                                currentDragDelta: _currentDragDeltaNormalized,
+                                              ),
                                             ),
                                           );
                                         },

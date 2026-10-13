@@ -8,6 +8,7 @@ import '../../core/util/preloaded_scenes.dart';
 import '../../core/util/video_picker.dart';
 import '../../core/widgets/hover_card.dart';
 import '../../core/widgets/reveal_animation.dart';
+import '../../core/widgets/safe_image.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../data/repository_provider.dart';
 import '../facilities/facility_providers.dart';
@@ -43,13 +44,11 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
 
   void _showAddCameraDialog() {
     final nameCtrl = TextEditingController();
-    final rtspUrlCtrl = TextEditingController(text: 'rtsp://192.168.1.108:554/live/ch0');
+    final rtspUrlCtrl = TextEditingController();
     String sourceKind = 'webcam'; // 'webcam', 'file', or 'rtsp'
-    String selectedSceneId = kPreloadedScenes.first.id;
     String? sourceRef;
     String? pickedFileName;
     String? firstFrameUrl;
-    bool isCustomFile = false;
 
     showDialog(
       context: context,
@@ -92,9 +91,6 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                           setDlgState(() {
                             sourceKind = 'webcam';
                             sourceRef = 'local';
-                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Video') || nameCtrl.text.startsWith('CCTV') || nameCtrl.text.startsWith('Chemical') || nameCtrl.text.startsWith('Staircase')) {
-                              nameCtrl.text = 'Webcam Feed ${_cameras.length + 1}';
-                            }
                           });
                         },
                         child: Container(
@@ -126,11 +122,8 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                         onTap: () {
                           setDlgState(() {
                             sourceKind = 'file';
-                            sourceRef = selectedSceneId;
-                            firstFrameUrl = getPreloadedSceneFrame(selectedSceneId);
-                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Webcam') || nameCtrl.text.startsWith('CCTV')) {
-                              nameCtrl.text = kPreloadedScenes.first.name;
-                            }
+                            sourceRef = null;
+                            firstFrameUrl = null;
                           });
                         },
                         child: Container(
@@ -149,7 +142,7 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                               const SizedBox(height: 4),
                               Text('Video / MP4', style: GoogleFonts.sora(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                               const SizedBox(height: 2),
-                              Text('Scenes & Files', style: GoogleFonts.inter(fontSize: 9, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
+                              Text('Upload MP4 File', style: GoogleFonts.inter(fontSize: 9, color: ArgusTokens.textTertiary), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
@@ -163,9 +156,6 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                           setDlgState(() {
                             sourceKind = 'rtsp';
                             sourceRef = rtspUrlCtrl.text.trim();
-                            if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Webcam') || nameCtrl.text.startsWith('Video') || nameCtrl.text.startsWith('Chemical') || nameCtrl.text.startsWith('Staircase')) {
-                              nameCtrl.text = 'CCTV Sector ${_cameras.length + 1}';
-                            }
                           });
                         },
                         child: Container(
@@ -239,12 +229,12 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                   ),
                 ],
 
-                // 3. Preloaded Video Specific Controls
+                // 3. MP4 Video Specific Controls
                 if (sourceKind == 'file') ...[
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: ArgusTokens.bgRaised,
                       borderRadius: BorderRadius.circular(8),
@@ -253,89 +243,43 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Select Video Footage:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
+                        Text('Select MP4 Video File:', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white)),
                         const SizedBox(height: 10),
-
-                        // Preloaded Scene Dropdown
-                        DropdownButtonFormField<String>(
-                          initialValue: isCustomFile ? 'custom' : selectedSceneId,
-                          dropdownColor: ArgusTokens.bgRaised,
-                          style: GoogleFonts.inter(color: ArgusTokens.textPrimary, fontSize: 13),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                            labelText: 'Preloaded Scene Template',
-                          ),
-                          items: [
-                            ...kPreloadedScenes.map((s) => DropdownMenuItem(
-                              value: s.id,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.movie_creation_outlined, size: 16, color: ArgusTokens.accent),
-                                  const SizedBox(width: 8),
-                                  Text(s.name, style: const TextStyle(fontSize: 12)),
-                                ],
-                              ),
-                            )),
-                            const DropdownMenuItem(
-                              value: 'custom',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.upload_file_rounded, size: 16, color: Colors.amberAccent),
-                                  SizedBox(width: 8),
-                                  Text('Custom MP4 File (Browse from Disk)...', style: TextStyle(fontSize: 12)),
-                                ],
-                              ),
-                            ),
-                          ],
-                          onChanged: (val) {
-                            if (val == null) return;
-                            setDlgState(() {
-                              if (val == 'custom') {
-                                isCustomFile = true;
-                              } else {
-                                isCustomFile = false;
-                                selectedSceneId = val;
-                                sourceRef = val;
-                                firstFrameUrl = getPreloadedSceneFrame(val);
-                                final scene = kPreloadedScenes.firstWhere((s) => s.id == val);
-                                nameCtrl.text = scene.name;
-                              }
-                            });
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final file = await pickVideoFile();
+                            if (file != null) {
+                              setDlgState(() {
+                                sourceRef = file.url;
+                                pickedFileName = file.name;
+                                firstFrameUrl = file.firstFrameDataUrl;
+                              });
+                            }
                           },
-                        ),
-
-                        // If Custom File is selected, show browse button
-                        if (isCustomFile) ...[
-                          const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              final file = await pickVideoFile();
-                              if (file != null) {
-                                setDlgState(() {
-                                  sourceRef = file.url;
-                                  pickedFileName = file.name;
-                                  firstFrameUrl = file.firstFrameDataUrl;
-                                  if (nameCtrl.text.isEmpty || nameCtrl.text.startsWith('Video') || nameCtrl.text.startsWith('Chemical')) {
-                                    nameCtrl.text = file.name.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '');
-                                  }
-                                });
-                              }
-                            },
-                            icon: const Icon(Icons.upload_file_rounded, size: 16),
-                            label: Text(pickedFileName != null ? 'File: $pickedFileName' : 'Browse Local MP4 File...'),
+                          icon: const Icon(Icons.upload_file_rounded, size: 18, color: ArgusTokens.accent),
+                          label: Text(
+                            pickedFileName != null ? 'File: $pickedFileName' : 'Browse Local MP4 File...',
+                            style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textPrimary),
                           ),
-                          if (pickedFileName != null) ...[
-                            const SizedBox(height: 6),
-                            Text('Static first frame extracted & ready for zone drawing.', style: GoogleFonts.inter(fontSize: 11, color: Colors.greenAccent)),
-                          ],
-                        ] else ...[
-                          const SizedBox(height: 6),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: ArgusTokens.accent),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (pickedFileName != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, size: 14, color: Colors.greenAccent),
+                              const SizedBox(width: 6),
+                              Text('Video selected and ready for zone drawing.', style: GoogleFonts.inter(fontSize: 11, color: Colors.greenAccent)),
+                            ],
+                          )
+                        else
                           Text(
-                            'First frame of this scene will be frozen in the zone editor for precise polygon alignment.',
+                            'Select an MP4 file from disk to monitor with AI detections.',
                             style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.textTertiary),
                           ),
-                        ],
                       ],
                     ),
                   ),
@@ -350,12 +294,25 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                if (sourceKind == 'file' && (sourceRef == null || sourceRef!.isEmpty)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please select an MP4 video file first.')),
+                  );
+                  return;
+                }
+
                 final name = nameCtrl.text.trim().isNotEmpty
                     ? nameCtrl.text.trim()
-                    : (sourceKind == 'webcam' ? 'Webcam #${_cameras.length + 1}' : (sourceKind == 'rtsp' ? 'CCTV Sector #${_cameras.length + 1}' : 'Video Feed #${_cameras.length + 1}'));
+                    : (sourceKind == 'webcam'
+                        ? 'Webcam #${_cameras.length + 1}'
+                        : (sourceKind == 'rtsp'
+                            ? 'CCTV Sector #${_cameras.length + 1}'
+                            : (pickedFileName != null
+                                ? pickedFileName!.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '')
+                                : 'Video Feed #${_cameras.length + 1}')));
 
                 final finalSourceRef = sourceRef ??
-                    (sourceKind == 'webcam' ? 'local' : (sourceKind == 'rtsp' ? rtspUrlCtrl.text.trim() : (isCustomFile ? 'local' : selectedSceneId)));
+                    (sourceKind == 'webcam' ? 'local' : (sourceKind == 'rtsp' ? rtspUrlCtrl.text.trim() : 'local'));
 
                 final repo = ref.read(argusRepositoryProvider);
                 final activeWs = ref.read(activeFacilityProvider);
@@ -370,12 +327,13 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                 ));
 
                 // Cache static frame for zone editor if video camera
-                if (sourceKind == 'file' && saved.id != null) {
-                  final frame = firstFrameUrl ?? getPreloadedSceneFrame(finalSourceRef);
+                if (sourceKind == 'file' && saved.id != null && firstFrameUrl != null) {
                   ref.read(cameraStaticFrameProvider.notifier).update(
-                    (map) => {...map, saved.id!: frame},
+                    (map) => {...map, saved.id!: firstFrameUrl!},
                   );
                 }
+
+                ref.invalidate(activeFacilityCamerasProvider);
 
                 if (ctx.mounted) Navigator.pop(ctx);
                 if (mounted) _loadCameras();
@@ -409,6 +367,7 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
             onPressed: () async {
               Navigator.pop(c);
               await ref.read(argusRepositoryProvider).deleteCamera(cam.id!);
+              ref.invalidate(activeFacilityCamerasProvider);
               _loadCameras();
             },
             child: const Text('Delete Camera'),
@@ -439,6 +398,7 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
             onPressed: () async {
               Navigator.pop(c);
               await ref.read(argusRepositoryProvider).deleteWorkspaceData();
+              ref.invalidate(activeFacilityCamerasProvider);
               _loadCameras();
             },
             child: const Text('Wipe Clean'),
@@ -644,10 +604,10 @@ class _CamerasScreenState extends ConsumerState<CamerasScreen> {
                                           fit: StackFit.expand,
                                           children: [
                                             if (thumbUrl != null)
-                                              Image.network(
-                                                thumbUrl,
+                                              SafeImage(
+                                                url: thumbUrl,
                                                 fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Center(
+                                                errorBuilder: (context) => Center(
                                                   child: Icon(
                                                     Icons.movie_outlined,
                                                     size: 40,
