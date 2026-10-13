@@ -1,7 +1,5 @@
 <div align="center">
 
-![Argus AI](screenshots/TOP.png)
-
 # 👁️ ARGUS AI
 ### *Autonomous Visual Threat Interception & Tactical Safety Workflows*
 **Real-Time Computer Vision · Serverpod 4 Distributed Engine · Flutter Tactical Control Room**
@@ -10,6 +8,10 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.5+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-Full--Stack%20Dart-purple?style=for-the-badge)](#-the-power-of-serverpod--flutter)
+
+<br/><br/>
+
+![Argus AI](screenshots/TOP.png)
 
 <br/>
 
