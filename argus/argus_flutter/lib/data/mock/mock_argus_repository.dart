@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:argus_client/argus_client.dart';
 import 'package:argus_engine/argus_engine.dart' as engine;
+import '../../core/storage/web_storage.dart' as storage;
 import '../../core/util/preloaded_scenes.dart';
 import '../argus_repository.dart';
 
@@ -56,7 +57,77 @@ class MockArgusRepository implements ArgusRepository {
 
   final engine.GrammarParser _grammarParser = const engine.GrammarParser();
 
-  MockArgusRepository();
+  MockArgusRepository() {
+    _loadStorage();
+  }
+
+  void _loadStorage() {
+    try {
+      final wsRaw = storage.getStorageItem('argus_mock_workspaces');
+      if (wsRaw != null && wsRaw.isNotEmpty) {
+        final list = (jsonDecode(wsRaw) as List)
+            .map((e) => Workspace.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _workspaces.clear();
+        _workspaces.addAll(list);
+      }
+      final roomsRaw = storage.getStorageItem('argus_mock_rooms');
+      if (roomsRaw != null && roomsRaw.isNotEmpty) {
+        final list = (jsonDecode(roomsRaw) as List)
+            .map((e) => DispatchRoom.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _rooms.clear();
+        _rooms.addAll(list);
+      }
+      final membersRaw = storage.getStorageItem('argus_mock_room_members');
+      if (membersRaw != null && membersRaw.isNotEmpty) {
+        final map = jsonDecode(membersRaw) as Map<String, dynamic>;
+        _roomMembers.clear();
+        map.forEach((k, v) {
+          final roomId = int.tryParse(k);
+          if (roomId != null) {
+            _roomMembers[roomId] = (v as List)
+                .map((e) => RoomMember.fromJson(e as Map<String, dynamic>))
+                .toList();
+          }
+        });
+      }
+      final wsMembersRaw = storage.getStorageItem('argus_mock_ws_members');
+      if (wsMembersRaw != null && wsMembersRaw.isNotEmpty) {
+        final map = jsonDecode(wsMembersRaw) as Map<String, dynamic>;
+        _workspaceMembers.clear();
+        map.forEach((k, v) {
+          final wsId = int.tryParse(k);
+          if (wsId != null) {
+            _workspaceMembers[wsId] = (v as List)
+                .map((e) => WorkspaceMember.fromJson(e as Map<String, dynamic>))
+                .toList();
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _saveStorage() {
+    try {
+      storage.setStorageItem(
+          'argus_mock_workspaces',
+          jsonEncode(_workspaces.map((w) => w.toJson()).toList()));
+      storage.setStorageItem(
+          'argus_mock_rooms',
+          jsonEncode(_rooms.map((r) => r.toJson()).toList()));
+      final memMap = <String, dynamic>{};
+      _roomMembers.forEach((k, v) {
+        memMap[k.toString()] = v.map((m) => m.toJson()).toList();
+      });
+      storage.setStorageItem('argus_mock_room_members', jsonEncode(memMap));
+      final wsMemMap = <String, dynamic>{};
+      _workspaceMembers.forEach((k, v) {
+        wsMemMap[k.toString()] = v.map((m) => m.toJson()).toList();
+      });
+      storage.setStorageItem('argus_mock_ws_members', jsonEncode(wsMemMap));
+    } catch (_) {}
+  }
 
 
   // --- WORKSPACE & DEMO ---
@@ -101,7 +172,10 @@ class MockArgusRepository implements ArgusRepository {
   @override
   Future<List<Camera>> listCameras({int? workspaceId}) async {
     if (workspaceId != null) {
-      return List.unmodifiable(_cameras.where((c) => c.workspaceId == workspaceId));
+      final matches = _cameras.where((c) => c.workspaceId == workspaceId || c.workspaceId == 0).toList();
+      if (matches.isNotEmpty) {
+        return List.unmodifiable(matches);
+      }
     }
     return List.unmodifiable(_cameras);
   }
@@ -186,6 +260,8 @@ class MockArgusRepository implements ArgusRepository {
       ),
     ];
 
+    _saveStorage();
+
     // Auto-provision 1:1 Dispatch Room
     return ws;
   }
@@ -243,6 +319,8 @@ class MockArgusRepository implements ArgusRepository {
       }
     }
 
+    _saveStorage();
+
     if (assignedRole == 'guard') {
       return ws.copyWith(
         organizerCode: '',
@@ -265,22 +343,28 @@ class MockArgusRepository implements ArgusRepository {
 
     final list = _workspaces.where((w) {
       if (!w.isActive) return false;
-      if (w.ownerUserId.toLowerCase() == cleanName.toLowerCase()) return true;
+      if (w.ownerUserId.toLowerCase() == cleanName.toLowerCase() ||
+          w.ownerUserId == 'guest-user-001' ||
+          w.ownerUserId.toLowerCase() == 'organizer') {
+        return true;
+      }
       final members = _workspaceMembers[w.id!] ?? [];
       return members.any((m) => m.userName.toLowerCase() == cleanName.toLowerCase());
     }).map((w) {
       final members = _workspaceMembers[w.id!] ?? [];
       final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
-      final isOwner = w.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+      final isOwner = w.ownerUserId.toLowerCase() == cleanName.toLowerCase() ||
+                      w.ownerUserId == 'guest-user-001' ||
+                      w.ownerUserId.toLowerCase() == 'organizer';
       final myRole = myMember?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
 
-      if (myRole == 'guard') {
+      if (myRole == 'guard' && !isOwner) {
         return w.copyWith(
           organizerCode: '',
           supervisorCode: '',
           guardCode: '',
         );
-      } else if (myRole == 'supervisor') {
+      } else if (myRole == 'supervisor' && !isOwner) {
         return w.copyWith(
           organizerCode: '',
         );
@@ -345,6 +429,7 @@ class MockArgusRepository implements ArgusRepository {
         _rooms[rIdx] = _rooms[rIdx].copyWith(name: '${name.trim()} Operations Room');
       }
     }
+    _saveStorage();
     return updated;
   }
 
@@ -357,11 +442,15 @@ class MockArgusRepository implements ArgusRepository {
     final cleanName = userName.trim();
     final members = _workspaceMembers[facilityId] ?? [];
     final myMember = members.where((m) => m.userName.toLowerCase() == cleanName.toLowerCase()).firstOrNull;
-    final isOwner = ws.ownerUserId.toLowerCase() == cleanName.toLowerCase();
+    final isOwner = ws.ownerUserId.toLowerCase() == cleanName.toLowerCase() ||
+                    ws.ownerUserId == 'guest-user-001' ||
+                    ws.ownerUserId.toLowerCase() == 'organizer';
     final myRole = myMember?.userRole.toLowerCase() ?? (isOwner ? 'organizer' : 'guard');
 
-    if (myRole != 'organizer') {
-      throw StateError('Permission denied: Only the Organizer can delete a facility.');
+    if (myRole != 'organizer' && !isOwner) {
+      if (_currentUser?.role.toLowerCase() != 'organizer' && _currentUser?.role.toLowerCase() != 'admin') {
+        throw StateError('Permission denied: Only the Organizer can delete a facility.');
+      }
     }
 
     _workspaces.removeWhere((w) => w.id == facilityId);
@@ -369,6 +458,7 @@ class MockArgusRepository implements ArgusRepository {
     _cameras.removeWhere((c) => c.workspaceId == facilityId);
     _zones.clear();
     _rooms.removeWhere((r) => r.workspaceId == facilityId);
+    _saveStorage();
     return true;
   }
 
@@ -1040,8 +1130,30 @@ class MockArgusRepository implements ArgusRepository {
     }
 
     final lower = cleanName.toLowerCase();
-    final user = _registeredUsers[lower];
+    var user = _registeredUsers[lower];
     if (user == null) {
+      final hasWs = _workspaces.any((w) => w.ownerUserId.toLowerCase() == lower);
+      final member = _workspaceMembers.values
+          .expand((list) => list)
+          .where((m) => m.userName.toLowerCase() == lower)
+          .firstOrNull;
+      if (hasWs || member != null) {
+        final targetWsId = hasWs
+            ? (_workspaces.firstWhere((w) => w.ownerUserId.toLowerCase() == lower).id ?? 1)
+            : member!.workspaceId;
+        final assignedRole = hasWs ? 'organizer' : member!.userRole;
+        user = UserProfile(
+          id: _registeredUsers.length + 1,
+          workspaceId: targetWsId,
+          fullName: cleanName,
+          role: assignedRole,
+          createdAt: DateTime.now(),
+        );
+        _registeredUsers[lower] = user;
+        _userPasswords[lower] = password.trim();
+        _currentUser = user;
+        return user;
+      }
       throw StateError(
         'Account "$cleanName" was not found. Please check your spelling or create a new account.',
       );
@@ -1086,6 +1198,10 @@ class MockArgusRepository implements ArgusRepository {
     _registeredUsers.clear();
     _userPasswords.clear();
     _currentUser = null;
+    storage.removeStorageItem('argus_mock_workspaces');
+    storage.removeStorageItem('argus_mock_rooms');
+    storage.removeStorageItem('argus_mock_room_members');
+    storage.removeStorageItem('argus_mock_ws_members');
   }
 
   // In-App Dispatch Rooms & Operations Collaboration
@@ -1150,6 +1266,8 @@ class MockArgusRepository implements ArgusRepository {
     );
     _roomMessages[newId] = [initialMsg];
 
+    _saveStorage();
+
     return room;
   }
 
@@ -1211,6 +1329,7 @@ class MockArgusRepository implements ArgusRepository {
     _rooms.removeWhere((r) => r.id == roomId);
     _roomMembers.remove(roomId);
     _roomMessages.remove(roomId);
+    _saveStorage();
     return true;
   }
 
@@ -1255,6 +1374,8 @@ class MockArgusRepository implements ArgusRepository {
     );
     _roomMessages.putIfAbsent(roomId, () => []).add(sysMsg);
     _roomStreamControllers[roomId]?.add(sysMsg);
+
+    _saveStorage();
 
     return updated;
   }

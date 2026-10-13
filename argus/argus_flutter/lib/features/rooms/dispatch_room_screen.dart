@@ -43,7 +43,12 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
   Future<void> _loadRoom() async {
     try {
       final repo = ref.read(argusRepositoryProvider);
-      final user = ref.read(currentUserProvider).valueOrNull;
+      var user = ref.read(currentUserProvider).valueOrNull;
+      if (user == null) {
+        try {
+          user = await ref.read(currentUserProvider.notifier).ensureUser();
+        } catch (_) {}
+      }
       final numericId = int.tryParse(widget.code);
       DispatchRoom? room;
       if (numericId != null) {
@@ -51,7 +56,13 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
       }
       room ??= await repo.getRoomByCode(widget.code);
       if (room == null) {
-        final activeFacility = ref.read(activeFacilityProvider);
+        var activeFacility = ref.read(activeFacilityProvider);
+        if (activeFacility == null) {
+          try {
+            await ref.read(userFacilitiesProvider.future);
+            activeFacility = ref.read(activeFacilityProvider);
+          } catch (_) {}
+        }
         if (activeFacility?.id != null) {
           room = await repo.getRoomForFacility(activeFacility!.id!, userName: user?.fullName);
         }
@@ -72,6 +83,7 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
         } else {
           setState(() {
             _room = room;
+            _error = null;
             _isLoading = false;
           });
         }
@@ -140,7 +152,8 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
     if (user == null) return;
 
     final repo = ref.read(argusRepositoryProvider);
-    final cameras = await repo.listCameras(workspaceId: _room!.workspaceId);
+    final allCams = await repo.listCameras();
+    final cameras = allCams.isNotEmpty ? allCams : await repo.listCameras(workspaceId: _room!.workspaceId);
 
     if (!mounted) return;
 
@@ -352,6 +365,17 @@ class _DispatchRoomScreenState extends ConsumerState<DispatchRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<UserProfile?>>(currentUserProvider, (prev, next) {
+      if (next.hasValue && next.value != null && _room == null) {
+        _loadRoom();
+      }
+    });
+    ref.listen<Workspace?>(activeFacilityProvider, (prev, next) {
+      if (next != null && _room == null) {
+        _loadRoom();
+      }
+    });
+
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: ArgusTokens.bgBase,

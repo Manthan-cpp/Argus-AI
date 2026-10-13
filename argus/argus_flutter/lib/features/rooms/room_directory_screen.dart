@@ -30,6 +30,14 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
     final currentUser = userAsync.valueOrNull;
 
     if (currentUser == null) {
+      if (userAsync.isLoading) {
+        return const Scaffold(
+          backgroundColor: ArgusTokens.bgBase,
+          body: Center(
+            child: CircularProgressIndicator(color: ArgusTokens.accent),
+          ),
+        );
+      }
       return const Scaffold(
         backgroundColor: ArgusTokens.bgBase,
         body: AuthRequiredBarrier(
@@ -38,10 +46,19 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
       );
     }
 
+    final facilitiesAsync = ref.watch(userFacilitiesProvider);
     final activeFacility = ref.watch(activeFacilityProvider);
 
-    // If no active facility is currently selected, guide user to hub
+    // If no active facility is currently selected, check if facilities are loading or guide user to hub
     if (activeFacility == null) {
+      if (facilitiesAsync.isLoading || userAsync.isLoading) {
+        return const Scaffold(
+          backgroundColor: ArgusTokens.bgBase,
+          body: Center(
+            child: CircularProgressIndicator(color: ArgusTokens.accent),
+          ),
+        );
+      }
       return Scaffold(
         backgroundColor: ArgusTokens.bgBase,
         body: Center(
@@ -536,9 +553,13 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
     String creatorName,
     String creatorRole,
   ) async {
+    final repo = ref.read(argusRepositoryProvider);
+    final allCams = await repo.listCameras();
+    final availableCameras = allCams.isNotEmpty ? allCams : cameras;
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final selectedCamIds = <int>{};
+    if (!context.mounted) return;
 
     await showDialog(
       context: context,
@@ -606,19 +627,19 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
                     children: [
                       Text('Route Alerts From Cameras', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                       const Spacer(),
-                      if (cameras.isNotEmpty)
+                      if (availableCameras.isNotEmpty)
                         TextButton(
                           onPressed: () {
                             setDlgState(() {
-                              if (selectedCamIds.length == cameras.length) {
+                              if (selectedCamIds.length == availableCameras.length) {
                                 selectedCamIds.clear();
                               } else {
-                                selectedCamIds.addAll(cameras.map((c) => c.id!).whereType<int>());
+                                selectedCamIds.addAll(availableCameras.map((c) => c.id!).whereType<int>());
                               }
                             });
                           },
                           child: Text(
-                            selectedCamIds.length == cameras.length ? 'Clear All' : 'Select All',
+                            selectedCamIds.length == availableCameras.length ? 'Clear All' : 'Select All',
                             style: GoogleFonts.inter(fontSize: 11, color: ArgusTokens.accent),
                           ),
                         ),
@@ -626,7 +647,7 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  if (cameras.isEmpty)
+                  if (availableCameras.isEmpty)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
@@ -644,7 +665,7 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: cameras.map((c) {
+                      children: availableCameras.map((c) {
                         final isSelected = selectedCamIds.contains(c.id);
                         return FilterChip(
                           label: Text(c.name, style: GoogleFonts.inter(fontSize: 12)),
@@ -719,9 +740,13 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
     List<Camera> cameras,
     String userName,
   ) async {
+    final repo = ref.read(argusRepositoryProvider);
+    final allCams = await repo.listCameras();
+    final availableCameras = allCams.isNotEmpty ? allCams : cameras;
     final nameCtrl = TextEditingController(text: room.name);
     final descCtrl = TextEditingController(text: room.description ?? '');
     final selectedCamIds = <int>{...room.cameraIds};
+    if (!context.mounted) return;
 
     await showDialog(
       context: context,
@@ -782,14 +807,14 @@ class _RoomDirectoryScreenState extends ConsumerState<RoomDirectoryScreen> {
 
                   Text('Route Alerts From Cameras', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  if (cameras.isEmpty)
+                  if (availableCameras.isEmpty)
                     Text('No cameras configured.',
                         style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary))
                   else
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: cameras.map((c) {
+                      children: availableCameras.map((c) {
                         final isSelected = selectedCamIds.contains(c.id);
                         return FilterChip(
                           label: Text(c.name, style: GoogleFonts.inter(fontSize: 12)),

@@ -30,6 +30,20 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserProfile?>> {
     }
   }
 
+  Future<UserProfile?> ensureUser() async {
+    if (state.hasValue) return state.value;
+    try {
+      final repo = ref.read(argusRepositoryProvider);
+      final storedName = _getStoredUserName();
+      final user = await repo.getCurrentUser(fullName: storedName);
+      state = AsyncValue.data(user);
+      return user;
+    } catch (_) {
+      state = const AsyncValue.data(null);
+      return null;
+    }
+  }
+
   Future<UserProfile> signUp(String fullName, String password) async {
     final repo = ref.read(argusRepositoryProvider);
     final user = await repo.signUp(fullName, password);
