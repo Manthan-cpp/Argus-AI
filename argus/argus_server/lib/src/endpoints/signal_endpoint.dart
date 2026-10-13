@@ -73,6 +73,25 @@ class SignalEndpoint extends Endpoint {
           }
           break;
 
+        case 'ppe_check':
+          final targetZoneId = rule.trigger.zoneId;
+          for (final p in persons) {
+            final matchesZone = (targetZoneId == null || targetZoneId == 0)
+                ? p.zoneIds.isNotEmpty
+                : p.zoneIds.contains(targetZoneId);
+            if (matchesZone) {
+              conditionMet = true;
+              triggerPerson = p;
+              final zoneLabel = (targetZoneId != null && targetZoneId > 0)
+                  ? 'Zone #$targetZoneId'
+                  : 'Monitored PPE Area';
+              final ppeType = rule.verify.kind.isNotEmpty ? rule.verify.kind : 'helmet';
+              triggerDetail = 'Subject (ID ${p.trackId}) in $zoneLabel flagged for PPE compliance verification ($ppeType)';
+              break;
+            }
+          }
+          break;
+
         case 'fall_suspected':
           final targetZoneId = rule.trigger.zoneId;
           final requiredFallMs = rule.trigger.minDurationSec * 1000;
@@ -128,6 +147,29 @@ class SignalEndpoint extends Endpoint {
             triggerDetail = 'Crowd surge: ${matchingPersons.length} persons detected $zoneLabel (threshold: $minCount)';
           }
           break;
+
+        case 'running':
+          final targetZoneId = rule.trigger.zoneId;
+          final candidatePersons = (targetZoneId != null && targetZoneId > 0)
+              ? persons.where((p) => p.zoneIds.contains(targetZoneId)).toList()
+              : persons;
+
+          final runningPersons = candidatePersons.where((p) => p.motionScore >= 0.50).toList();
+          final requiredCount = rule.trigger.minCount ?? 1;
+
+          if (runningPersons.length >= requiredCount && runningPersons.isNotEmpty) {
+            conditionMet = true;
+            triggerPerson = runningPersons.first;
+            final zoneLabel = (targetZoneId != null && targetZoneId > 0)
+                ? 'in Zone #$targetZoneId'
+                : 'in camera view';
+            if (runningPersons.length > 1) {
+              triggerDetail = 'Rapid movement / Stampede: ${runningPersons.length} subjects running $zoneLabel (speed: ${(triggerPerson.motionScore * 100).toInt()}%)';
+            } else {
+              triggerDetail = 'Subject (ID ${triggerPerson.trackId}) running $zoneLabel (speed: ${(triggerPerson.motionScore * 100).toInt()}%)';
+            }
+          }
+          break;
       }
 
       if (conditionMet) {
@@ -166,8 +208,10 @@ class SignalEndpoint extends Endpoint {
             status: 'open',
             openedAt: DateTime.now(),
             verification: VerificationInfo(
-              status: 'not_requested',
-              reason: 'Rule conditions satisfied by vision telemetry',
+              status: rule.verify.enabled ? 'pending' : 'not_requested',
+              reason: rule.verify.enabled
+                  ? 'Pending AI vision verification (${rule.verify.kind})'
+                  : 'Rule conditions satisfied by vision telemetry',
             ),
             summary: '${rule.name}: $triggerDetail',
             signalContextJson: json.encode({
