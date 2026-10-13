@@ -11,6 +11,7 @@ import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/reveal_animation.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/util/preloaded_scenes.dart';
+import '../../core/widgets/safe_image.dart';
 import '../../data/repository_provider.dart';
 import '../facilities/facility_providers.dart';
 
@@ -299,10 +300,10 @@ class _IncidentsScreenState extends ConsumerState<IncidentsScreen> {
                               child: Stack(
                                 fit: StackFit.expand,
                                 children: [
-                                  Image.network(
-                                    thumbUrl,
+                                  SafeImage(
+                                    url: thumbUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) => const Center(
+                                    errorBuilder: (context) => const Center(
                                       child: Icon(Icons.image_outlined, size: 24, color: ArgusTokens.textTertiary),
                                     ),
                                   ),

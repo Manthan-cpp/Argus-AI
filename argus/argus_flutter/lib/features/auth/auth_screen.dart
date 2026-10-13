@@ -211,13 +211,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   const SizedBox(height: 16),
                 ],
 
-                // Name input
-                Text('Full Name', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                // Name / Identity input
+                Text(
+                  _isSignUp ? 'Full Name' : 'Full Name or Email',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(
-                    hintText: 'e.g. Officer Marcus',
+                    hintText: _isSignUp ? 'e.g. Officer Marcus' : 'e.g. Officer Marcus or marcus@argus.ai',
                     hintStyle: GoogleFonts.inter(color: ArgusTokens.textTertiary),
                     filled: true,
                     fillColor: ArgusTokens.bgOverlay,

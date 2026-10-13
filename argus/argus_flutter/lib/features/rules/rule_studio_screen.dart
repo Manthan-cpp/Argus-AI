@@ -21,9 +21,7 @@ class RuleStudioScreen extends ConsumerStatefulWidget {
 }
 
 class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
-  final TextEditingController _sentenceCtrl = TextEditingController(
-    text: 'If a person enters Restricted Zone, trigger a critical alert immediately.',
-  );
+  final TextEditingController _sentenceCtrl = TextEditingController();
 
   bool _isInterpreting = false;
   ParseResult? _currentParsed;
@@ -37,6 +35,7 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
 
   final List<String> _sampleChips = [
     'If a person enters Restricted Zone, trigger a critical alert immediately.',
+    'If a person leaves a bag unattended for more than 5 seconds, trigger a critical alert.',
     'If more than 3 people gather in Staircase, raise a crowd density alert.',
     'If a person lingers in Cash Desk for more than 10 seconds, raise a loitering warning.',
     'If someone falls and stays down for 10 seconds, dispatch medical response.',
@@ -101,7 +100,9 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
   }
 
   Future<void> _interpretInitial() async {
-    await _handleInterpret(_sentenceCtrl.text);
+    if (_sentenceCtrl.text.trim().isNotEmpty) {
+      await _handleInterpret(_sentenceCtrl.text);
+    }
   }
 
   Future<void> _handleCameraChanged(Camera? newCam) async {
@@ -129,7 +130,9 @@ class _RuleStudioScreenState extends ConsumerState<RuleStudioScreen> {
       }
     }
 
-    await _handleInterpret(_sentenceCtrl.text);
+    if (_sentenceCtrl.text.trim().isNotEmpty) {
+      await _handleInterpret(_sentenceCtrl.text);
+    }
   }
 
   void _handleZoneChanged(Zone? newZone) {

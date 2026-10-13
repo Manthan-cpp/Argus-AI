@@ -11,6 +11,7 @@ import '../facilities/create_facility_dialog.dart';
 import '../facilities/facility_providers.dart';
 import '../facilities/join_facility_dialog.dart';
 import '../rooms/room_providers.dart';
+import '../../data/repository_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -324,9 +325,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Future<void> _confirmDeleteFacility(
+    Workspace fac,
+    UserProfile currentUser,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: ArgusTokens.severityCritical.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: ArgusTokens.severityCritical, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Text('Delete Facility', style: GoogleFonts.sora(fontSize: 18, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${fac.name}"?\n\nAll associated cameras, spatial zones, rules, and dispatch channels in this facility will be permanently removed.',
+          style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: GoogleFonts.inter(color: ArgusTokens.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ArgusTokens.severityCritical,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final success = await ref.read(argusRepositoryProvider).deleteFacility(
+        fac.id!,
+        userName: currentUser.fullName,
+      );
+
+      if (success) {
+        ref.invalidate(userFacilitiesProvider);
+        final activeFac = ref.read(activeFacilityProvider);
+        if (activeFac?.id == fac.id) {
+          ref.read(activeFacilityProvider.notifier).state = null;
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: ArgusTokens.bgRaised,
+              content: Text(
+                'Facility "${fac.name}" has been deleted.',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: ArgusTokens.severityCritical,
+            content: Text('Failed to delete facility: $e'),
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildFacilityCard(BuildContext context, Workspace fac, UserProfile currentUser) {
-    final isOwner = fac.ownerUserId.toLowerCase() == currentUser.fullName.toLowerCase();
-    final isOrganizer = isOwner || fac.organizerCode.isNotEmpty;
+    final cleanUserName = currentUser.fullName.trim().toLowerCase();
+    final cleanOwner = fac.ownerUserId.trim().toLowerCase();
+    final isOwner = cleanOwner == cleanUserName ||
+        cleanOwner == 'guest-user-001' ||
+        cleanOwner == 'organizer' ||
+        cleanOwner.isEmpty;
+    final isOrganizer = isOwner ||
+        fac.organizerCode.isNotEmpty ||
+        currentUser.role.toLowerCase() == 'organizer' ||
+        currentUser.role.toLowerCase() == 'admin';
     final isSupervisor = !isOrganizer && fac.supervisorCode.isNotEmpty;
 
     String roleLabel = 'GUARD';
@@ -341,25 +435,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Row: Role Badge
+          // Top Row: Role Badge & Facility Actions
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0x1AFFFFFF),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: const Color(0x33FFFFFF)),
-                ),
-                child: Text(
-                  roleLabel,
-                  style: GoogleFonts.jetBrainsMono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFFE2E8F0),
-                    letterSpacing: 0.5,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0x1AFFFFFF),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0x33FFFFFF)),
+                    ),
+                    child: Text(
+                      roleLabel,
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFFE2E8F0),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                  if (fac.id != null) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '#${fac.id}',
+                      style: GoogleFonts.jetBrainsMono(
+                        fontSize: 10,
+                        color: ArgusTokens.textTertiary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded, size: 20, color: ArgusTokens.severityCritical),
+                tooltip: 'Delete Facility',
+                splashRadius: 20,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () => _confirmDeleteFacility(fac, currentUser),
               ),
             ],
           ),
@@ -439,23 +556,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           const Spacer(),
 
-          // Enter Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                ref.read(activeFacilityProvider.notifier).state = fac;
-                context.go('/app/monitor');
-              },
-              icon: const Icon(Icons.arrow_forward_rounded, size: 15),
-              label: const Text('Enter Facility Console'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ArgusTokens.accent,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+          // Bottom Actions: Enter Facility & Delete Facility
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    ref.read(activeFacilityProvider.notifier).state = fac;
+                    context.go('/app/monitor');
+                  },
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 15),
+                  label: const Text('Enter Facility Console'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ArgusTokens.accent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    textStyle: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Delete Facility',
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmDeleteFacility(fac, currentUser),
+                  icon: const Icon(Icons.delete_forever_rounded, size: 16, color: ArgusTokens.severityCritical),
+                  label: Text(
+                    'Delete',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: ArgusTokens.severityCritical,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ArgusTokens.severityCritical,
+                    side: BorderSide(color: ArgusTokens.severityCritical.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

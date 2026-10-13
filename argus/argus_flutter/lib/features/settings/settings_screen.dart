@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:crypto/crypto.dart';
 import 'package:argus_client/argus_client.dart';
+import 'package:go_router/go_router.dart';
 import '../../app/theme/tokens.dart';
 import '../../core/copy/strings.dart';
 import '../../data/repository_provider.dart';
+import '../facilities/facility_providers.dart';
+import '../rooms/room_providers.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -145,6 +148,73 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('All workspace data permanently deleted.')),
                 );
+              }
+            },
+            child: const Text('Delete Permanently'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteFacilityDialog() {
+    final activeFac = ref.read(activeFacilityProvider);
+    final currentUser = ref.read(currentUserProvider).valueOrNull;
+    if (activeFac == null || activeFac.id == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ArgusTokens.bgOverlay,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(ArgusTokens.radiusLg),
+          side: const BorderSide(color: ArgusTokens.borderSubtle),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: ArgusTokens.severityCritical.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.delete_forever_rounded, color: ArgusTokens.severityCritical, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Text('Delete Facility Permanently?', style: GoogleFonts.sora(fontSize: 16, fontWeight: FontWeight.w700)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${activeFac.name}"?\n\nThis will remove all cameras, spatial zones, configured rules, and incident records belonging to this facility.',
+          style: GoogleFonts.inter(fontSize: 13, color: ArgusTokens.textSecondary, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: ArgusTokens.severityCritical, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                final success = await ref.read(argusRepositoryProvider).deleteFacility(
+                  activeFac.id!,
+                  userName: currentUser?.fullName ?? 'Operator',
+                );
+                if (success) {
+                  ref.invalidate(userFacilitiesProvider);
+                  ref.read(activeFacilityProvider.notifier).state = null;
+                  if (mounted) {
+                    context.go('/');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Facility "${activeFac.name}" has been permanently deleted.')),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(backgroundColor: ArgusTokens.severityCritical, content: Text('Failed to delete facility: $e')),
+                  );
+                }
               }
             },
             child: const Text('Delete Permanently'),
@@ -335,7 +405,43 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Danger Zone
+              // Danger Zone: Facility & Data Management
+              if (ref.watch(activeFacilityProvider) != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(ArgusTokens.space20),
+                  decoration: BoxDecoration(
+                    color: ArgusTokens.bgRaised,
+                    borderRadius: BorderRadius.circular(ArgusTokens.radiusMd),
+                    border: Border.all(color: ArgusTokens.severityCritical.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_forever_rounded, color: ArgusTokens.severityCritical, size: 24),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Delete Active Facility (${ref.watch(activeFacilityProvider)!.name})',
+                              style: GoogleFonts.sora(fontSize: 15, fontWeight: FontWeight.w600, color: ArgusTokens.severityCritical),
+                            ),
+                            Text('Permanently remove this facility, all cameras, zones, rules, and incident records.', style: GoogleFonts.inter(fontSize: 12, color: ArgusTokens.textTertiary)),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.delete_forever_rounded, size: 16),
+                        style: ElevatedButton.styleFrom(backgroundColor: ArgusTokens.severityCritical, foregroundColor: Colors.white),
+                        onPressed: _showDeleteFacilityDialog,
+                        label: const Text('Delete Facility'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
               Container(
                 padding: const EdgeInsets.all(ArgusTokens.space20),
                 decoration: BoxDecoration(

@@ -9,6 +9,7 @@ import '../../app/theme/severity_scale.dart';
 import '../../core/widgets/rainbow_moving_border.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/util/preloaded_scenes.dart';
+import '../../core/widgets/safe_image.dart';
 import '../../data/repository_provider.dart';
 
 class IncidentDetailScreen extends ConsumerStatefulWidget {
@@ -377,10 +378,10 @@ class _IncidentDetailScreenState extends ConsumerState<IncidentDetailScreen> {
         fit: StackFit.expand,
         children: [
           if (snapshotUrl != null && snapshotUrl.isNotEmpty)
-            Image.network(
-              snapshotUrl,
+            SafeImage(
+              url: snapshotUrl,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => _buildSnapshotFallback(inc),
+              errorBuilder: (context) => _buildSnapshotFallback(inc),
             )
           else
             _buildSnapshotFallback(inc),
@@ -539,10 +540,10 @@ class _IncidentDetailScreenState extends ConsumerState<IncidentDetailScreen> {
               Flexible(
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: Image.network(
-                    url,
+                  child: SafeImage(
+                    url: url,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Center(
+                    errorBuilder: (context) => const Center(
                       child: Text('Failed to load image', style: TextStyle(color: Colors.white54)),
                     ),
                   ),

@@ -90,18 +90,6 @@ class _CreateFacilityDialogState extends ConsumerState<CreateFacilityDialog> wit
     }
   }
 
-  void _addBenchmarkClip(PreloadedScene scene) {
-    setState(() {
-      _cameras.add(_ConfiguredCameraDraft(
-        name: '${scene.name} CCTV',
-        sourceKind: 'file',
-        sourceRef: scene.id,
-        fileName: scene.id,
-        firstFrameUrl: getPreloadedSceneFrame(scene.id),
-      ));
-    });
-  }
-
   Future<void> _rescanNetwork() async {
     setState(() => _isScanningNetwork = true);
     await Future.delayed(const Duration(milliseconds: 1200));
@@ -417,22 +405,6 @@ class _CreateFacilityDialogState extends ConsumerState<CreateFacilityDialog> wit
               side: const BorderSide(color: ArgusTokens.accent),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text('— or choose calibrated benchmark scenario —',
-              style: GoogleFonts.inter(fontSize: 10, color: ArgusTokens.textTertiary)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: kPreloadedScenes.take(3).map((s) {
-              return ActionChip(
-                label: Text(s.name, style: GoogleFonts.inter(fontSize: 10)),
-                avatar: const Icon(Icons.add_rounded, size: 12),
-                backgroundColor: ArgusTokens.bgOverlay,
-                onPressed: () => _addBenchmarkClip(s),
-              );
-            }).toList(),
           ),
         ],
       ),
