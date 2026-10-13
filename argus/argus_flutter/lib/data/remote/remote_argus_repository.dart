@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:argus_client/argus_client.dart';
+import 'package:argus_engine/argus_engine.dart' as engine;
 import '../argus_repository.dart';
 
 class RemoteArgusRepository implements ArgusRepository {
@@ -122,9 +123,64 @@ class RemoteArgusRepository implements ArgusRepository {
     await client.zone.delete(id);
   }
 
+  final _grammarParser = engine.GrammarParser();
+
   @override
   Future<ParseResult> interpretRule(String sentence, {int? cameraId}) async {
-    return await client.rule.interpret(sentence, cameraId: cameraId);
+    try {
+      return await client.rule.interpret(sentence, cameraId: cameraId).timeout(const Duration(seconds: 4));
+    } catch (_) {
+      final parsed = _grammarParser.parse(sentence);
+      if (parsed.spec != null) {
+        final s = parsed.spec!;
+        return ParseResult(
+          spec: RuleSpec(
+            id: 0,
+            workspaceId: 1,
+            name: s.name,
+            enabled: s.enabled,
+            cameraIds: cameraId != null ? [cameraId] : s.cameraIds,
+            trigger: RuleTrigger(
+              signal: s.trigger.signal.name,
+              zoneId: s.trigger.zoneId,
+              minDurationSec: s.trigger.minDurationSec,
+              minConfidence: s.trigger.minConfidence,
+              minCount: s.trigger.minCount,
+              ppe: s.trigger.ppe,
+            ),
+            conditions: RuleConditions(
+              timeWindows: s.conditions.timeWindows.map((tw) => TimeWindow(start: tw.start, end: tw.end)).toList(),
+              daysOfWeek: s.conditions.daysOfWeek,
+              timezone: s.conditions.timezone,
+            ),
+            severity: s.severity.name,
+            verify: RuleVerify(enabled: s.verify.enabled, kind: s.verify.kind),
+            actions: s.actions.map((a) => RuleAction(kind: a.kind, paramsJson: '{}')).toList(),
+            cooldownSec: s.cooldownSec,
+            escalation: s.escalation.map((e) => RuleEscalation(
+              afterSec: e.afterSec,
+              notify: e.notify,
+              message: e.message,
+            )).toList(),
+            sourceText: s.sourceText,
+            parsedBy: 'grammar (local fallback)',
+            createdAt: DateTime.now(),
+            version: 1,
+          ),
+          parsedBy: 'grammar (local fallback)',
+          confidence: parsed.confidence,
+          warnings: parsed.warnings,
+          alternatives: parsed.alternatives,
+        );
+      }
+      return ParseResult(
+        parsedBy: 'grammar (local fallback)',
+        confidence: 0.1,
+        warnings: parsed.warnings,
+        unsupportedReason: parsed.unsupportedReason,
+        alternatives: parsed.alternatives,
+      );
+    }
   }
 
   @override
