@@ -14,7 +14,7 @@ JSON Schema:
   "name": string,
   "severity": "low" | "medium" | "high" | "critical",
   "trigger": {
-    "signal": "person_in_zone" | "fall_suspected" | "motionless" | "person_count" | "ppe_check",
+    "signal": "person_in_zone" | "fall_suspected" | "motionless" | "person_count" | "ppe_check" | "running",
     "zoneId": integer or null,
     "minDurationSec": integer,
     "minConfidence": float between 0.0 and 1.0,
@@ -124,14 +124,14 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
     String sentence,
     int? cameraId,
   ) async {
-    for (final model in ['gemini-2.0-flash', 'gemini-1.5-flash']) {
+    for (final model in ['gemini-2.5-flash', 'gemini-flash-latest']) {
       HttpClient? client;
       try {
-        client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+        client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1500);
         final uri = Uri.parse(
           'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey',
         );
-        final request = await client.postUrl(uri).timeout(const Duration(seconds: 3));
+        final request = await client.postUrl(uri).timeout(const Duration(milliseconds: 1500));
         request.headers.contentType = ContentType.json;
 
         final payload = json.encode({
@@ -149,8 +149,8 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
         });
 
         request.write(payload);
-        final response = await request.close().timeout(const Duration(seconds: 4));
-        final responseBody = await response.transform(utf8.decoder).join().timeout(const Duration(seconds: 4));
+        final response = await request.close().timeout(const Duration(milliseconds: 2000));
+        final responseBody = await response.transform(utf8.decoder).join().timeout(const Duration(milliseconds: 2000));
         client.close();
 
         if (response.statusCode == 200) {
@@ -162,9 +162,14 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
           }
         } else {
           session.log('Gemini ($model) returned status ${response.statusCode}: $responseBody');
+          // If model not found or service unavailable/overloaded, break immediately to fallback
+          if (response.statusCode == 404 || response.statusCode == 503 || response.statusCode == 403) {
+            break;
+          }
         }
       } catch (e) {
         session.log('Gemini ($model) request failed: $e');
+        break;
       } finally {
         try { client?.close(force: true); } catch (_) {}
       }
@@ -181,9 +186,9 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
     for (final model in ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant']) {
       HttpClient? client;
       try {
-        client = HttpClient()..connectionTimeout = const Duration(seconds: 3);
+        client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1500);
         final uri = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
-        final request = await client.postUrl(uri).timeout(const Duration(seconds: 3));
+        final request = await client.postUrl(uri).timeout(const Duration(milliseconds: 1500));
         request.headers.contentType = ContentType.json;
         request.headers.set('Authorization', 'Bearer $apiKey');
 
@@ -198,8 +203,8 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
         });
 
         request.write(payload);
-        final response = await request.close().timeout(const Duration(seconds: 4));
-        final responseBody = await response.transform(utf8.decoder).join().timeout(const Duration(seconds: 4));
+        final response = await request.close().timeout(const Duration(milliseconds: 2000));
+        final responseBody = await response.transform(utf8.decoder).join().timeout(const Duration(milliseconds: 2000));
         client.close();
 
         if (response.statusCode == 200) {
@@ -211,9 +216,14 @@ Return ONLY valid JSON with no markdown wrapping or triple backticks.
           }
         } else {
           session.log('Groq ($model) returned status ${response.statusCode}: $responseBody');
+          // If 404, 401, 403 or 503, break immediately to fallback
+          if (response.statusCode == 404 || response.statusCode == 401 || response.statusCode == 403 || response.statusCode == 503) {
+            break;
+          }
         }
       } catch (e) {
         session.log('Groq ($model) request failed: $e');
+        break;
       } finally {
         try { client?.close(force: true); } catch (_) {}
       }
