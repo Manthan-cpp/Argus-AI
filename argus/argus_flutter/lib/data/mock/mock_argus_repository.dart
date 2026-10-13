@@ -654,6 +654,23 @@ class MockArgusRepository implements ArgusRepository {
               break;
             }
           }
+        } else if (rule.trigger.signal == 'ppe_check') {
+          final targetZoneId = rule.trigger.zoneId;
+          for (final p in persons) {
+            final matches = (targetZoneId == null || targetZoneId == 0)
+                ? p.zoneIds.isNotEmpty
+                : p.zoneIds.contains(targetZoneId);
+            if (matches) {
+              met = true;
+              final zoneObj = (targetZoneId != null && targetZoneId > 0)
+                  ? _zones.where((z) => z.id == targetZoneId).firstOrNull
+                  : null;
+              final zoneDesc = zoneObj != null ? zoneObj.name : ((targetZoneId != null && targetZoneId > 0) ? 'Zone #$targetZoneId' : 'Monitored PPE Area');
+              final ppeType = rule.verify.kind.isNotEmpty ? rule.verify.kind : 'helmet';
+              detail = 'Subject (ID ${p.trackId}) in $zoneDesc flagged for PPE compliance verification ($ppeType)';
+              break;
+            }
+          }
         } else if (rule.trigger.signal == 'person_count') {
           final targetZoneId = rule.trigger.zoneId;
           final minCount = rule.trigger.minCount ?? 1;
@@ -705,6 +722,28 @@ class MockArgusRepository implements ArgusRepository {
               break;
             }
           }
+        } else if (rule.trigger.signal == 'running') {
+          final targetZoneId = rule.trigger.zoneId;
+          final candidatePersons = (targetZoneId != null && targetZoneId > 0)
+              ? persons.where((p) => p.zoneIds.contains(targetZoneId)).toList()
+              : persons;
+
+          final runningPersons = candidatePersons.where((p) => p.motionScore >= 0.50).toList();
+          final requiredCount = rule.trigger.minCount ?? 1;
+
+          if (runningPersons.length >= requiredCount && runningPersons.isNotEmpty) {
+            met = true;
+            final triggerPerson = runningPersons.first;
+            final zoneObj = (targetZoneId != null && targetZoneId > 0)
+                ? _zones.where((z) => z.id == targetZoneId).firstOrNull
+                : null;
+            final zoneDesc = zoneObj != null ? zoneObj.name : ((targetZoneId != null && targetZoneId > 0) ? 'Zone #$targetZoneId' : 'camera field of view');
+            if (runningPersons.length > 1) {
+              detail = 'Rapid movement / Stampede: ${runningPersons.length} subjects running in $zoneDesc (speed: ${(triggerPerson.motionScore * 100).toInt()}%)';
+            } else {
+              detail = 'Subject (ID ${triggerPerson.trackId}) running in $zoneDesc (speed: ${(triggerPerson.motionScore * 100).toInt()}%)';
+            }
+          }
         }
 
         if (met) {
@@ -744,7 +783,12 @@ class MockArgusRepository implements ArgusRepository {
               severity: rule.severity,
               status: 'open',
               openedAt: DateTime.now(),
-              verification: VerificationInfo(status: 'not_requested', reason: 'Vision telemetry condition met'),
+              verification: VerificationInfo(
+                status: rule.verify.enabled ? 'pending' : 'not_requested',
+                reason: rule.verify.enabled
+                    ? 'Pending AI vision verification (${rule.verify.kind})'
+                    : 'Vision telemetry condition met',
+              ),
               summary: '${rule.name}: $detail',
               signalContextJson: '{}',
             );
@@ -793,9 +837,34 @@ class MockArgusRepository implements ArgusRepository {
     _incidentEvidence[upload.incidentId] = upload.snapshotJpegBase64;
     final idx = _incidents.indexWhere((i) => i.id == upload.incidentId);
     if (idx >= 0) {
-      _incidents[idx] = _incidents[idx].copyWith(
+      final inc = _incidents[idx];
+      RuleSpec? rule;
+      try {
+        rule = _rules.firstWhere((r) => r.id == inc.ruleId);
+      } catch (_) {}
+
+      final isPpe = rule?.trigger.signal == 'ppe_check' || rule?.verify.enabled == true;
+      final verification = isPpe
+          ? VerificationInfo(
+              status: 'verified',
+              reason: 'Assistive Vision Verification: Subject without helmet confirmed',
+            )
+          : inc.verification;
+
+      final updated = inc.copyWith(
         evidenceFileKey: 'ev_${upload.incidentId}',
+        verification: verification,
       );
+      _incidents[idx] = updated;
+
+      final event = IncidentEvent(
+        incidentId: upload.incidentId,
+        at: DateTime.now(),
+        kind: verification.status == 'verified' ? 'verified' : 'evidence_added',
+        detail: 'Evidence attached. Verification: ${verification.status} (${verification.reason ?? "local telemetry"})',
+      );
+      _incidentEvents[upload.incidentId]?.insert(0, event);
+      _incidentStreamCtrl.add(IncidentUpdate(incident: updated, event: event));
     }
   }
 
