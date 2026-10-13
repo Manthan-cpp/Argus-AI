@@ -108,6 +108,20 @@ void main() {
       expect(res3.spec!.trigger.minDurationSec, equals(5));
       expect(res3.spec!.name, contains('Unattended Luggage'));
     });
+
+    test('S6: Rapid movement and running detection', () {
+      final res1 = parser.parse('If everyone who are walking suddenly starts running, trigger critical alert');
+      expect(res1.spec, isNotNull);
+      expect(res1.spec!.trigger.signal, equals(TriggerSignal.running));
+      expect(res1.spec!.severity, equals(Severity.critical));
+      expect(res1.spec!.name, contains('Rapid Movement & Running Detected'));
+
+      final res2 = parser.parse('If a person starts running in Chemical Lab, trigger high alert', knownZones: zones);
+      expect(res2.spec, isNotNull);
+      expect(res2.spec!.trigger.signal, equals(TriggerSignal.running));
+      expect(res2.spec!.trigger.zoneId, equals(101));
+      expect(res2.spec!.severity, equals(Severity.high));
+    });
   });
 
   group('Rule Evaluator tests', () {

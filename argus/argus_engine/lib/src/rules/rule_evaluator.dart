@@ -228,13 +228,28 @@ class RuleEvaluator {
         }
       }
 
+      if (trigger.signal == TriggerSignal.running) {
+        final requiredCount = trigger.minCount ?? 1;
+        final matchingRunning = (trigger.zoneId != null && trigger.zoneId! > 0)
+            ? event.persons.where((p) =>
+                p.confidence >= trigger.minConfidence &&
+                p.zoneIds.contains(trigger.zoneId) &&
+                p.motionScore >= 0.50).toList()
+            : event.persons.where((p) =>
+                p.confidence >= trigger.minConfidence &&
+                p.motionScore >= 0.50).toList();
+        if (matchingRunning.length >= requiredCount && matchingRunning.isNotEmpty) {
+          return true;
+        }
+      }
+
       for (final person in event.persons) {
         if (person.confidence < trigger.minConfidence) continue;
 
         // Check Zone Constraint
         if (trigger.zoneId != null && trigger.zoneId! > 0) {
           if (!person.zoneIds.contains(trigger.zoneId)) continue;
-        } else if (trigger.signal == TriggerSignal.person_in_zone) {
+        } else if (trigger.signal == TriggerSignal.person_in_zone || trigger.signal == TriggerSignal.ppe_check) {
           if (person.zoneIds.isEmpty) continue;
         }
 
@@ -257,6 +272,12 @@ class RuleEvaluator {
           case TriggerSignal.ppe_check:
             // Client vision flags unverified PPE or bounding detection
             return true;
+
+          case TriggerSignal.running:
+            if (person.motionScore >= 0.50) {
+              return true;
+            }
+            break;
 
           case TriggerSignal.person_count:
             break;

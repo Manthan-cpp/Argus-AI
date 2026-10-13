@@ -116,7 +116,28 @@ class GrammarParser {
         minDurationSec = 3;
       }
     }
-    // Signal pattern 4: Person count / Crowd
+    // Signal pattern 4: Running / Stampede / Sudden run
+    else if ((lower.contains('running') ||
+            lower.contains('start running') ||
+            lower.contains('starts running') ||
+            lower.contains('start to run') ||
+            lower.contains('starts to run') ||
+            lower.contains('sprint') ||
+            lower.contains('sprinting') ||
+            lower.contains('stampede') ||
+            lower.contains('panic run') ||
+            lower.contains('flee') ||
+            lower.contains('fleeing') ||
+            RegExp(r'\b(runs|run|running|sprints|stampede)\b').hasMatch(lower)) &&
+        !lower.contains('running hours')) {
+      signal = TriggerSignal.running;
+      const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten)';
+      final countMatch = RegExp(r'(?:more than|over|exceeds|at least)\s+' + numPattern).firstMatch(lower);
+      if (countMatch != null) {
+        minCount = _parseNumber(countMatch.group(1)) ?? 1;
+      }
+    }
+    // Signal pattern 5: Person count / Crowd
     else if (RegExp(r'(?:more than|over|exceeds|at least)\s+(?:\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten)\s+(?:people|persons)').hasMatch(lower) || lower.contains('crowd')) {
       signal = TriggerSignal.person_count;
       const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten)';
@@ -145,11 +166,12 @@ class GrammarParser {
       return ParseResult(
         parsedBy: 'grammar',
         confidence: 0.1,
-        unsupportedReason: 'Could not determine trigger signal (e.g. entry, fall, dwell, motionless, or PPE check)',
+        unsupportedReason: 'Could not determine trigger signal (e.g. entry, fall, dwell, motionless, PPE check, or running)',
         alternatives: const [
           'If someone enters the restricted zone, alert supervisor',
           'If someone falls and stays down for 10 seconds, create critical incident',
           'If a person stays in red zone for more than 5 seconds, sound alarm',
+          'If everyone suddenly starts running, trigger critical alert',
         ],
       );
     }
@@ -171,7 +193,7 @@ class GrammarParser {
       severity = Severity.high;
     } else if (lower.contains('low') || lower.contains('info') || lower.contains('log only')) {
       severity = Severity.low;
-    } else if (signal == TriggerSignal.fall_suspected) {
+    } else if (signal == TriggerSignal.fall_suspected || signal == TriggerSignal.running) {
       severity = Severity.high;
     }
 
@@ -334,6 +356,8 @@ class GrammarParser {
         return '$prefix: Crowd Threshold Exceeded';
       case TriggerSignal.ppe_check:
         return '$prefix: PPE Non-compliance Check';
+      case TriggerSignal.running:
+        return '$prefix: Rapid Movement & Running Detected${zoneName != null ? ' in $zoneName' : ''}';
     }
   }
 

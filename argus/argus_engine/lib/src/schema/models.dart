@@ -8,7 +8,7 @@ enum CameraStatus { offline, online, replay }
 enum CameraSourceKind { webcam, file, demo, replay }
 enum ZoneKind { restricted, work, stairs, custom }
 enum SignalKind { heartbeat, change }
-enum TriggerSignal { person_in_zone, fall_suspected, motionless, person_count, ppe_check }
+enum TriggerSignal { person_in_zone, fall_suspected, motionless, person_count, ppe_check, running }
 
 class PointN {
   final double x;
