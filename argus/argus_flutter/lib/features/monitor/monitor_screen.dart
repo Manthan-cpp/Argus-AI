@@ -104,6 +104,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
             return zIds != null && zIds.isNotEmpty;
           });
           double maxFall = 0.0;
+          double maxMotion = 0.0;
           int fallenMotionless = 0;
           int restrictedMotionless = 0;
 
@@ -111,11 +112,15 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
             final pMap = pObj as Map<String, dynamic>;
             final f = (pMap['fallScore'] as num?)?.toDouble() ?? 0.0;
             final m = (pMap['motionlessMs'] as num?)?.toInt() ?? 0;
+            final mot = (pMap['motionScore'] as num?)?.toDouble() ?? 0.0;
             final zIds = (pMap['zoneIds'] as List? ?? []);
 
             if (f > maxFall) {
               maxFall = f;
               fallenMotionless = m;
+            }
+            if (mot > maxMotion) {
+              maxMotion = mot;
             }
             if (zIds.isNotEmpty && m > restrictedMotionless) {
               restrictedMotionless = m;
@@ -139,13 +144,17 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
             _inRestrictedZone = anyRestricted;
           });
 
-          // Select subject to report in log: prioritize active intruder or fallen subject
+          // Select subject to report in log: prioritize active intruder or fallen subject or running subject
           Map<String, dynamic> activeSubject = persons.first as Map<String, dynamic>;
           for (final p in persons) {
             final pMap = p as Map<String, dynamic>;
             final zIds = pMap['zoneIds'] as List?;
             final fall = (pMap['fallScore'] as num?)?.toDouble() ?? 0.0;
-            if (zIds != null && zIds.isNotEmpty) {
+            final mot = (pMap['motionScore'] as num?)?.toDouble() ?? 0.0;
+            if (mot >= 0.50) {
+              activeSubject = pMap;
+              break;
+            } else if (zIds != null && zIds.isNotEmpty) {
               activeSubject = pMap;
               break;
             } else if (fall >= 0.5) {
@@ -161,7 +170,9 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
           final ts = DateTime.now().toIso8601String().substring(11, 19);
           final trackId = activeSubject['trackId'] ?? '1';
 
-          if (matched.isNotEmpty) {
+          if (maxMotion >= 0.50) {
+            _eventLogs.insert(0, '[$ts] RAPID MOVEMENT: Track #$trackId running (speed: ${(maxMotion * 100).toInt()}%) at (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)})');
+          } else if (matched.isNotEmpty) {
             _eventLogs.insert(0, '[$ts] INTRUSION: Track #$trackId entered "${matched.first.name}" at (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)})');
           } else if (maxFall >= 0.5) {
             _eventLogs.insert(0, '[$ts] ALERT: Track #$trackId fall suspected (${(maxFall * 100).toInt()}%) at (${fx.toStringAsFixed(2)}, ${fy.toStringAsFixed(2)})');
@@ -170,7 +181,7 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
           }
           if (_eventLogs.length > 40) _eventLogs.removeLast();
 
-          _dispatchSignalBatch(batch);
+          _dispatchSignalBatch(batch, isRunning: maxMotion >= 0.50);
         } else {
           setState(() {
             _personCount = 0;
@@ -183,11 +194,11 @@ class _MonitorScreenState extends ConsumerState<MonitorScreen> {
     });
   }
 
-  Future<void> _dispatchSignalBatch(Map<String, dynamic> batch) async {
+  Future<void> _dispatchSignalBatch(Map<String, dynamic> batch, {bool isRunning = false}) async {
     if (_isDispatchingSignals) return;
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final stateChanged = _inRestrictedZone != _lastRestrictedState || _fallScore >= 0.5;
+    final stateChanged = _inRestrictedZone != _lastRestrictedState || _fallScore >= 0.5 || isRunning;
     final timeSinceLast = now - _lastSignalSentMs;
 
     // Send immediately on state change (e.g. entry into restricted zone or fall),
