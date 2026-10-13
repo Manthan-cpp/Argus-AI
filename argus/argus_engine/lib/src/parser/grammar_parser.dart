@@ -102,7 +102,10 @@ class GrammarParser {
         lower.contains('unattended bag') ||
         lower.contains('abandoned bag') ||
         lower.contains('abandoned luggage') ||
-        (lower.contains('bag') && (lower.contains('leaves') || lower.contains('goes away') || lower.contains('walks away')))) {
+        lower.contains('isolated bag') ||
+        lower.contains('bag is isolated') ||
+        lower.contains('isolated luggage') ||
+        (lower.contains('bag') && (lower.contains('leaves') || lower.contains('goes away') || lower.contains('walks away') || lower.contains('isolated')))) {
       signal = TriggerSignal.motionless;
       const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)';
       final motionMatch = RegExp(r'(?:for|over|after)\s+(?:more than\s*)?' + numPattern + r'\s*(?:s|sec|seconds?)').firstMatch(lower);
@@ -237,7 +240,7 @@ class GrammarParser {
     }
 
     // 6. Build RuleSpec
-    final isLuggage = lower.contains('bag') || lower.contains('luggage') || lower.contains('unattended') || lower.contains('backpack');
+    final isLuggage = lower.contains('bag') || lower.contains('luggage') || lower.contains('unattended') || lower.contains('backpack') || lower.contains('isolated');
     final ruleName = _deriveRuleName(signal, matchedZoneName, severity, isLuggage: isLuggage);
     final spec = RuleSpec(
       id: 0,

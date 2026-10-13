@@ -101,6 +101,12 @@ void main() {
       expect(res2.spec!.trigger.zoneId, equals(101));
       expect(res2.spec!.trigger.minDurationSec, equals(5));
       expect(res2.spec!.severity, equals(Severity.critical));
+
+      final res3 = parser.parse('If a bag is isolated for more than 5 seconds, trigger an alert');
+      expect(res3.spec, isNotNull);
+      expect(res3.spec!.trigger.signal, equals(TriggerSignal.motionless));
+      expect(res3.spec!.trigger.minDurationSec, equals(5));
+      expect(res3.spec!.name, contains('Unattended Luggage'));
     });
   });
 
