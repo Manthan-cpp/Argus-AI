@@ -87,6 +87,21 @@ void main() {
       expect(res.spec!.trigger.signal, equals(TriggerSignal.ppe_check));
       expect(res.spec!.verify.enabled, isTrue);
     });
+
+    test('S5: Unattended bag and person leaving bag', () {
+      final res1 = parser.parse('If a person leaves his bag and goes away, trigger an alarm');
+      expect(res1.spec, isNotNull);
+      expect(res1.spec!.trigger.signal, equals(TriggerSignal.motionless));
+      expect(res1.spec!.trigger.minDurationSec, equals(3));
+      expect(res1.spec!.name, contains('Unattended Luggage'));
+
+      final res2 = parser.parse('If an unattended bag is detected in Chemical Lab for more than 5 seconds, trigger a critical alert', knownZones: zones);
+      expect(res2.spec, isNotNull);
+      expect(res2.spec!.trigger.signal, equals(TriggerSignal.motionless));
+      expect(res2.spec!.trigger.zoneId, equals(101));
+      expect(res2.spec!.trigger.minDurationSec, equals(5));
+      expect(res2.spec!.severity, equals(Severity.critical));
+    });
   });
 
   group('Rule Evaluator tests', () {

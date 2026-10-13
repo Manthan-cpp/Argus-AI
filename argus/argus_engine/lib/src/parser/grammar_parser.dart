@@ -76,15 +76,41 @@ class GrammarParser {
         minDurationSec = 3;
       }
     }
-    // Signal pattern 3: Motionless / No one moves
-    else if (lower.contains('no one moves') || lower.contains('motionless') || lower.contains('unmoving') || lower.contains('stationary')) {
+    // Signal pattern 3: Motionless / Unattended bag & abandoned luggage
+    else if (lower.contains('no one moves') ||
+        lower.contains('motionless') ||
+        lower.contains('unmoving') ||
+        lower.contains('stationary') ||
+        lower.contains('unattended') ||
+        lower.contains('abandoned') ||
+        lower.contains('leaves a bag') ||
+        lower.contains('leaves his bag') ||
+        lower.contains('leaves her bag') ||
+        lower.contains('leaves their bag') ||
+        lower.contains('leaves the bag') ||
+        lower.contains('leaving a bag') ||
+        lower.contains('leaving his bag') ||
+        lower.contains('leaving her bag') ||
+        lower.contains('leaving their bag') ||
+        lower.contains('leaving the bag') ||
+        lower.contains('leaving bag') ||
+        lower.contains('left behind') ||
+        lower.contains('bag is left') ||
+        lower.contains('luggage is left') ||
+        lower.contains('bag unattended') ||
+        lower.contains('unattended luggage') ||
+        lower.contains('unattended bag') ||
+        lower.contains('abandoned bag') ||
+        lower.contains('abandoned luggage') ||
+        (lower.contains('bag') && (lower.contains('leaves') || lower.contains('goes away') || lower.contains('walks away')))) {
       signal = TriggerSignal.motionless;
       const numPattern = r'(\d+|zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty)';
-      final motionMatch = RegExp(r'(?:for|over)\s+(?:more than\s*)?' + numPattern + r'\s*(?:s|sec|seconds?)').firstMatch(lower);
+      final motionMatch = RegExp(r'(?:for|over|after)\s+(?:more than\s*)?' + numPattern + r'\s*(?:s|sec|seconds?)').firstMatch(lower);
       if (motionMatch != null) {
-        minDurationSec = _parseNumber(motionMatch.group(1)) ?? 10;
+        minDurationSec = _parseNumber(motionMatch.group(1)) ?? 5;
       } else {
-        minDurationSec = 10;
+        // Default to 3 seconds for unattended bag / motionless detection
+        minDurationSec = 3;
       }
     }
     // Signal pattern 4: Person count / Crowd
@@ -211,7 +237,8 @@ class GrammarParser {
     }
 
     // 6. Build RuleSpec
-    final ruleName = _deriveRuleName(signal, matchedZoneName, severity);
+    final isLuggage = lower.contains('bag') || lower.contains('luggage') || lower.contains('unattended') || lower.contains('backpack');
+    final ruleName = _deriveRuleName(signal, matchedZoneName, severity, isLuggage: isLuggage);
     final spec = RuleSpec(
       id: 0,
       workspaceId: 0,
@@ -283,7 +310,7 @@ class GrammarParser {
     return '$hh:$mm';
   }
 
-  String _deriveRuleName(TriggerSignal signal, String? zoneName, Severity severity) {
+  String _deriveRuleName(TriggerSignal signal, String? zoneName, Severity severity, {bool isLuggage = false}) {
     final prefix = severity == Severity.critical
         ? 'Critical'
         : severity == Severity.high
@@ -296,6 +323,9 @@ class GrammarParser {
       case TriggerSignal.person_in_zone:
         return '$prefix: Zone Entry${zoneName != null ? ' ($zoneName)' : ''}';
       case TriggerSignal.motionless:
+        if (isLuggage) {
+          return '$prefix: Unattended Luggage Alert${zoneName != null ? ' in $zoneName' : ''}';
+        }
         return '$prefix: Inactivity Monitor${zoneName != null ? ' in $zoneName' : ''}';
       case TriggerSignal.person_count:
         return '$prefix: Crowd Threshold Exceeded';
