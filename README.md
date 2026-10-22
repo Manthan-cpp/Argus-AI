@@ -7,6 +7,7 @@
 [![Dart](https://img.shields.io/badge/Dart-3.5+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Architecture](https://img.shields.io/badge/Architecture-Full--Stack%20Dart-purple?style=for-the-badge)](#-the-power-of-full-stack-dart--flutter-supremacy)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 <br/><br/>
 
@@ -327,6 +328,13 @@ Argus-AI/
 * **Privacy-by-Design:** Facial biometric profiling is explicitly omitted. Evidence snapshots apply automated algorithmic blurring to human heads to preserve worker privacy.
 * **Assistive Safety Notice:** Argus AI is an assistive decision-support platform designed to augment security personnel and first responders.
 * **Full-Stack Dart Integrity:** All engine parsing, protocol serialization, and backend transactions execute in native Dart without reliance on brittle cross-language bridges.
+
+---
+
+## 📄 License & Contributing
+
+* **License:** Argus AI is licensed under the [MIT License](LICENSE).
+* **Contributing:** We welcome community contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started with local development and testing.
 
 ---
 
