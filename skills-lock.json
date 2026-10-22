@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "skills": {
+    "1-start": {
+      "source": "challengepost/learn-ai-basics",
+      "sourceType": "github",
+      "skillPath": "skills/1-start/SKILL.md",
+      "computedHash": "4980454dffcdc35679d1c65bc598fc71ee24d372d690fa26c83f281e07e922aa"
+    },
+    "2-scope": {
+      "source": "challengepost/learn-ai-basics",
+      "sourceType": "github",
+      "skillPath": "skills/2-scope/SKILL.md",
+      "computedHash": "ad830e8893838a63fdc03366d6703dff9ec77474d17f30bbfc8fa8026ca2cf00"
+    },
+    "3-prd": {
+      "source": "challengepost/learn-ai-basics",
+      "sourceType": "github",
+      "skillPath": "skills/3-prd/SKILL.md",
+      "computedHash": "0a7be11479900758f6dafed437f498613690ae4a90b61e64e6a77ff1aa2434e3"
+    },
+    "4-spec": {
+      "source": "challengepost/learn-ai-basics",
+      "sourceType": "github",
+      "skillPath": "skills/4-spec/SKILL.md",
+      "computedHash": "80f2ef6b23d0b69e11e78b871cec4d46e95b03f1feec7d5c5991ba7acdb7de48"
+    },
+    "5-build": {
+      "source": "challengepost/learn-ai-basics",
+      "sourceType": "github",
+      "skillPath": "skills/5-build/SKILL.md",
+      "computedHash": "4a4d8529445c55957302555fc9bc067141e1a2854ee736929ed948e02e0b3af6"
+    },
+    "6-ship": {
+      "source": "challengepost/learn-ai-basics",
+      "sourceType": "github",
+      "skillPath": "skills/6-ship/SKILL.md",
+      "computedHash": "8afe1905dedb55557a237d6d8083bcb562f7b8f6c815f500860abdbaafe5344b"
+    }
+  }
+}

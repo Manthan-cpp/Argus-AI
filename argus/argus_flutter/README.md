@@ -1,15 +1,9 @@
 # argus_flutter
 
-A new Flutter project with Serverpod.
+The interactive tactical control room and spatial monitoring console for Argus AI, built with Flutter.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application that is using
-Serverpod.
+To run the project, first make sure that the backend server is running, then run:
 
-A great starting point for learning Serverpod is our documentation site at:
-[https://docs.serverpod.dev](https://docs.serverpod.dev).
-
-To run the project, first make sure that the server is running, then do:
-
-    flutter run
+    flutter run -d chrome --web-renderer canvaskit

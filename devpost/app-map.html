@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argus AI — Application Map & Architectural Tour</title>
+  <style>
+    :root {
+      --bg: #090a0f;
+      --surface: #11141d;
+      --surface-border: #1e2433;
+      --surface-hover: #181d2a;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --crimson: #ef4444;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --code-bg: #05070a;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .badge-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      background: var(--surface-border);
+      color: var(--text-muted);
+    }
+
+    .badge.cyan {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .badge.green {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 750px;
+    }
+
+    section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Diagram Styles */
+    .diagram-container {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      padding: 1.5rem 1rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    svg {
+      max-width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    /* Route Stops */
+    .route-stop {
+      border-left: 2px solid var(--accent);
+      padding-left: 1.25rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .route-stop:last-child {
+      margin-bottom: 0;
+    }
+
+    .route-stop::before {
+      content: "";
+      position: absolute;
+      left: -6px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .stop-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-main);
+      margin-bottom: 0.25rem;
+    }
+
+    .file-path {
+      display: inline-block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.08);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .anchor-symbol {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--emerald);
+      margin-left: 0.5rem;
+    }
+
+    .stop-desc {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* Change Pointers */
+    .pointer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .pointer-card {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      padding: 1rem;
+    }
+
+    .pointer-card strong {
+      display: block;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .pointer-card code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--accent);
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .pointer-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* Reusable Practice */
+    .practice-box {
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.05);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .practice-box h3 {
+      font-size: 1rem;
+      color: var(--emerald);
+      margin-bottom: 0.5rem;
+    }
+
+    .practice-box p {
+      font-size: 0.92rem;
+      color: var(--text-main);
+    }
+
+    /* Run & Snapshot */
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 6px;
+      padding: 1rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      margin-top: 0.5rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 0;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--surface-border);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge-bar">
+        <span class="badge cyan">Devpost Learn AI Basics</span>
+        <span class="badge green">Step 5: App Map</span>
+        <span class="badge">Full-Stack Dart & Flutter</span>
+      </div>
+      <h1>Argus AI — Application Map</h1>
+      <p class="subtitle">An architectural blueprint and code tour connecting live video pose tracking, ray-casting geofencing, real-time WebSocket telemetry, and tactical incident dispatch.</p>
+    </header>
+
+    <!-- Overview -->
+    <section>
+      <h2>System Overview & Architecture</h2>
+      <p>Argus AI is engineered as a unified Full-Stack Dart ecosystem cleanly segregated into three primary packages:</p>
+      <div class="pointer-grid">
+        <div class="pointer-card">
+          <strong>1. Geometric Core Engine</strong>
+          <code>argus/argus_engine/</code>
+          <p>Zero-dependency pure Dart library implementing the Jordan curve theorem ray-casting algorithm for arbitrary $N$-point polygon collision and deterministic natural language rule parsing.</p>
+        </div>
+        <div class="pointer-card">
+          <strong>2. Streaming Backend Service</strong>
+          <code>argus/argus_server/</code>
+          <p>High-concurrency Dart backend handling streaming WebSocket telemetry batches, managing background countdown escalation timers, and persisting incidents to PostgreSQL.</p>
+        </div>
+        <div class="pointer-card">
+          <strong>3. Tactical Flutter Control Room</strong>
+          <code>argus/argus_flutter/</code>
+          <p>60 FPS CanvasKit web interface with interactive polygon zone editing, real-time MediaPipe skeletal pose overlay, fall risk scoring, and priority-ranked incident dispatch.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visual Diagram -->
+    <section>
+      <h2>Data Flow & Pipeline</h2>
+      <p>Follow a single real-time detection event through the system pipeline:</p>
+      <div class="diagram-container">
+        <svg viewBox="0 0 800 240" xmlns="http://www.w3.org/2000/svg">
+          <!-- Flow Rects -->
+          <!-- Node 1: Video & MediaPipe -->
+          <g>
+            <rect x="20" y="30" width="160" height="90" rx="8" fill="#11141d" stroke="#38bdf8" stroke-width="2"/>
+            <text x="100" y="60" fill="#38bdf8" font-size="12" font-weight="700" text-anchor="middle" font-family="sans-serif">Camera & Video</text>
+            <text x="100" y="80" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">MediaPipe Pose (33 pts)</text>
+            <text x="100" y="98" fill="#64748b" font-size="9" text-anchor="middle" font-family="monospace">argus_flutter</text>
+          </g>
+
+          <!-- Arrow 1 -->
+          <line x1="180" y1="75" x2="225" y2="75" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- Node 2: Geometry Engine -->
+          <g>
+            <rect x="230" y="30" width="160" height="90" rx="8" fill="#11141d" stroke="#10b981" stroke-width="2"/>
+            <text x="310" y="60" fill="#10b981" font-size="12" font-weight="700" text-anchor="middle" font-family="sans-serif">Spatial Ray-Casting</text>
+            <text x="310" y="80" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">Jordan Curve Theorem</text>
+            <text x="310" y="98" fill="#64748b" font-size="9" text-anchor="middle" font-family="monospace">argus_engine</text>
+          </g>
+
+          <!-- Arrow 2 -->
+          <line x1="390" y1="75" x2="435" y2="75" stroke="#10b981" stroke-width="2"/>
+
+          <!-- Node 3: Backend Ingestion -->
+          <g>
+            <rect x="440" y="30" width="160" height="90" rx="8" fill="#11141d" stroke="#f59e0b" stroke-width="2"/>
+            <text x="520" y="60" fill="#f59e0b" font-size="12" font-weight="700" text-anchor="middle" font-family="sans-serif">WebSocket Ingestion</text>
+            <text x="520" y="80" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">SignalBatch & Timers</text>
+            <text x="520" y="98" fill="#64748b" font-size="9" text-anchor="middle" font-family="monospace">argus_server</text>
+          </g>
+
+          <!-- Arrow 3 -->
+          <line x1="600" y1="75" x2="645" y2="75" stroke="#f59e0b" stroke-width="2"/>
+
+          <!-- Node 4: Dispatch Room -->
+          <g>
+            <rect x="650" y="30" width="130" height="90" rx="8" fill="#11141d" stroke="#ef4444" stroke-width="2"/>
+            <text x="715" y="60" fill="#ef4444" font-size="12" font-weight="700" text-anchor="middle" font-family="sans-serif">Incident Dispatch</text>
+            <text x="715" y="80" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">Operator Action</text>
+            <text x="715" y="98" fill="#64748b" font-size="9" text-anchor="middle" font-family="monospace">Control Room</text>
+          </g>
+
+          <!-- Lower Feedback Loop: Acknowledge & Cancellation -->
+          <path d="M 715 120 L 715 180 L 520 180 L 520 120" fill="none" stroke="#64748b" stroke-dasharray="4 4" stroke-width="2"/>
+          <text x="617" y="195" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">One-Click Acknowledge / Cancel Escalation Timer</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Guided Code Tour -->
+    <section>
+      <h2>Guided Code Tour (Key Stops)</h2>
+      <p>Navigate through the source code along the primary telemetry route:</p>
+
+      <div class="route-stop">
+        <div class="stop-title">Stop 1: Ray-Casting Point-in-Polygon Mathematics</div>
+        <span class="file-path">argus/argus_engine/lib/src/geometry/polygon.dart</span>
+        <span class="anchor-symbol">Polygon.containsPoint(Point point)</span>
+        <div class="stop-desc">
+          Implements the ray-casting algorithm based on the Jordan curve theorem. For any arbitrary $N$-point polygon, casts an infinite horizontal ray from the coordinate point and counts edge intersections. Odd count indicates interior inclusion; even count indicates exclusion.
+        </div>
+      </div>
+
+      <div class="route-stop">
+        <div class="stop-title">Stop 2: High-Throughput Streaming & Escalation Timers</div>
+        <span class="file-path">argus/argus_server/lib/src/endpoints/signal_endpoint.dart</span>
+        <span class="anchor-symbol">SignalEndpoint.streamSignals(StreamingSession session)</span>
+        <div class="stop-desc">
+          Receives high-frequency telemetry batches over WebSockets, filters noise, checks against active security rules, records critical incidents in PostgreSQL, and spawns asynchronous countdown workers to enforce safety escalation protocols.
+        </div>
+      </div>
+
+      <div class="route-stop">
+        <div class="stop-title">Stop 3: Tactical Incident Queue & Operator Dispatch</div>
+        <span class="file-path">argus/argus_flutter/lib/features/dispatch/incident_dispatch_room.dart</span>
+        <span class="anchor-symbol">IncidentCard & EscalationTimer</span>
+        <div class="stop-desc">
+          Renders real-time priority-ranked incident cards with forensic video snapshots, active countdown clocks, and instant operator acknowledgment controls that broadcast cancellation events back across the Dart backend.
+        </div>
+      </div>
+    </section>
+
+    <!-- "To Change This, Start Here" -->
+    <section>
+      <h2>To Change This, Start Here</h2>
+      <p>Concrete pointers for extending or customizing the core system:</p>
+      <div class="pointer-grid">
+        <div class="pointer-card">
+          <strong>Tune Kinematic Fall Detection Threshold</strong>
+          <code>argus_flutter/lib/features/monitor/widgets/video_player_viewport.dart</code>
+          <p>Modify the bounding box aspect-ratio threshold ($w/h > 1.8$) and temporal consistency window to adjust sensitivity for rapid posture changes.</p>
+        </div>
+        <div class="pointer-card">
+          <strong>Add New Natural Language Rule Triggers</strong>
+          <code>argus_engine/lib/src/grammar/rule_parser.dart</code>
+          <p>Extend the lexer tokens and AST nodes to recognize new safety directives (e.g., <em>"alert if person loiters in loading bay > 3 minutes"</em>).</p>
+        </div>
+        <div class="pointer-card">
+          <strong>Modify Escalation Timer Intervals</strong>
+          <code>argus_server/lib/src/endpoints/incident_endpoint.dart</code>
+          <p>Adjust the default 120-second dispatch acknowledgment countdown window before tier-2 alarms notify emergency contacts.</p>
+        </div>
+        <div class="pointer-card">
+          <strong>Customize Control Room Tactical Palette</strong>
+          <code>argus_flutter/lib/core/theme/argus_tokens.dart</code>
+          <p>Update color tokens (`surfaceDark`, `crimsonAlert`, `amberWarning`, `cyanTelemetry`) and typography scale across the Flutter interface.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reusable Practice -->
+    <section>
+      <h2>A Practice to Reuse: Contract-First Pure Dart Isolation</h2>
+      <div class="practice-box">
+        <h3>Decouple Core Algorithms From Platform Frameworks</h3>
+        <p>
+          By isolating geometric math and natural language parsing in a zero-dependency Dart package (<code>argus_engine</code>), the core business logic remains 100% testable through sub-second unit tests without needing a running database, Flutter UI runner, or browser WebAssembly runtime.
+        </p>
+        <p style="margin-top: 0.5rem;">
+          <strong>Why it matters for future projects:</strong> On any AI or computer vision project, validating edge algorithms deterministically with unit tests before wiring into UI widgets prevents hours of complex debugging across WebSockets and rendering pipelines.
+        </p>
+      </div>
+    </section>
+
+    <!-- Run Instructions -->
+    <section>
+      <h2>Run Instructions & Snapshot</h2>
+      <p>How to run the verification suite and start the local environment:</p>
+      <div class="code-block">
+# 1. Run Pure Engine Unit Tests (Sub-second verification)
+cd argus/argus_engine
+dart test
+
+# 2. Run High-Concurrency Backend Service
+cd ../argus_server
+dart run bin/main.dart
+
+# 3. Launch Flutter Tactical Control Room
+cd ../argus_flutter
+flutter run -d chrome --web-renderer canvaskit
+      </div>
+      <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-dim);">
+        Repository snapshot baseline: <code>71442e7</code> &middot; Architecture: Flutter & Full-Stack Dart.
+      </p>
+    </section>
+
+    <footer>
+      Argus AI &mdash; Autonomous Tactical Vision & Threat Dispatch System &middot; Devpost Learn AI Basics Hackathon
+    </footer>
+  </div>
+</body>
+</html>

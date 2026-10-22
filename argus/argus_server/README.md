@@ -1,10 +1,10 @@
 # argus_server
 
-This is the starting point for your Serverpod server.
+This is the distributed Dart backend service for Argus AI.
 
 Start your server by running:
 
-    cd argus
-    serverpod start
+    cd argus/argus_server
+    dart bin/main.dart
 
-When you are finished, you can shut down the running server with `Q`.
+When you are finished, you can shut down the running server with `Ctrl+C` or `Q`.

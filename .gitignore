@@ -6,13 +6,15 @@ build/
 .flutter-plugins-dependencies
 pubspec_overrides.yaml
 
-# Serverpod secrets & local runtime
+# Backend secrets & local runtime
 argus_server/config/passwords.yaml
 config/passwords.yaml
 *.local.yaml
-.serverpod/
 .scloud/
 **/sp_*.db*
+
+# Devpost Learning Profile (Local Context)
+/devpost/learner-profile.md
 
 # Environment and logs
 *.log
