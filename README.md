@@ -6,10 +6,10 @@
 
 [![Dart](https://img.shields.io/badge/Dart-3.5+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-[![Architecture](https://img.shields.io/badge/Architecture-Full--Stack%20Dart-purple?style=for-the-badge)](#-the-power-of-full-stack-dart--flutter-supremacy)
+[![Architecture](https://img.shields.io/badge/Architecture-Full--Stack%20Dart-purple?style=for-the-badge)](#-full-stack-dart--flutter-architecture)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-<br/><br/>
+<br/>
 
 ![Argus AI](screenshots/TOP.png)
 
@@ -22,18 +22,8 @@
 
 </div>
 
-## 📑 Table of Contents
-1. [The Problem: The Tragic Reality of Modern CCTV](#-the-problem-the-tragic-reality-of-modern-cctv)
-2. [The Solution: Machine-Speed Threat Interception](#-the-solution-machine-speed-threat-interception)
-3. [Target Audience & Deployable Verticals](#-target-audience--deployable-verticals)
-4. [God-Tier Threat Detection Capabilities](#-god-tier-threat-detection-capabilities)
-5. [The Power of Full-Stack Dart & Flutter](#-the-power-of-full-stack-dart--flutter-supremacy)
-6. [End-to-End System Workflow](#-end-to-end-system-workflow)
-7. [Visual Tour & Interactive Control Room](#-visual-tour--interactive-control-room)
-8. [Enterprise Production Scaling Roadmap](#-enterprise-production-scaling-roadmap)
-9. [Quick Start & Setup Instructions](#-quick-start--setup-instructions)
-10. [Repository Structure](#-repository-structure)
-11. [Acknowledgments & Community](#-acknowledgments--community)
+## 📑 Quick Navigation
+[The Problem](#-the-problem-the-tragic-reality-of-modern-cctv) • [The Solution](#-the-solution-machine-speed-threat-interception) • [Threat Matrix](#-god-tier-threat-detection-matrix) • [Full-Stack Architecture](#-full-stack-dart--flutter-architecture) • [System Workflow](#-end-to-end-system-workflow) • [Control Room Showcase](#-interactive-control-room-showcase) • [Quick Start](#-quick-start)
 
 ---
 
@@ -93,27 +83,21 @@ By unifying high-performance on-device computer vision with the raw distributed 
 
 ---
 
-## 🎯 Target Audience & Deployable Verticals
-
-Argus AI is engineered for high-stakes environments where human attention cannot be trusted to prevent disaster:
-
-* 🏭 **Industrial Plants, Manufacturing & Warehouses:** Eliminating worker fatalities, ensuring 100% OSHA/PPE compliance, and detecting hazardous machinery intrusions.
-* 🚆 **Critical Transit Hubs (Airports, Metros, Railway Terminals):** Real-time track intrusion prevention, crowd stampede mitigation, and unattended baggage tracking.
-* 🏥 **Hospitals, Senior Living & Assisted Care:** Immediate fall detection and wandering-patient perimeter security without compromising privacy.
-* 🏫 **Educational Campuses & Schools:** Perimeter protection, unauthorized intruder detection, and early crowd crush intervention.
-* 🏦 **Financial Institutions & Data Centers:** Multi-tenant cryptographic facility isolation, vault access control, and anti-tailgating verification.
-* 🛡️ **Enterprise Security Operations Centers (SOCs):** Empowering a single operator to command thousands of video feeds with zero cognitive fatigue.
+## 🎯 Target Audience & Verticals
+* 🏭 **Industrial & Warehouses:** Worker fall detection, OSHA/PPE compliance, and heavy machinery hazard zones.
+* 🚆 **Transit Hubs (Airports, Metros):** Track intrusion prevention, platform boundary violations, and crowd stampede intervention.
+* 🏥 **Healthcare & Senior Care:** Immediate slip/fall alerts and patient wandering monitoring with strict zero-biometric privacy.
+* 🏦 **High-Security Facilities & Data Centers:** Vault access control, anti-tailgating verification, and off-hour breach interception.
 
 ---
 
-## 🥋 God-Tier Threat Detection Capabilities
+## 🥋 God-Tier Threat Detection Matrix
 
-Argus AI features a battle-tested, state-of-the-art vision intelligence engine capable of orchestrating complex spatial, temporal, and kinematic rules:
+Argus AI features an end-to-end vision sensory matrix executing complex spatial, temporal, and kinematic rules at 60 FPS:
 
 ```
-                               ARGUS AI SENSORY MATRIX
  ┌───────────────────────────┬───────────────────────────┬───────────────────────────┐
- │ 🦺 PPE Compliance         │ 🥷 Concealed Identity     │ 🔫 Weapon & Threat        │
+ │ 🦺 PPE Compliance         │ 𥷮 Concealed Identity     │ 🔫 Weapon & Threat        │
  │ Hardhats, high-vis vests, │ Balaclavas, ski masks,    │ Firearms, long guns,      │
  │ safety goggles, gloves.   │ unauthorized coverings.   │ bladed tactical threats.  │
  ├───────────────────────────┼───────────────────────────┼───────────────────────────┤
@@ -127,44 +111,20 @@ Argus AI features a battle-tested, state-of-the-art vision intelligence engine c
  └───────────────────────────┴───────────────────────────┴───────────────────────────┘
 ```
 
-### 1. Natural Language Rule Studio
-Security personnel shouldn't need a computer science degree to configure automated defense. Argus features a **Deterministic Grammar Compiler** backed by LLM intelligence. Operators formulate safety policies in pure plain English:
-> *"If a person enters Track Area without permission, or if a person falls and stays down for more than 4 seconds, sound the alarm and dispatch emergency response immediately."*
-
-Argus translates this into an immutable, mathematically verified reactive state machine executing at 60 FPS.
+> **Plain-English Rule Studio:** Operators formulate safety policies in conversational English (*"If a person falls and stays down > 4s, trigger emergency alarm"*). Argus compiles this via a deterministic grammar parser into an immutable reactive state machine.
 
 ---
 
-## 🚀 The Power of Full-Stack Dart & Flutter Supremacy
+## 🚀 Full-Stack Dart & Flutter Architecture
 
-Argus AI is built entirely on the **Full-Stack Dart ecosystem**, coupling **Flutter** on the frontend with a high-performance **Dart backend engine**. This eliminates serialization overhead, language barriers, and architectural impedance mismatches.
+Argus AI unifies client and server in **100% pure Dart**, eliminating serialization overhead, language barriers, and impedance mismatches:
 
-![Landing Screen](screenshots/landing_vision.png)
-
-### Why Full-Stack Dart is the Unstoppable Engine of Argus AI
-
-The unified Dart architecture is not merely an API layer—**it is the living, beating tactical heart doing massive heavy lifting every millisecond:**
-
-#### 1. Ultra-High Concurrency Streaming WebSockets & Binary RPC
-* Continuous ingestion of live camera telemetry, skeletal vectors, and bounding box events across hundreds of parallel feeds.
-* Sub-35ms WebSocket incident downlink broadcasting real-time tactical updates to frontline security personnel simultaneously.
-
-#### 2. Persistent Autonomous Escalation State Machines
-* Security incidents cannot rely on in-memory timers that vanish when a server restarts.
-* The database-backed persistent scheduler executes fault-tolerant multi-tier escalation chains:
+* **⚡ Ultra-High Concurrency Streaming WebSockets:** Ingests live telemetry, 33-point skeletal vectors, and bounding box batches with sub-35ms WebSocket incident downlink.
+* **⏱️ Persistent Escalation State Machines:** Multi-tier countdown escalation chains persist across restarts:
   $$\text{Incident Triggered} \xrightarrow{15s} \text{Supervisor Ping} \xrightarrow{30s} \text{Facility Alarm} \xrightarrow{60s} \text{Autonomous 911 Dispatch}$$
-* Even during server reboots, network partitions, or worker restarts, **not a single emergency call is ever dropped.**
-
-#### 3. Shared Pure-Dart Architecture (`argus_engine`)
-* The core rule engine, geometry math, and grammar compiler are shared **100% identically** between the Flutter client and the Dart backend.
-* Compile-time type safety guarantees that an incident generated by the vision pipeline matches the database schema down to the exact byte.
-
-#### 4. PostgreSQL Relational ORM & Cryptographic Multi-Tenancy
-* True enterprise facility isolation. Every facility operates its own sovereign workspace with role-based cryptographic invite codes (`ORGANIZER`, `SUPERVISOR`, `GUARD`).
-* Audited incident logs with cryptographic verification hashes ensuring forensic integrity.
-
-#### 5. Multimodal AI Verification with Google Gemini
-* When high-severity incidents occur, the backend orchestrates zero-latency multimodal verification pipelines, feeding privacy-preserved snapshot evidence to Gemini for secondary confirmation before municipal emergency sirens fire.
+* **📦 Shared Domain Engine (`argus_engine`):** Jordan curve theorem ray-casting math, rule ASTs, and grammar parsers run identically on client and server with compile-time type safety.
+* **🛡️ Multi-Tenant Cryptographic Isolation:** PostgreSQL ORM with role-based cryptographic invite codes (`ORGANIZER`, `SUPERVISOR`, `GUARD`) and immutable audit logs.
+* **🤖 Multimodal AI Verification:** Zero-latency snapshot verification pipelines feeding privacy-preserved frames to Google Gemini for secondary confirmation before sirens sound.
 
 ---
 
@@ -180,9 +140,9 @@ sequenceDiagram
     participant AI as 🤖 Gemini Multimodal AI
     participant SOC as 🛡️ Tactical Dispatch Console
 
-    Camera->>Edge: 60 FPS Raw Video Stream
-    Edge->>Edge: On-Device 33-Pt Pose & Object Detection
-    Edge->>Server: Ingest Telemetry Stream via Binary RPC
+    Camera->>Edge: 60 FPS Video Stream
+    Edge->>Edge: On-Device 33-Pt Pose & Geometry Collision
+    Edge->>Server: Ingest Telemetry Stream via Binary WebSockets
     Server->>Server: Pure-Dart Grammar Rule Evaluation
     alt Safety Rule Violated (e.g. Fall / Track Breach)
         Server->>Postgres: Persist Incident & Evidence Snapshot
@@ -201,109 +161,49 @@ sequenceDiagram
 
 ---
 
-## 📸 Visual Tour & Interactive Control Room
+## 📸 Interactive Control Room Showcase
 
-### 1. Multi-Tenant Facility Operations Command
-Command multiple independent facilities—from subway systems to high-security construction zones—with role-based access control and cryptographic invite codes.
+<div align="center">
 
-![Facility Command](screenshots/facility_command.png)
+| Tactical Operations Hub | Interactive Spatial Geofencing |
+| :---: | :---: |
+| <img src="screenshots/connected_cameras.png" width="460" alt="Connected Camera Fleet" /><br/><sub><b>Connected Camera Fleet & RTSP Hub</b> — Real-time multi-feed surveillance matrix</sub> | <img src="screenshots/zone_polygon_editor.png" width="460" alt="Polygon Zone Editor" /><br/><sub><b>CanvasKit Polygon Zone Editor</b> — Click-and-drag sub-pixel vertex boundaries</sub> |
+| **Biomechanical Fall & Pose Scoring** | **Critical Perimeter Breach Detection** |
+| <img src="screenshots/fall_and_stampede.png" width="460" alt="Fall & Pose Tracking" /><br/><sub><b>33-Pt Skeletal Pose Tracking</b> — Real-time kinematic fall scoring ($w/h > 1.8$) at 60 FPS</sub> | <img src="screenshots/live_monitor_telemetry.png" width="460" alt="Live Monitor Telemetry" /><br/><sub><b>Perimeter Violation & Track Intrusion</b> — Sub-35ms centroid boundary collision</sub> |
+| **Natural Language Rule Studio** | **Multi-Tenant Facility Command** |
+| <img src="screenshots/natural_language_rules.png" width="460" alt="Natural Language Rules" /><br/><sub><b>Natural Language Policy Compiler</b> — Converts plain English into reactive rules</sub> | <img src="screenshots/facility_command.png" width="460" alt="Facility Command" /><br/><sub><b>Multi-Tenant Facility Command</b> — Role-based security access control</sub> |
 
----
-
-### 2. Connected Camera Fleet & RTSP Hub
-Ingest live network webcams, pre-recorded industrial CCTV feeds, and high-framerate IP camera networks into a consolidated surveillance matrix.
-
-![Connected Cameras](screenshots/connected_cameras.png)
-
----
-
-### 3. Interactive Spatial Polygon Zone Editor
-Define sub-pixel restricted zones, hazard perimeters, and doorways using arbitrary polygon points directly on frozen camera perspectives.
-
-![Polygon Zone Editor](screenshots/zone_polygon_editor.png)
+</div>
 
 ---
 
-### 4. Real-Time Neural Pose, Fall & Crowd Stampede Tracking
-Monitor live skeletal telemetry with 33-point biomechanical joint tracking, continuous fall scoring, motionless timers, and instantaneous crowd running kinematics.
+## 🗺️ Production Scaling Roadmap
 
-![Fall and Stampede Detection](screenshots/fall_and_stampede.png)
-
----
-
-### 5. Critical Perimeter Violation & Track Intrusion
-High-speed centroid detection tracking human presence across restricted transit lines with live signal streaming logs and immediate alarm states.
-
-![Live Monitor Telemetry](screenshots/live_monitor_telemetry.png)
+| System Pillar | Architecture Milestone | Impact & Scale |
+| :--- | :--- | :--- |
+| **Edge Ingestion** | **Global RTSP / ONVIF Gateway:** Binary WebSockets ingesting raw video streams directly into memory | **10,000+ Concurrent Streams** with sub-35ms pipeline latency |
+| **Cross-Camera Memory** | **Distributed Re-Identification:** Redis cluster + PostgreSQL `pgvector` for instant entity tracking | **1M+ Events Searched in <100ms** across 500+ facility cameras |
+| **Incident Automation** | **Zero-Human Dispatch:** Persistent task timers, automated 911 packets, and physical airlock locks | **<3 Second Response** with multi-angle verified AI telemetry |
+| **Sovereign Mesh** | **Federated Clustered Dart Mesh:** Zero-trust multi-region deployment with hardware-level encryption | **99.999% SLA** monitoring 500,000+ edge endpoints nationwide |
 
 ---
 
-### 6. Natural Language Safety Rule Studio & Policy Compiler
-Formulate safety policies in plain English. The deterministic parser converts natural language into active, armed reactive safety state machines instantly.
+## 🛠️ Quick Start
 
-![Natural Language Rules](screenshots/natural_language_rules.png)
-
----
-
-## 🗺️ Enterprise Production Scaling Roadmap
-
-| System Pillar | Production Milestone | Distributed Dart Architecture | Enterprise Scale & Real-World Impact |
-| :--- | :--- | :--- | :--- |
-| **High-Throughput Edge Ingestion** | **Global RTSP / ONVIF Camera Gateway**<br>Direct IP camera ingestion with zero-latency hardware frame decoding | **Streaming WebSockets & Binary RPC**<br>High-speed binary transport ingests raw video feeds directly into memory with zero serialization overhead | **10,000+ Concurrent Streams**<br>Sub-35ms pipeline latency from physical lens to incident evaluation |
-| **Cross-Camera Neural Memory** | **Distributed Suspect & Threat Re-Identification**<br>Semantic tracking across multiple campuses, zones, and facilities | **Distributed Redis Hub + PostgreSQL `pgvector`**<br>Distributed cluster syncs neural vector embeddings in real time for instant campus-wide search | **1M+ Events Searched in <100ms**<br>*"Track target across 500 cameras across the entire facility"* |
-| **Mission-Critical Incident Automation** | **Zero-Human First-Responder Orchestration**<br>Autonomous physical lockdowns, 911 dispatch, and drone surveillance routing | **Persistent Task Timers & Webhook Pipeline**<br>Guaranteed persistent background execution that never drops an emergency alert even under network partition | **<3 Second First-Responder Action**<br>Automated municipal dispatch packet with verified multi-angle AI incident telemetry |
-| **Enterprise Sovereign Mesh** | **Federated Multi-Tenant Infrastructure**<br>Sovereign cloud deployment for airports, transit hubs, and smart cities | **Multi-Region Clustered Dart Mesh**<br>Zero-trust federated architecture with edge-node failover and hardware-level encryption | **99.999% Mission-Critical SLA**<br>Monitoring 500,000+ edge endpoints nationwide with zero downtime |
-
----
-
-## 🛠️ Quick Start & Setup Instructions
-
-### Prerequisites
-* **Flutter SDK:** $\ge 3.24$
-* **Dart SDK:** $\ge 3.5$
-* **Docker & Docker Compose** (or local PostgreSQL)
-* **Google Chrome** (for Web Control Room)
-
----
-
-### 1. Launch the Backend Server
-
+### 1. Launch Backend Server
 ```bash
-# Navigate to the backend server package
 cd argus/argus_server
-
-# (Optional) Start Postgres & Redis containers via Docker
-docker compose up -d
-
-# Start the Dart Backend Server
-dart bin/main.dart
+docker compose up -d    # (Optional) Postgres & Redis containers
+dart bin/main.dart      # Boots on port 8080 (WebSockets) and 8082 (Web)
 ```
-*The backend server will boot up on port `8080` (HTTP / Streaming WebSockets) and `8082` (Web).*
 
----
-
-### 2. Launch the Flutter Tactical Control Room
-
-Open a new terminal window:
-
+### 2. Launch Tactical Control Room
 ```bash
-# Navigate to the Flutter frontend
 cd argus/argus_flutter
-
-# Install dependencies
 flutter pub get
-
-# Launch the Tactical Control Room on Chrome
 flutter run -d chrome --web-renderer canvaskit
 ```
-
----
-
-### 3. One-Click Convenience Launchers
-
-For rapid developer evaluation:
-* **Windows:** Double-click `scripts/start_all.bat` (or run `scripts/start_server.bat` and `scripts/start_flutter.bat`).
-* **macOS / Linux:** Run `bash scripts/start_server.sh` and `bash scripts/start_flutter.sh`.
+*Quick launchers available: `scripts/start_all.bat` (Windows) or `bash scripts/start_server.sh` (macOS/Linux).*
 
 ---
 
@@ -312,40 +212,25 @@ For rapid developer evaluation:
 ```
 Argus-AI/
 ├── argus/
-│   ├── argus_engine/       # Pure-Dart core: geometric algorithms, rule AST & grammar compiler
-│   ├── argus_server/       # High-performance Dart backend: ORM models, streaming endpoints, escalation workers
-│   ├── argus_client/       # Generated type-safe client protocol library
-│   └── argus_flutter/      # Tactical control room UI (Canvaskit, Riverpod, Cyber theme)
-├── screenshots/            # High-resolution UI captures & system architecture graphics
-├── scripts/                # Instant one-click launch scripts for Windows, macOS, Linux
-└── README.md               # Master documentation & project manifesto
+│   ├── argus_engine/       # Pure-Dart core: geometric ray-casting, rule AST & grammar compiler
+│   ├── argus_server/       # High-performance Dart backend: streaming endpoints, escalation workers
+│   ├── argus_client/       # Type-safe client protocol library
+│   └── argus_flutter/      # Tactical control room UI (CanvasKit, Riverpod, Cyber theme)
+├── devpost/                # Devpost Learn specification suite (scope, PRD, spec, checklist, app-map)
+├── screenshots/            # UI captures & system architecture graphics
+└── scripts/                # Instant launch scripts (Windows, macOS, Linux)
 ```
 
 ---
 
-## 🔒 Privacy, Ethics & Disclosures
+## 🔒 Privacy, License & Community
 
 * **Privacy-by-Design:** Facial biometric profiling is explicitly omitted. Evidence snapshots apply automated algorithmic blurring to human heads to preserve worker privacy.
 * **Assistive Safety Notice:** Argus AI is an assistive decision-support platform designed to augment security personnel and first responders.
-* **Full-Stack Dart Integrity:** All engine parsing, protocol serialization, and backend transactions execute in native Dart without reliance on brittle cross-language bridges.
-
----
-
-## 📄 License & Contributing
-
-* **License:** Argus AI is licensed under the [MIT License](LICENSE).
-* **Contributing:** We welcome community contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started with local development and testing.
-
----
-
-## 🏆 Acknowledgments & Community
-
-* **The Dart & Flutter Teams:** For providing the premier unified full-stack language ecosystem that makes high-performance, real-time reactive applications a joy to build.
-* **Flutter Community:** For the high-performance CanvasKit rendering engine powering our 60 FPS tactical control room.
-* **Google MediaPipe & Gemini:** For foundational vision models and multimodal reasoning.
-
----
+* **License:** Licensed under the [MIT License](LICENSE). Contributions welcome via our [Contributing Guide](CONTRIBUTING.md).
+* **Acknowledgments:** Built with the Dart & Flutter teams (CanvasKit engine) and Google MediaPipe / Gemini.
 
 <div align="center">
+<br/>
 <b>👁️ ARGUS AI — Vision That Never Blinks. Protection That Never Sleeps.</b>
 </div>
